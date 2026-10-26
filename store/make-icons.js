@@ -1,4 +1,4 @@
-// Usage: node store/imdb-ratings/make-icons.js imdb-ratings/icons
+// Usage: node store/make-icons.js icons
 // Draws the extension icon (gold star on a dark rounded square) at several
 // sizes and writes PNGs. Pure Node: zlib for deflate/crc, 4x supersampling.
 const fs = require('fs'), zlib = require('zlib'), path = require('path');

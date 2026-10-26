@@ -2,7 +2,7 @@
 
 Everything to paste into the developer dashboard
 (<https://chrome.google.com/webstore/devconsole>). The upload ZIP is built
-with `store/imdb-ratings/build-zip.ps1` and lands in `dist/`.
+with `store/build-zip.ps1` and lands in `dist/`.
 
 ## Store listing tab
 
@@ -45,10 +45,10 @@ with `store/imdb-ratings/build-zip.ps1` and lands in `dist/`.
 > PRIVACY
 > No accounts, no analytics, no server. The extension reads only the title
 > names on the cards it decorates and sends nothing about you anywhere.
-> Full policy: https://github.com/Lwolf12/chromeext/blob/main/imdb-ratings/PRIVACY.md
+> Full policy: https://github.com/Lwolf12/show-imdb-ratings/blob/main/PRIVACY.md
 >
 > OPEN SOURCE
-> https://github.com/Lwolf12/chromeext
+> https://github.com/Lwolf12/show-imdb-ratings
 >
 > Independent project, not affiliated with or endorsed by IMDb or any
 > streaming service.
@@ -66,7 +66,7 @@ passed in 0.8.x, so the summary (the manifest's `description`, which
 needs a new package to change) names four plus "and more", and the
 description names none and points to the project page.
 
-**Icon:** `imdb-ratings/icons/icon128.png` (taken from the ZIP automatically).
+**Icon:** `icons/icon128.png` (taken from the ZIP automatically).
 
 **Screenshots** (required, at least one; 1280×800 or 640×400 PNG/JPEG, no
 alpha): take them yourself with the extension loaded, since they must show
@@ -84,8 +84,8 @@ anything personal in the frame (profile name, continue-watching row).
 **Small promo tile** (440×280, optional; it makes the listing eligible for
 featuring): skip for the first submission.
 
-**Official URL / Homepage:** https://github.com/Lwolf12/chromeext
-**Support URL:** https://github.com/Lwolf12/chromeext/issues
+**Official URL / Homepage:** https://github.com/Lwolf12/show-imdb-ratings
+**Support URL:** https://github.com/Lwolf12/show-imdb-ratings/issues
 
 ## Privacy practices tab
 
@@ -124,7 +124,7 @@ featuring): skip for the first submission.
   creditworthiness or for lending.
 
 **Privacy policy URL:**
-https://github.com/Lwolf12/chromeext/blob/main/imdb-ratings/PRIVACY.md
+https://github.com/Lwolf12/show-imdb-ratings/blob/main/PRIVACY.md
 (the file must be committed and pushed before the reviewer can open it).
 
 ## Distribution tab

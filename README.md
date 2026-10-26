@@ -25,10 +25,10 @@ is a small adapter file, so more services can be added.
 
 1. Install it from the
    [Chrome Web Store](https://chromewebstore.google.com/detail/biopmnlghmgjoloionocinndfopncelh).
-   (Or, without the store: download the latest `imdb-ratings` ZIP from the
-   [Releases page](https://github.com/Lwolf12/chromeext/releases), extract
+   (Or, without the store: download the latest ZIP from the
+   [Releases page](https://github.com/Lwolf12/show-imdb-ratings/releases), extract
    it somewhere permanent, open `chrome://extensions`, turn on **Developer
-   mode**, click **Load unpacked** and pick the `imdb-ratings` folder.)
+   mode**, click **Load unpacked** and pick the `show-imdb-ratings` folder.)
 2. The settings open in their own small window. Click **Update now** to build the
    ratings database (next section): about 280 MB downloaded from IMDb, a
    few minutes, with a progress bar. When it says done, open any of the
@@ -97,9 +97,10 @@ key is set. The OMDb fallback can be switched off on the settings panel.
 | `sites/netflix.js`, `sites/primevideo.js`, `sites/hulu.js`, `sites/hbomax.js`, `sites/appletv.js`, `sites/disneyplus.js`, `sites/paramountplus.js`, `sites/tubi.js` | Site adapters: which elements are title cards and hover previews, how to read the title (and movie/series type where available), and where the badge goes. |
 | `content.js` | Generic: watches the page, looks up titles as cards come near the viewport, draws badges, refreshes stale ones in the background. |
 | `background.js` | Service worker: answers from the store, then the local database, then OMDb (with a concurrency limit); permanent store in `chrome.storage.local`, daily request count, pause after a limit error. |
-| `local.js` | Loads `data/ratings.json.gz` and looks titles up in it. |
-| `tools/build-local-db.mjs` | Builds `data/ratings.json.gz` from IMDb's data dumps. |
-| `data/` | The built database. Not in git and not in release ZIPs; each user builds their own. |
+| `db.js` | The local ratings database in IndexedDB, shared by the service worker (lookups), the build (writes) and the settings (status). |
+| `builder.js`, `build-worker.js` | Build the database from IMDb's data dumps in a web worker. |
+| `offscreen.html/js` | Hidden page that hosts the build worker, since the service worker can't run minutes of work itself. |
+| `store/` | Store listing text, screenshots and the scripts that build the store ZIP and the icons. Not part of the extension. |
 | `badge.css` | Badge styling, including per-site placement tweaks. |
 | `options.html/js` | Database build and status, per-site on/off, badge options, OMDb key entry and test, usage counter, clearing remembered ratings, deleting the database. |
 

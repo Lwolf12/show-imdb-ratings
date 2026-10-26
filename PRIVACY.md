@@ -64,7 +64,7 @@ the extension does.
 
 If this policy changes, the new version will be published at the same
 address and the extension's store listing will link to it. Questions:
-open an issue at <https://github.com/Lwolf12/chromeext/issues>.
+open an issue at <https://github.com/Lwolf12/show-imdb-ratings/issues>.
 
 IMDb is a trademark of IMDb.com, Inc. This extension is an independent
 project and is not affiliated with, endorsed by or sponsored by IMDb, OMDb,
