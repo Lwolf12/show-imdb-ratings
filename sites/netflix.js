@@ -124,7 +124,9 @@ function nfPump() {
 async function resolveEpisode(episodeId) {
   const ctrl = new AbortController();
   try {
-    const res = await fetch('/title/' + episodeId, { credentials: 'omit', signal: ctrl.signal });
+    // A full URL: Firefox resolves a content script's relative URLs against
+    // the extension, not the page.
+    const res = await fetch(location.origin + '/title/' + episodeId, { credentials: 'omit', signal: ctrl.signal });
     const showId = (res.url.match(/\/title\/(\d+)/) || [])[1];
     if (!res.ok || !showId) throw new Error('no show page');
     nf.episodes[episodeId] = showId;

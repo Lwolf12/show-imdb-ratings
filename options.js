@@ -162,6 +162,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
 const SITE_BOXES = [...document.querySelectorAll('input.site')];
 const originsOf = (box) => (box.dataset.origins ? box.dataset.origins.split(' ') : null);
 
+// Firefox lets the user withdraw a site's access on about:addons even for
+// sites the manifest asks for, so there every site works like an opt-in
+// one: unticked while access is withdrawn, and ticking it asks Firefox for
+// access again. Unticking keeps the access (data-keep); the extension just
+// stays idle there, as in Chrome.
+// getBrowserInfo is Firefox-only and lives on its own browser.* namespace.
+const FIREFOX = typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function';
+
+if (FIREFOX) {
+  for (const cs of chrome.runtime.getManifest().content_scripts || []) {
+    // Firefox reports full URLs (moz-extension://…/sites/netflix.js).
+    const name = ((cs.js || [])[0] || '').match(/(?:^|\/)sites\/(\w+)\.js$/);
+    const box = name && SITE_BOXES.find((b) => b.dataset.site === name[1]);
+    if (!box || box.dataset.origins) continue;
+    // Permission requests take the host only: amazon.com/gp/video/* -> amazon.com/*
+    box.dataset.origins = [...new Set(cs.matches.map((m) => m.replace(/^(https:\/\/[^/]+)\/.*$/, '$1/*')))].join(' ');
+    box.dataset.keep = '1';
+  }
+}
+
 async function loadSites() {
   const { sites = {} } = await chrome.storage.sync.get('sites');
   for (const box of SITE_BOXES) {
@@ -189,8 +209,8 @@ for (const box of SITE_BOXES) {
     const sites = {};
     for (const b of SITE_BOXES) sites[b.dataset.site] = b.checked;
     await chrome.storage.sync.set({ sites });
-    if (origins && !box.checked) await chrome.permissions.remove({ origins }).catch(() => {});
-    if (origins) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
+    if (origins && !box.checked && !box.dataset.keep) await chrome.permissions.remove({ origins }).catch(() => {});
+    if (origins && !box.dataset.keep) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
     say(label + (box.checked ? ' on.' : ' off.') + note);
   });
 }
@@ -247,13 +267,36 @@ $('hideNA').addEventListener('change', async () => {
 async function loadOmdb() {
   const { omdbKey = '', omdbFallback = true } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback']);
   $('key').value = omdbKey;
-  const on = !!omdbKey && omdbFallback;
+  const on = !!omdbKey && omdbFallback && (await hasOmdbConsent());
   $('useOmdb').checked = on;
   $('omdbBox').hidden = !on;
 }
 
+// Firefox: OMDb lookups send title names off the device, which Firefox has
+// the user approve (data collection "websiteContent", optional in the
+// manifest). Asked whenever OMDb is switched on, saved or tested; it must be
+// the click handler's first await, since Firefox only asks during the click,
+// and it returns at once without asking once granted. Chrome: always yes.
+async function askOmdbConsent() {
+  if (!FIREFOX) return true;
+  return browser.permissions.request({ data_collection: ['websiteContent'] }).catch(() => false);
+}
+
+async function hasOmdbConsent() {
+  if (!FIREFOX) return true;
+  const all = await browser.permissions.getAll().catch(() => ({}));
+  return !all.data_collection || all.data_collection.includes('websiteContent');
+}
+
+const NO_CONSENT = 'OMDb stays off: Firefox was not allowed to let the extension send title names to OMDb.';
+
 $('useOmdb').addEventListener('change', async () => {
   const on = $('useOmdb').checked;
+  if (on && !(await askOmdbConsent())) {
+    $('useOmdb').checked = false;
+    say(NO_CONSENT, 'bad');
+    return;
+  }
   $('omdbBox').hidden = !on;
   await chrome.storage.sync.set({ omdbFallback: on });
   if (on && !$('key').value.trim()) $('key').focus();
@@ -262,6 +305,7 @@ $('useOmdb').addEventListener('change', async () => {
 
 $('save').addEventListener('click', async () => {
   const omdbKey = $('key').value.trim();
+  if (omdbKey && !(await askOmdbConsent())) return say(NO_CONSENT, 'bad');
   await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
   // A new key means an earlier "limit reached" pause no longer applies.
   await chrome.storage.local.remove(['limitHitDay', 'limitPauseUntil']);
@@ -271,10 +315,15 @@ $('save').addEventListener('click', async () => {
 
 $('test').addEventListener('click', async () => {
   const out = $('testResult');
+  const omdbKey = $('key').value.trim();
+  if (omdbKey && !(await askOmdbConsent())) {
+    out.className = 'bad';
+    out.textContent = NO_CONSENT;
+    return;
+  }
   out.className = '';
   out.textContent = 'Testing…';
   // Test whatever is in the box, saving it first so the worker sees it.
-  const omdbKey = $('key').value.trim();
   await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
   let r;
   try {

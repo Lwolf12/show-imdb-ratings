@@ -3,6 +3,8 @@
 // builder.js), then through the OMDb API for titles the database lacks, and
 // keeps a permanent store of answers in chrome.storage.local.
 //
+// The same file is Firefox's background page (see FIREFOX below).
+//
 // Also owns the database build: it runs in a hidden offscreen page
 // (offscreen.html -> build-worker.js), started by the Update button on the
 // settings panel and automatically once the database is over a week old
@@ -16,7 +18,16 @@
 // and {type: 'episodes', imdbID, season} for one season's episode ratings
 // (see lookupEpisodes).
 
-importScripts('db.js');
+// Firefox runs this as an event page, a document with db.js listed before
+// it in the manifest, rather than as a service worker, and has no offscreen
+// documents: there the build page goes in a hidden frame instead (see
+// ensureOffscreen). Firefox also asks the user before data leaves the
+// device, so OMDb waits for that consent (omdbConsent). Firefox's manifest
+// is generated from Chrome's by store/build-zip.ps1.
+// getBrowserInfo is Firefox-only and lives on its own browser.* namespace.
+const FIREFOX = typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function';
+
+if (typeof importScripts === 'function') importScripts('db.js');
 
 const HIT_REFRESH_MS = 30 * 24 * 60 * 60 * 1000; // ratings barely move
 const MISS_REFRESH_MS = 3 * 24 * 60 * 60 * 1000; // new titles show up within days
@@ -63,12 +74,25 @@ async function openSettings() {
   }
 }
 
+// Brings the settings window to the front if it is still open.
+async function raiseSettings() {
+  const { settingsWindow } = await chrome.storage.session.get('settingsWindow');
+  if (settingsWindow == null) return;
+  await chrome.windows.update(settingsWindow, { focused: true }).catch(() => {});
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   chrome.alarms.create('db-refresh', { periodInMinutes: DB_CHECK_MINUTES });
   if (details.reason === 'install') {
     // Open the panel and let the user start the first (280 MB) build
     // themselves. Nothing downloads until they click Update now.
-    openSettings();
+    // Installing from the Web Store, Chrome then shows its "added to
+    // Chrome" bubble and gives the store page focus again, which put the
+    // fresh settings window behind the browser: it flashed up and seemed
+    // to vanish. So it is brought back to the front once that settles.
+    openSettings().then(() => {
+      for (const ms of [1500, 4000]) setTimeout(raiseSettings, ms);
+    });
   } else {
     maybeRefresh();
   }
@@ -89,11 +113,27 @@ async function updateBadge() {
   });
 }
 
+// OMDb settings as they apply: the fallback counts as off in Firefox until
+// the user allows the extension to send title names off the device (the
+// manifest's optional data_collection "websiteContent", asked for when OMDb
+// is turned on in the settings). Chrome has no such permission.
+async function omdbSettings(more = []) {
+  const s = await chrome.storage.sync.get(['omdbFallback', 'omdbKey', ...more]);
+  if (s.omdbFallback !== false && !(await omdbConsent())) s.omdbFallback = false;
+  return s;
+}
+
+async function omdbConsent() {
+  if (!FIREFOX) return true;
+  const all = await browser.permissions.getAll().catch(() => ({}));
+  return !all.data_collection || all.data_collection.includes('websiteContent');
+}
+
 // Whether pages should show the "set up" notice: no local database and no
 // way to reach OMDb either (no key, a rejected key, or the fallback off), so
 // every lookup comes back empty. building: a build is running right now.
 async function setupStatus() {
-  const { omdbFallback = true, omdbKey } = await chrome.storage.sync.get(['omdbFallback', 'omdbKey']);
+  const { omdbFallback = true, omdbKey } = await omdbSettings();
   const present = (await RatingsDB.status().catch(() => ({ present: false }))).present;
   const needed = !present && (!omdbFallback || !omdbKey || omdbKeyRejected);
   const state = await getBuildState();
@@ -243,7 +283,29 @@ async function setBuildState(state) {
   await chrome.storage.session.set({ buildState: state });
 }
 
+// Firefox: the build page in a frame of this event page. Firefox suspends an
+// idle event page after about 30 seconds, but every message it receives
+// resets that timer, and the build page sends progress several times a
+// second (and a heartbeat, see offscreen.js), so the page stays up until the
+// build ends.
+const buildFrame = () => document.getElementById('build-frame');
+
+async function hasBuildPage() {
+  if (FIREFOX) return !!buildFrame();
+  return chrome.offscreen.hasDocument();
+}
+
 async function ensureOffscreen() {
+  if (FIREFOX) {
+    if (buildFrame()) return;
+    const frame = document.createElement('iframe');
+    frame.id = 'build-frame';
+    const loaded = new Promise((r) => frame.addEventListener('load', r, { once: true }));
+    frame.src = chrome.runtime.getURL('offscreen.html');
+    document.body.appendChild(frame);
+    await loaded;
+    return;
+  }
   if (await chrome.offscreen.hasDocument()) return;
   try {
     await chrome.offscreen.createDocument({
@@ -257,11 +319,28 @@ async function ensureOffscreen() {
 }
 
 async function closeOffscreen() {
+  if (FIREFOX) {
+    buildFrame()?.remove();
+    return;
+  }
   try {
     if (await chrome.offscreen.hasDocument()) await chrome.offscreen.closeDocument();
   } catch (e) {
     /* nothing to close */
   }
+}
+
+// A build whose page is gone (the browser restarted, or Firefox unloaded the
+// event page mid-build) would otherwise stay "running" until the browser
+// restarts, with Update now greyed out. Checked whenever this script starts:
+// in Chrome the offscreen page outlives a restart of the service worker, so a
+// running build with its page still open is left alone.
+recoverInterruptedBuild();
+
+async function recoverInterruptedBuild() {
+  const state = await getBuildState();
+  if (state.status !== 'running' || (await hasBuildPage())) return;
+  await setBuildState({ status: 'error', message: 'the build was interrupted; click Update now to start it again', at: Date.now() });
 }
 
 // Returns the build state after starting (or the current one if already running).
@@ -474,7 +553,7 @@ async function lookup(title, kind, refresh, year) {
   // Without a key, or with the fallback switched off, a local miss is simply
   // a miss. (If there is no local database either, fetchRating() reports
   // 'nokey' so the page can warn.)
-  const { omdbFallback = true, omdbKey } = await chrome.storage.sync.get(['omdbFallback', 'omdbKey']);
+  const { omdbFallback = true, omdbKey } = await omdbSettings();
   const localPresent = (await RatingsDB.status()).present;
   if (!omdbFallback || (!omdbKey && localPresent)) {
     return stored ? { ...stored, stale: false } : { rating: null, source: 'local' };
@@ -514,7 +593,7 @@ async function lookupEpisodes(imdbID, season) {
   const stored = (await chrome.storage.local.get(key))[key];
   if (stored && Date.now() - stored.ts < SEASON_REFRESH_MS) return { episodes: stored.episodes, source: 'omdb' };
 
-  const { omdbFallback = true, omdbKey } = await chrome.storage.sync.get(['omdbFallback', 'omdbKey']);
+  const { omdbFallback = true, omdbKey } = await omdbSettings();
   if (!omdbFallback || !omdbKey) return { episodes: stored ? stored.episodes : null };
 
   if (inFlight.has(key)) return inFlight.get(key);
@@ -653,7 +732,7 @@ async function omdbKeyConfirmed() {
 // request per title ever opened, not per card, so it fits a free key's
 // 1,000 a day. -> {extras: {rt: '92%', mc: 74, awards: 'Won 3 Oscars'} | null}
 async function lookupExtras(imdbID) {
-  const { extraRatings = {}, omdbFallback = true } = await chrome.storage.sync.get(['extraRatings', 'omdbFallback']);
+  const { extraRatings = {}, omdbFallback = true } = await omdbSettings(['extraRatings']);
   if (!omdbFallback || !(extraRatings.rt || extraRatings.mc || extraRatings.awards)) return { extras: null };
   const key = 'x:' + imdbID;
   const stored = (await chrome.storage.local.get(key))[key];

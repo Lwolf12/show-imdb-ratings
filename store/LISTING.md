@@ -16,9 +16,9 @@ with `store/build-zip.ps1` and lands in `dist/`.
 
 **Description:**
 
-> See IMDb ratings without leaving the streaming site. Works on eight of
-> the major streaming services (the full list is on the project page
-> below). While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's
+> See IMDb ratings without leaving the streaming site. Works on Netflix,
+> Prime Video, Disney+, HBO Max and four more major streaming services
+> (the full list is on the project page below). While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's
 > own preview, with a link to the title's page. Banners and title pages get
 > a rating chip too. A show's episode list also gets a rating next to every
 > episode, so the standout episodes and seasons are easy to spot. Prefer a
@@ -31,7 +31,8 @@ with `store/build-zip.ps1` and lands in `dist/`.
 > can be switched off for metered connections). Lookups then happen on your
 > device, without sending the titles you browse to anyone. Nothing downloads until you click
 > Update now in the settings, which open in a small window right after installing.
-> Later, the star icon in Chrome's puzzle-piece menu opens them (pin it to
+> Later, the extension's icon (a poster with a gold star) in Chrome's
+> puzzle-piece menu opens them (pin it to
 > keep it in the toolbar). Every service is on from the start; any of them
 > can be switched off in the settings if you'd rather not see ratings there.
 >
