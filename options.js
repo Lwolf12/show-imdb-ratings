@@ -166,27 +166,29 @@ const originsOf = (box) => (box.dataset.origins ? box.dataset.origins.split(' ')
 // sites the manifest asks for, so there every site works like an opt-in
 // one: unticked while access is withdrawn, and ticking it asks Firefox for
 // access again. Unticking keeps the access (data-keep); the extension just
-// stays idle there, as in Chrome.
-// getBrowserInfo is Firefox-only and lives on its own browser.* namespace.
-const FIREFOX = typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function';
-
+// stays idle there, as in Chrome. The patterns asked for are the content
+// script's own: Firefox accepts exactly what the manifest declares and
+// rejects anything broader (www.amazon.com/* for www.amazon.com/gp/video/*).
 if (FIREFOX) {
   for (const cs of chrome.runtime.getManifest().content_scripts || []) {
     // Firefox reports full URLs (moz-extension://…/sites/netflix.js).
     const name = ((cs.js || [])[0] || '').match(/(?:^|\/)sites\/(\w+)\.js$/);
     const box = name && SITE_BOXES.find((b) => b.dataset.site === name[1]);
     if (!box || box.dataset.origins) continue;
-    // Permission requests take the host only: amazon.com/gp/video/* -> amazon.com/*
-    box.dataset.origins = [...new Set(cs.matches.map((m) => m.replace(/^(https:\/\/[^/]+)\/.*$/, '$1/*')))].join(' ');
+    box.dataset.origins = cs.matches.join(' ');
     box.dataset.keep = '1';
   }
 }
 
+// Each box remembers whether the browser grants its site (data-granted), so
+// ticking a site that already has access neither asks again nor tells the
+// user to reload its tabs: the content script picks the setting up live.
 async function loadSites() {
   const { sites = {} } = await chrome.storage.sync.get('sites');
   for (const box of SITE_BOXES) {
     const origins = originsOf(box);
     const granted = !origins || (await chrome.permissions.contains({ origins }));
+    box.dataset.granted = granted ? '1' : '';
     box.checked = granted && sites[box.dataset.site] !== false;
   }
 }
@@ -196,20 +198,24 @@ for (const box of SITE_BOXES) {
     const label = box.parentElement.textContent.trim().split(' (')[0];
     const origins = originsOf(box);
     let note = '';
-    if (origins && box.checked) {
-      // Must be the first await: Chrome only asks during the click.
+    if (origins && box.checked && !box.dataset.granted) {
+      // Must be the first await: the browser only asks during the click.
       const granted = await chrome.permissions.request({ origins }).catch(() => false);
       if (!granted) {
         box.checked = false;
         say(label + ' stays off: access to the site was not allowed.', 'bad');
         return;
       }
+      box.dataset.granted = '1';
       note = ' Reload any ' + label + ' tab that was already open.';
     }
     const sites = {};
     for (const b of SITE_BOXES) sites[b.dataset.site] = b.checked;
     await chrome.storage.sync.set({ sites });
-    if (origins && !box.checked && !box.dataset.keep) await chrome.permissions.remove({ origins }).catch(() => {});
+    if (origins && !box.checked && !box.dataset.keep) {
+      await chrome.permissions.remove({ origins }).catch(() => {});
+      box.dataset.granted = '';
+    }
     if (origins && !box.dataset.keep) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
     say(label + (box.checked ? ' on.' : ' off.') + note);
   });
@@ -267,27 +273,14 @@ $('hideNA').addEventListener('change', async () => {
 async function loadOmdb() {
   const { omdbKey = '', omdbFallback = true } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback']);
   $('key').value = omdbKey;
-  const on = !!omdbKey && omdbFallback && (await hasOmdbConsent());
+  const on = !!omdbKey && omdbFallback && (await omdbConsent());
   $('useOmdb').checked = on;
   $('omdbBox').hidden = !on;
 }
 
 // Firefox: OMDb lookups send title names off the device, which Firefox has
-// the user approve (data collection "websiteContent", optional in the
-// manifest). Asked whenever OMDb is switched on, saved or tested; it must be
-// the click handler's first await, since Firefox only asks during the click,
-// and it returns at once without asking once granted. Chrome: always yes.
-async function askOmdbConsent() {
-  if (!FIREFOX) return true;
-  return browser.permissions.request({ data_collection: ['websiteContent'] }).catch(() => false);
-}
-
-async function hasOmdbConsent() {
-  if (!FIREFOX) return true;
-  const all = await browser.permissions.getAll().catch(() => ({}));
-  return !all.data_collection || all.data_collection.includes('websiteContent');
-}
-
+// the user approve. askOmdbConsent (compat.js) asks whenever OMDb is
+// switched on, saved or tested, as the click handler's first await.
 const NO_CONSENT = 'OMDb stays off: Firefox was not allowed to let the extension send title names to OMDb.';
 
 $('useOmdb').addEventListener('change', async () => {
@@ -353,18 +346,30 @@ async function loadExtras(keyOk) {
     box.checked = !!extraRatings[box.dataset.extra];
     box.disabled = !keyOk;
   }
+  $('xAll').disabled = !keyOk;
   $('extras').classList.toggle('off', !keyOk);
   $('extrasNote').hidden = !!keyOk;
 }
 
+async function saveExtras() {
+  const extraRatings = {};
+  for (const b of EXTRA_BOXES) extraRatings[b.dataset.extra] = b.checked;
+  await chrome.storage.sync.set({ extraRatings });
+}
+
 for (const box of EXTRA_BOXES) {
   box.addEventListener('change', async () => {
-    const extraRatings = {};
-    for (const b of EXTRA_BOXES) extraRatings[b.dataset.extra] = b.checked;
-    await chrome.storage.sync.set({ extraRatings });
+    await saveExtras();
     say(box.parentElement.textContent.trim() + (box.checked ? ' on.' : ' off.'));
   });
 }
+
+// One click for all four, for the people who tick them every time.
+$('xAll').addEventListener('click', async () => {
+  for (const b of EXTRA_BOXES) b.checked = true;
+  await saveExtras();
+  say('Rotten Tomatoes, Metacritic, Awards and On cards too on.');
+});
 
 // ------------------------------------------------------------ advanced
 
@@ -408,6 +413,7 @@ $('deleteDb').addEventListener('click', async () => {
 
 // ------------------------------------------------------------------ go
 
+$('version').textContent = 'Version ' + chrome.runtime.getManifest().version;
 loadSites();
 loadBadges();
 loadOmdb();

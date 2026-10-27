@@ -3,7 +3,7 @@
 // builder.js), then through the OMDb API for titles the database lacks, and
 // keeps a permanent store of answers in chrome.storage.local.
 //
-// The same file is Firefox's background page (see FIREFOX below).
+// The same file is Firefox's background page (see FIREFOX, from compat.js, below).
 //
 // Also owns the database build: it runs in a hidden offscreen page
 // (offscreen.html -> build-worker.js), started by the Update button on the
@@ -18,16 +18,15 @@
 // and {type: 'episodes', imdbID, season} for one season's episode ratings
 // (see lookupEpisodes).
 
-// Firefox runs this as an event page, a document with db.js listed before
-// it in the manifest, rather than as a service worker, and has no offscreen
-// documents: there the build page goes in a hidden frame instead (see
-// ensureOffscreen). Firefox also asks the user before data leaves the
-// device, so OMDb waits for that consent (omdbConsent). Firefox's manifest
-// is generated from Chrome's by store/build-zip.ps1.
-// getBrowserInfo is Firefox-only and lives on its own browser.* namespace.
-const FIREFOX = typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function';
+// Firefox runs this as an event page, a document with compat.js and db.js
+// listed before it in the manifest, rather than as a service worker, and
+// has no offscreen documents: there the build page goes in a hidden frame
+// instead (see ensureOffscreen). Firefox also asks the user before data
+// leaves the device, so OMDb waits for that consent (omdbConsent in
+// compat.js, checked by omdbRequest). Firefox's manifest is generated from
+// Chrome's by store/build-zip.ps1.
 
-if (typeof importScripts === 'function') importScripts('db.js');
+if (typeof importScripts === 'function') importScripts('compat.js', 'db.js');
 
 const HIT_REFRESH_MS = 30 * 24 * 60 * 60 * 1000; // ratings barely move
 const MISS_REFRESH_MS = 3 * 24 * 60 * 60 * 1000; // new titles show up within days
@@ -114,19 +113,14 @@ async function updateBadge() {
 }
 
 // OMDb settings as they apply: the fallback counts as off in Firefox until
-// the user allows the extension to send title names off the device (the
-// manifest's optional data_collection "websiteContent", asked for when OMDb
-// is turned on in the settings). Chrome has no such permission.
+// the user allows the extension to send title names off the device
+// (omdbConsent, compat.js), so lookups settle for what is stored and the
+// setup notice knows OMDb can't answer. omdbRequest checks the consent
+// again itself, so no caller can send anything without it.
 async function omdbSettings(more = []) {
   const s = await chrome.storage.sync.get(['omdbFallback', 'omdbKey', ...more]);
   if (s.omdbFallback !== false && !(await omdbConsent())) s.omdbFallback = false;
   return s;
-}
-
-async function omdbConsent() {
-  if (!FIREFOX) return true;
-  const all = await browser.permissions.getAll().catch(() => ({}));
-  return !all.data_collection || all.data_collection.includes('websiteContent');
 }
 
 // Whether pages should show the "set up" notice: no local database and no
@@ -647,13 +641,16 @@ async function countRequest() {
   await chrome.storage.local.set({ usage: { day, count } });
 }
 
-// One OMDb request with the shared rules: needs a key, respects the pause
-// after the daily limit, counts toward today's usage, and turns OMDb's
-// errors into {error: 'nokey' | 'limit' | 'http'}. Otherwise {data}, the
-// parsed answer, which may still be {Response: 'False'} for "not found".
+// One OMDb request with the shared rules: needs a key and (Firefox) the
+// user's consent, respects the pause after the daily limit, counts toward
+// today's usage, and turns OMDb's errors into {error: 'nokey' | 'consent' |
+// 'limit' | 'http'}. Otherwise {data}, the parsed answer, which may still be
+// {Response: 'False'} for "not found". Every request goes through here, so
+// this is the one place that keeps data on the device until it is allowed.
 async function omdbRequest(params) {
   const { omdbKey } = await chrome.storage.sync.get('omdbKey');
   if (!omdbKey) return { error: 'nokey' };
+  if (!(await omdbConsent())) return { error: 'consent' };
 
   const { limitPauseUntil = 0 } = await chrome.storage.local.get('limitPauseUntil');
   if (Date.now() < limitPauseUntil) return { error: 'limit' };
@@ -819,7 +816,12 @@ async function testKey() {
   await chrome.storage.local.remove('limitPauseUntil');
   omdbKeyRejected = false;
 
-  const NAMES = { nokey: 'OMDb says the key is invalid or not activated yet', limit: 'daily limit reached', http: 'could not reach OMDb' };
+  const NAMES = {
+    nokey: 'OMDb says the key is invalid or not activated yet',
+    consent: 'Firefox has not allowed the extension to send title names to OMDb',
+    limit: 'daily limit reached',
+    http: 'could not reach OMDb',
+  };
   const title = await omdbRequest({ i: 'tt0111161' }); // The Shawshank Redemption
   if (title.error) return { ok: false, detail: NAMES[title.error] || title.error };
   if (title.data.Response !== 'True') return { ok: false, detail: title.data.Error || 'unexpected answer' };

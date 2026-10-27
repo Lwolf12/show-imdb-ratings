@@ -41,6 +41,8 @@
     .extras { column-gap: 12px; row-gap: 0; }
     .extras label.check { margin: 2px 0; }
     .extras.off label.check { color: #999; }
+    .textbtn { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: #06c; text-decoration: underline; cursor: pointer; }
+    .textbtn:disabled { color: #999; text-decoration: none; cursor: default; }
     #testResult { font-weight: 600; min-height: 1.4em; margin: 2px 0 0; word-break: break-word; }
     #status { flex: 1; min-width: 200px; font-weight: 600; font-size: 13px; text-align: right; }
     .ok { color: #2a7; }
@@ -102,6 +104,7 @@
             <label class="check"><input id="xMc" class="extra" data-extra="mc" type="checkbox"> Metacritic</label>
             <label class="check"><input id="xAw" class="extra" data-extra="awards" type="checkbox"> Awards</label>
             <label class="check"><input id="xCards" class="extra" data-extra="cards" type="checkbox"> On cards too <span class="muted">(uses more lookups)</span></label>
+            <button id="xAll" type="button" class="textbtn" title="Tick all four">All</button>
             <span id="extrasNote" class="muted">(needs a working OMDb key)</span>
             <span class="tip up" tabindex="0" data-tip="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (Rotten Tomatoes and Metacritic only). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic."
                   aria-label="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (Rotten Tomatoes and Metacritic only). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic.">i</span>
@@ -165,8 +168,9 @@
   <!-- Attribution IMDb requires for non-commercial use of its datasets. -->
   <p class="credit">Information courtesy of IMDb
     (<a href="https://www.imdb.com" target="_blank" rel="noopener">https://www.imdb.com</a>).
-    Used with permission.</p>
+    Used with permission. <span id="version"></span></p>
 
+  <script src="compat.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

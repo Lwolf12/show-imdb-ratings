@@ -13,7 +13,7 @@ let heartbeat = null;
 const HEARTBEAT_MS = 10 * 1000;
 
 function stop() {
-  worker.terminate();
+  worker?.terminate(); // onerror can follow a final message, both of which end here
   worker = null;
   clearInterval(heartbeat);
 }

@@ -28,11 +28,13 @@ function Build-Zip($out, $manifestText) {
   if (Test-Path $out) { Remove-Item $out }
   $zip = [IO.Compression.ZipFile]::Open($out, [IO.Compression.ZipArchiveMode]::Create)
   try {
-    Get-ChildItem $src -Recurse -File | ForEach-Object {
+    # Skipped top-level folders (data, dist, store) and dot entries (.git,
+    # .github, .gitignore) are left out before recursing, not filtered after.
+    Get-ChildItem $src |
+      Where-Object { -not ($_.Name.StartsWith('.') -or ($_.PSIsContainer -and $_.Name -in $skipDirs)) } |
+      ForEach-Object { if ($_.PSIsContainer) { Get-ChildItem $_.FullName -Recurse -File } else { $_ } } |
+      ForEach-Object {
       $rel = $_.FullName.Substring($src.Length + 1) -replace '\\', '/'
-      $top = $rel.Split('/')[0]
-      # .git, .github, .gitignore
-      if ($top -in $skipDirs -or $top.StartsWith('.')) { return }
       if ($rel -in $skipFiles -or $_.Extension -in $skipExt) { return }
       if ($rel -eq 'manifest.json' -and $manifestText) {
         $entry = $zip.CreateEntry($rel, [IO.Compression.CompressionLevel]::Optimal)
