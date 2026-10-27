@@ -14,13 +14,23 @@ const PHASES = {
   ratings: 'Downloading ratings',
   basics: 'Downloading title list',
   episodes: 'Downloading episode list',
-  writing: 'Saving to the database',
+  writing: 'Saving titles to the database',
+  'writing-episodes': 'Saving episodes to the database',
+  updating: 'Updating ratings in the database',
 };
 
 function ago(ts) {
   const days = Math.floor((Date.now() - ts) / 86400000);
   return days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago';
 }
+
+// "due now" or "due Sunday, Nov 2".
+function due(ts) {
+  if (ts <= Date.now()) return 'due now';
+  return 'due ' + new Date(ts).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+const WAITING = (n) => n.toLocaleString() + ' newly rated title' + (n === 1 ? '' : 's') + ' waiting for the full rebuild';
 
 // ------------------------------------------------------------ database
 
@@ -42,9 +52,10 @@ function showBuild(build) {
     box.hidden = true;
     btn.disabled = false;
     if (Date.now() - (build.at || 0) < DONE_RECENT_MS) {
-      $('doneText').textContent =
-        build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
-        '(reload any that are already open).';
+      $('doneText').textContent = build.kind === 'ratings'
+        ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
+        : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
+          '(reload any that are already open).';
       $('buildDone').hidden = false;
     }
     return;
@@ -55,7 +66,9 @@ function showBuild(build) {
     $('buildBar').value = build.pct || 0;
     const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
     const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
-    $('buildText').textContent = (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
+    // A full build's titles go live before the episodes download.
+    const usable = build.usable ? 'Ratings now show on the streaming sites (reload any that are already open). ' : '';
+    $('buildText').textContent = usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
     return;
   }
   box.hidden = false;
@@ -86,22 +99,50 @@ async function refreshStats() {
   }
   const l = u.local || {};
   builtAt = l.present ? l.builtAt || 0 : 0;
-  // A database built before episode ratings existed has titles only; the
-  // next weekly refresh (or Update now) adds the episodes.
-  // One built by an older version is rebuilt once by itself, unless the
-  // weekly refresh is off: then this line asks for it.
-  $('localStatus').textContent = !l.present
-    ? 'Not built yet. Click Update now; it takes a few minutes.'
-    : (l.episodes
-        ? l.titles.toLocaleString() + ' titles and ' + l.episodes.toLocaleString() + ' episodes, built ' + l.built + ' (' + ago(l.builtAt) + ').'
-        : l.titles.toLocaleString() + ' titles, built ' + l.built + ' (' + ago(l.builtAt) + '). Episode ratings arrive with the next update.') +
-      (l.outdated ? ' Built by an older version: Update now adds shorts and specials and matches more titles.' : '');
+  const building = u.build && u.build.status === 'running';
+  $('localStatus').textContent = !l.present ? 'Not built yet. Click Update now; it takes a few minutes.' : localStatus(l, building);
+  $('nextRefresh').textContent = l.present && !building ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
   showBuild(u.build);
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
   loadExtras(u.keyOk);
+}
+
+// What the database holds and when it was built: the full build's date,
+// and the ratings pass's when it came later. A first run whose episode
+// stage was interrupted has titles only until the next full rebuild. One
+// built by an older version is rebuilt once by itself, unless the
+// automatic refresh is off: then this line asks for it.
+function localStatus(l, building) {
+  let s = l.titles.toLocaleString() + ' titles' + (l.episodes ? ' and ' + l.episodes.toLocaleString() + ' episodes' : '') +
+    ', built ' + l.built + ' (' + ago(l.builtAt) + ')';
+  if (l.ratingsAt > l.builtAt) s += '; ratings updated ' + l.ratingsBuilt + ' (' + ago(l.ratingsAt) + ')';
+  s += '.';
+  if (l.unknown) s += ' ' + WAITING(l.unknown).replace(/^./, (c) => c.toUpperCase()) + '.';
+  if (!l.episodes) s += building ? ' Episode ratings are still downloading.' : ' Episode ratings arrive with the next full rebuild.';
+  if (l.outdated) s += ' Built by an older version; the next automatic refresh rebuilds it (or click Update now).';
+  return s;
+}
+
+// The next automatic refresh (background.js refreshPlan): which kind, what
+// it downloads and when, and how new titles arrive for people without an
+// OMDb key.
+function nextRefresh(u) {
+  const n = u.next || {};
+  if (u.autoRefresh === false) return 'Automatic refresh is off. Update now rebuilds everything (about 280 MB).';
+  if (!n.kind) return '';
+  if (n.kind === 'ratings') {
+    return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild' +
+      (n.keyed ? ' (every three months; OMDb covers them meanwhile).' : ' (about monthly); an OMDb key covers them sooner.');
+  }
+  const why = {
+    unknown: 'many newly rated titles are waiting',
+    episodes: 'the episode list never finished',
+    format: 'it was built by an older version',
+  }[n.reason];
+  return 'Next: full rebuild (about ' + n.mb + ' MB), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
 }
 
 // Update now rebuilds regardless of age, but a database under a day old is
@@ -139,7 +180,8 @@ $('build').addEventListener('click', async () => {
 
 $('auto').addEventListener('change', async () => {
   await chrome.storage.sync.set({ autoRefresh: $('auto').checked });
-  say($('auto').checked ? 'Automatic weekly refresh on.' : 'Automatic refresh off; use Update now when you want.');
+  say($('auto').checked ? 'Automatic refresh on: ratings weekly, the full title list about monthly.' : 'Automatic refresh off; use Update now when you want.');
+  refreshStats();
 });
 
 // Live progress while a build runs: the worker writes its state to session

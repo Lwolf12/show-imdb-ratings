@@ -18,8 +18,9 @@ $ver = (Get-Content (Join-Path $src 'manifest.json') -Raw | ConvertFrom-Json).ve
 New-Item -ItemType Directory -Force (Join-Path $src 'dist') | Out-Null
 
 $skipDirs = @('data', 'dist', 'store')
-$skipFiles = @('README.md', 'PRIVACY.md', 'RELEASING.md')
-$skipExt = @('.zip', '.crx', '.pem', '.xpi')
+# Docs (every top-level .md: README, PRIVACY, RELEASING, working notes)
+# and packaging output stay out of the package.
+$skipExt = @('.zip', '.crx', '.pem', '.xpi', '.md')
 
 $firefoxManifest = (& node (Join-Path $PSScriptRoot 'firefox-manifest.mjs')) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'firefox-manifest.mjs failed' }
@@ -35,7 +36,7 @@ function Build-Zip($out, $manifestText) {
       ForEach-Object { if ($_.PSIsContainer) { Get-ChildItem $_.FullName -Recurse -File } else { $_ } } |
       ForEach-Object {
       $rel = $_.FullName.Substring($src.Length + 1) -replace '\\', '/'
-      if ($rel -in $skipFiles -or $_.Extension -in $skipExt) { return }
+      if ($_.Extension -in $skipExt) { return }
       if ($rel -eq 'manifest.json' -and $manifestText) {
         $entry = $zip.CreateEntry($rel, [IO.Compression.CompressionLevel]::Optimal)
         $w = New-Object IO.StreamWriter($entry.Open(), (New-Object Text.UTF8Encoding($false)))

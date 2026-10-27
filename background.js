@@ -7,9 +7,12 @@
 //
 // Also owns the database build: it runs in a hidden offscreen page
 // (offscreen.html -> build-worker.js), started by the Update button on the
-// settings panel and automatically once the database is over a week old
-// (checked a few times a day by an alarm). Until the first build, the
-// toolbar icon carries a "!" badge.
+// settings panel (a full build) and automatically by an alarm that checks a
+// few times a day what is due (refreshPlan): a ratings-only pass once a
+// week, the full rebuild once a month, or once a quarter when a working
+// OMDb key covers new titles meanwhile, or sooner when the ratings pass has
+// counted many titles the database has no name for. Until the first build,
+// the toolbar icon carries a "!" badge.
 //
 // Content scripts send {type: 'rating', title, kind?, refresh?} and get back
 //   {rating, votes, year, imdbID, kind, matchedTitle, ts, stale, source}
@@ -28,12 +31,25 @@
 
 if (typeof importScripts === 'function') importScripts('compat.js', 'db.js');
 
-const HIT_REFRESH_MS = 30 * 24 * 60 * 60 * 1000; // ratings barely move
-const MISS_REFRESH_MS = 3 * 24 * 60 * 60 * 1000; // new titles show up within days
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HIT_REFRESH_MS = 30 * DAY_MS; // ratings barely move
+const MISS_REFRESH_MS = 3 * DAY_MS; // new titles show up within days
+const LEARNED_REFRESH_MS = 7 * DAY_MS; // a title known by ID follows the weekly ratings pass
 const MAX_IN_FLIGHT = 4;
 const LIMIT_PAUSE_MS = 60 * 60 * 1000; // after OMDb reports the limit
-const DB_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // rebuild the database weekly
-const DB_CHECK_MINUTES = 360; // how often the alarm looks at the age
+// The database refresh (maybeRefresh): the ratings dump is small and
+// carries nearly every weekly change, so it is re-read weekly; the title
+// and episode lists (the bulk of the download) only when new titles are
+// due. Without a working OMDb key the full rebuild is the only way new
+// titles arrive, so it comes monthly; with one, quarterly. A ratings pass
+// that finds this many rated IDs without a name brings it forward: new
+// titles cross the 25-vote line at a couple of thousand a week.
+const RATINGS_MAX_AGE_MS = 7 * DAY_MS;
+const DB_MAX_AGE_MS = 30 * DAY_MS;
+const DB_MAX_AGE_KEYED_MS = 91 * DAY_MS;
+const UNKNOWN_REBUILD = 10000;
+const DOWNLOAD_MB = { ratings: 9, full: 280 }; // what the settings page says each costs
+const DB_CHECK_MINUTES = 360; // how often the alarm looks at what is due
 const MIN_VOTES = 25;
 
 const inFlight = new Map(); // storeKey -> Promise
@@ -245,7 +261,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'build') {
-    startBuild('manual').then(sendResponse);
+    // Update now is the full rebuild; kind 'ratings' is there for testing.
+    startBuild('manual', msg.kind === 'ratings' ? 'ratings' : 'full').then(sendResponse);
     return true;
   }
   if (msg.type === 'setup') {
@@ -337,15 +354,17 @@ async function recoverInterruptedBuild() {
   await setBuildState({ status: 'error', message: 'the build was interrupted; click Update now to start it again', at: Date.now() });
 }
 
-// Returns the build state after starting (or the current one if already running).
-async function startBuild(trigger) {
+// Returns the build state after starting (or the current one if already
+// running). kind: 'full' (the three dumps) or 'ratings' (the ratings dump
+// into the existing database; see builder.js).
+async function startBuild(trigger, kind = 'full') {
   const state = await getBuildState();
   if (state.status === 'running') return state;
-  const next = { status: 'running', trigger, phase: 'starting', pct: 0, startedAt: Date.now() };
+  const next = { status: 'running', trigger, kind, phase: 'starting', pct: 0, startedAt: Date.now() };
   await setBuildState(next);
   try {
     await ensureOffscreen();
-    const start = { target: 'offscreen', type: 'build', minVotes: MIN_VOTES };
+    const start = { target: 'offscreen', type: 'build', kind, minVotes: MIN_VOTES };
     try {
       await chrome.runtime.sendMessage(start);
     } catch (e) {
@@ -377,10 +396,21 @@ async function handleBuildMessage(msg) {
     const state = await getBuildState();
     if (state.status !== 'running') return; // a late update after done/error
     await setBuildState({ ...state, phase: msg.phase, pct: msg.pct, detail: msg.detail });
+  } else if (msg.type === 'usable') {
+    // A full build's titles are live; the episodes are still streaming.
+    const state = await getBuildState();
+    if (state.status === 'running') await setBuildState({ ...state, usable: true });
+    updateBadge();
   } else if (msg.type === 'done') {
-    await setBuildState({ status: 'done', at: Date.now(), info: msg.info });
+    const state = await getBuildState();
+    await setBuildState({ status: 'done', kind: msg.kind || state.kind || 'full', at: Date.now(), info: msg.info });
     await closeOffscreen();
     updateBadge();
+    if (msg.kind === 'ratings') {
+      console.info('[imdbext] ratings refreshed: ' + msg.info.changed.toLocaleString() + ' titles and ' +
+        msg.info.episodesChanged.toLocaleString() + ' series changed; ' + msg.info.unknown.toLocaleString() +
+        ' rated IDs have no name since the last full build');
+    }
   } else if (msg.type === 'error') {
     await setBuildState({ status: 'error', message: msg.message, at: Date.now() });
     await closeOffscreen();
@@ -389,8 +419,10 @@ async function handleBuildMessage(msg) {
 
 // Settings > Advanced > Delete database: back to the no-database state, for
 // OMDb-only use or to test a first build. Ratings remembered from the
-// database go too (OMDb ones stay), so nothing still shows from it. With no
-// database the weekly refresh stays idle until Update now builds one again.
+// database go too (OMDb ones stay; a learned title whose rating came from
+// the database counts as the database's), so nothing still shows from it.
+// With no database the automatic refresh stays idle until Update now
+// builds one again.
 async function deleteDatabase() {
   if ((await getBuildState()).status === 'running') return { ok: false, message: 'a build is running' };
   await RatingsDB.clear();
@@ -409,25 +441,51 @@ function looksMetered() {
   return !!c && (c.saveData === true || c.type === 'cellular');
 }
 
-// Rebuild once the database is older than a week, if the user built one in
-// the first place and hasn't switched the automatic refresh off. The first
-// build is always the user's own click, so nothing downloads unasked.
+// Whether OMDb can stand in for the full rebuild: lookups on and the saved
+// key confirmed working.
+async function omdbUsable() {
+  const { omdbFallback = true } = await omdbSettings();
+  return omdbFallback && (await omdbKeyConfirmed());
+}
+
+// What the next automatic refresh is and when it is due, from the
+// database's meta record: { kind: 'full' | 'ratings', reason, due, mb,
+// keyed }, or { kind: null } without a database. Shared by maybeRefresh and
+// the settings page (usage), so both tell the same story.
+//   format    built by an older version (db.js FORMAT): rebuilt once,
+//             whatever its age, since lookups would miss some old keys
+//   episodes  the episode stage never finished (interrupted first run)
+//   unknown   the ratings pass found UNKNOWN_REBUILD or more rated IDs
+//             the database has no name for
+//   age       the usual schedule
+async function refreshPlan(meta) {
+  if (!meta) return { kind: null };
+  const now = Date.now();
+  const full = (reason, due, keyed) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full, keyed });
+  if ((meta.format || 1) < RatingsDB.FORMAT) return full('format', now);
+  if (!meta.episodes) return full('episodes', now);
+  const keyed = await omdbUsable();
+  if ((meta.unknown || 0) >= UNKNOWN_REBUILD) return full('unknown', now, keyed);
+  const fullDue = (meta.builtAt || 0) + (keyed ? DB_MAX_AGE_KEYED_MS : DB_MAX_AGE_MS);
+  const ratingsDue = (meta.ratingsAt || meta.builtAt || 0) + RATINGS_MAX_AGE_MS;
+  if (fullDue <= ratingsDue) return full('age', fullDue, keyed);
+  return { kind: 'ratings', reason: 'age', due: ratingsDue, mb: DOWNLOAD_MB.ratings, keyed };
+}
+
+// Runs whatever refresh is due (refreshPlan), if the user built a database
+// in the first place and hasn't switched the automatic refresh off. The
+// first build is always the user's own click, so nothing downloads unasked.
 async function maybeRefresh() {
   const { autoRefresh = true } = await chrome.storage.sync.get('autoRefresh');
   if (!autoRefresh) return;
   const state = await getBuildState();
   if (state.status === 'running') return;
   // Don't hammer IMDb if builds keep failing: wait a day after an error.
-  if (state.status === 'error' && Date.now() - (state.at || 0) < 24 * 60 * 60 * 1000) return;
-  const meta = await RatingsDB.getMeta();
-  if (!meta) return;
-  // A database built by an older version (format, see db.js) is rebuilt
-  // once, whatever its age: this version stores titles differently, and its
-  // lookups would miss some of the old keys.
-  const outdated = (meta.format || 1) < RatingsDB.FORMAT;
-  if (!outdated && Date.now() - (meta.builtAt || 0) < DB_MAX_AGE_MS) return;
+  if (state.status === 'error' && Date.now() - (state.at || 0) < DAY_MS) return;
+  const plan = await refreshPlan(await RatingsDB.getMeta());
+  if (!plan.kind || plan.due > Date.now()) return;
   if (looksMetered()) return; // try again at the next check
-  await startBuild(outdated ? 'format' : 'auto');
+  await startBuild(plan.reason === 'format' ? 'format' : 'auto', plan.kind);
 }
 
 // ----------------------------------------------------------------- lookups
@@ -496,9 +554,28 @@ function utcDay() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// A learned title: OMDb matched the name to an IMDb ID once, and that
+// mapping is kept for good. Its rating comes from the local ids table by
+// that ID whenever the table has it (this week's dump; OMDb's copy lags),
+// otherwise OMDb's answer stays as it was. Either way the title is never
+// sent to OMDb again. A name the database learns itself (a full rebuild)
+// still wins: lookup tries the name first.
+function isLearned(entry) {
+  return !!entry && entry.rating != null && /^tt\d+$/.test(entry.imdbID || '') &&
+    (entry.learned === true || entry.source === 'omdb');
+}
+
 function isStale(entry) {
-  const window = entry.rating == null ? MISS_REFRESH_MS : HIT_REFRESH_MS;
+  const window = entry.rating == null ? MISS_REFRESH_MS : isLearned(entry) ? LEARNED_REFRESH_MS : HIT_REFRESH_MS;
   return Date.now() - (entry.ts || 0) > window;
+}
+
+// The local rating for a learned entry's ID, folded into the entry; the
+// entry unchanged when the ids table lacks the ID.
+async function byLearnedId(entry) {
+  const cur = await RatingsDB.lookupById(entry.imdbID).catch(() => null);
+  if (!cur) return entry;
+  return { ...entry, rating: cur.rating, votes: cur.votes, built: cur.built, source: 'local', learned: true };
 }
 
 async function usage() {
@@ -508,9 +585,10 @@ async function usage() {
   const all = await chrome.storage.local.get(null);
   const stored = Object.keys(all).filter((k) => k.startsWith('r:')).length;
   const local = await RatingsDB.status();
+  const next = await refreshPlan(await RatingsDB.getMeta().catch(() => null));
   const build = await getBuildState();
   const keyOk = await omdbKeyConfirmed();
-  return { day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, build, autoRefresh, keyOk };
+  return { day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk };
 }
 
 async function lookup(title, kind, refresh, year) {
@@ -542,6 +620,13 @@ async function lookup(title, kind, refresh, year) {
     await chrome.storage.local.set(writes);
     return { ...entry, stale: false };
   }
+  // A learned title (see isLearned) is refreshed from the ids table by its
+  // ID and never goes back to OMDb.
+  if (isLearned(stored)) {
+    const entry = { ...(await byLearnedId(stored)), ts: Date.now() };
+    await chrome.storage.local.set({ [key]: entry });
+    return { ...entry, stale: false };
+  }
   if (fresh) return { ...stored, stale: isStale(stored) }; // still a miss
 
   // Without a key, or with the fallback switched off, a local miss is simply
@@ -559,7 +644,9 @@ async function lookup(title, kind, refresh, year) {
       if (result.error) {
         return stored ? { ...stored, stale: false } : result; // keep the old answer
       }
-      const entry = { ...result, ts: Date.now() };
+      // A hit names an IMDb ID: from now on the title is known by it, and
+      // the local table's rating for that ID beats the copy OMDb sent.
+      const entry = { ...(isLearned(result) ? await byLearnedId(result) : result), ts: Date.now() };
       const writes = { [key]: entry };
       if (entry.rating != null) for (const k of broaderKeys) writes[k] = entry;
       await chrome.storage.local.set(writes);
@@ -573,7 +660,7 @@ async function lookup(title, kind, refresh, year) {
 // Episode ratings for one season of a series, by the series' IMDb ID:
 //   {episodes: {"<episode>": [rating, votes | null]}, source} or {episodes: null}
 // The local database answers first. Failing that (no database, or a season
-// newer than the last weekly build), and with the OMDb fallback on and a
+// newer than the last full build), and with the OMDb fallback on and a
 // key saved, OMDb's season listing: one request per season, remembered for
 // a week because new episodes keep collecting votes. OMDb gives no vote
 // counts per episode, hence null.

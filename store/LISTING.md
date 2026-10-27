@@ -27,9 +27,11 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > HOW IT WORKS
 > The extension builds its own ratings database in your browser from IMDb's
-> public data (about 280 MB, a few minutes, refreshed weekly; the refresh
-> can be switched off for metered connections). Lookups then happen on your
-> device, without sending the titles you browse to anyone. Nothing downloads until you click
+> public data (about 280 MB, a few minutes; ratings start showing before the
+> episode list has finished). After that only the small ratings file (about
+> 9 MB) is re-read each week; the full title list is rebuilt about monthly,
+> and the refresh can be switched off for metered connections. Lookups
+> happen on your device, without sending the titles you browse to anyone. Nothing downloads until you click
 > Update now in the settings, which open in a small window right after installing.
 > Later, the extension's icon (a poster with a gold star) in Chrome's
 > puzzle-piece menu opens them (pin it to
@@ -99,9 +101,9 @@ featuring): skip for the first submission.
 
 | Permission | Justification |
 | --- | --- |
-| `storage` | Keeps the user's settings (weekly refresh on/off, OMDb fallback on/off, optional OMDb API key) and the ratings already looked up, so each title is fetched once. |
+| `storage` | Keeps the user's settings (automatic refresh on/off, OMDb fallback on/off, optional OMDb API key) and the ratings already looked up, so each title is fetched once. |
 | `unlimitedStorage` | The ratings database built from IMDb's data (about 420,000 titles) is stored in IndexedDB and exceeds the default extension quota. |
-| `alarms` | A periodic alarm checks whether the local database is over a week old and, if the user left automatic refresh on, rebuilds it. |
+| `alarms` | A periodic alarm checks the local database's age and, if the user left automatic refresh on, re-reads the ratings file weekly and rebuilds the whole database about monthly. |
 | `offscreen` | Building the database (downloading and parsing IMDb's dumps) takes minutes and runs in a Web Worker, which the service worker cannot host; an offscreen document hosts the worker. |
 | Host permission `https://datasets.imdbws.com/` | Downloads IMDb's public ratings data dumps to build the local database. |
 | Host permission `https://www.omdbapi.com/` | Optional fallback lookups for titles not in the local database, only when the user has entered an OMDb API key. |

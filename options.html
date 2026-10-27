@@ -75,8 +75,8 @@
     <div class="col">
       <section>
         <h2>Ratings database
-          <span class="tip" tabindex="0" data-tip="Built in your browser from IMDb's public data; the first build takes a few minutes. Lookups then happen on your computer, with no requests to anyone. On a metered connection, untick the weekly refresh and use Update now when convenient."
-                aria-label="Built in your browser from IMDb's public data; the first build takes a few minutes. Lookups then happen on your computer, with no requests to anyone. On a metered connection, untick the weekly refresh and use Update now when convenient.">i</span></h2>
+          <span class="tip" tabindex="0" data-tip="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt about monthly (every three months with a working OMDb key, which covers new titles meanwhile), or sooner once many newly rated titles are waiting. On a metered connection, untick the automatic refresh and use Update now when convenient."
+                aria-label="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt about monthly (every three months with a working OMDb key, which covers new titles meanwhile), or sooner once many newly rated titles are waiting. On a metered connection, untick the automatic refresh and use Update now when convenient.">i</span></h2>
         <p id="localStatus">…</p>
         <div class="row"><button id="build" type="button">Update now</button><span id="buildNote" class="note" hidden></span></div>
         <div id="buildProgress" hidden>
@@ -87,7 +87,8 @@
           <div><b>All set.</b> <span id="doneText"></span></div>
           <button id="closeTab" type="button" hidden>Close</button>
         </div>
-        <label class="check"><input id="auto" type="checkbox"> Refresh automatically every week (about 280 MB from IMDb each time)</label>
+        <label class="check"><input id="auto" type="checkbox"> Refresh automatically: ratings weekly (about 9 MB), the full title list about monthly (about 280 MB)</label>
+        <p id="nextRefresh" class="muted"></p>
       </section>
 
       <section>

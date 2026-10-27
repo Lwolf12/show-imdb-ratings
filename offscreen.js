@@ -32,6 +32,6 @@ chrome.runtime.onMessage.addListener((msg) => {
       stop();
     };
     heartbeat = setInterval(() => chrome.runtime.sendMessage({ target: 'background', type: 'heartbeat' }).catch(() => {}), HEARTBEAT_MS);
-    worker.postMessage({ type: 'start', minVotes: msg.minVotes });
+    worker.postMessage({ type: 'start', kind: msg.kind, minVotes: msg.minVotes });
   }
 });

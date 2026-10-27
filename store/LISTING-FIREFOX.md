@@ -45,9 +45,12 @@ The Chrome listing is in `LISTING.md`.
 >
 > HOW IT WORKS
 > The extension builds its own ratings database in your browser from
-> IMDb's public data (about 280 MB, a few minutes, refreshed weekly; the
-> refresh can be switched off for metered connections). Lookups then
-> happen on your device, without sending the titles you browse to anyone.
+> IMDb's public data (about 280 MB, a few minutes; ratings start showing
+> before the episode list has finished). After that only the small ratings
+> file (about 9 MB) is re-read each week; the full title list is rebuilt
+> about monthly, and the refresh can be switched off for metered
+> connections. Lookups happen on your device, without sending the titles
+> you browse to anyone.
 > Nothing downloads until you click Update now in the settings, which open
 > in a small window right after installing. Later, the extension's toolbar
 > button opens them. Every service is on from the start; any of them can

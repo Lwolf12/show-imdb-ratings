@@ -3,12 +3,17 @@
 // IMDb licenses for each person's own use. Runs in build-worker.js (a web
 // worker inside the offscreen document). Needs RatingsDB from db.js.
 //
-// Streams title.ratings.tsv.gz (~9 MB), title.basics.tsv.gz (~220 MB) and
-// title.episode.tsv.gz (~55 MB) through gzip decompression line by line,
-// keeps films (with TV films, specials, direct-to-video and shorts; see
-// TYPE) and series with at least minVotes votes and the episodes of those
-// series with at least EPISODE_MIN_VOTES votes, and hands both to
-// RatingsDB.writeIndex().
+// build(): the full build. Streams title.ratings.tsv.gz (~9 MB),
+// title.basics.tsv.gz (~220 MB) and title.episode.tsv.gz (~55 MB) through
+// gzip decompression line by line, keeps films (with TV films, specials,
+// direct-to-video and shorts; see TYPE) and series with at least minVotes
+// votes and the episodes of those series with at least EPISODE_MIN_VOTES
+// votes. The titles go live (RatingsDB.writeTitles) before the episodes
+// stream, so a first install shows ratings after the basics pass.
+//
+// refreshRatings(): the weekly pass. Streams only title.ratings.tsv.gz and
+// hands it to RatingsDB.updateRatings, which refreshes every stored rating
+// and counts the titles rated since the last full build.
 
 const RatingsBuilder = (() => {
   'use strict';
@@ -75,11 +80,8 @@ const RatingsBuilder = (() => {
     else if (!list.some((e) => e[0] === entry[0])) list.push(entry);
   }
 
-  // onProgress({ phase: 'ratings'|'basics'|'episodes'|'writing', pct: 0..1, detail })
-  async function build({ minVotes = 25, onProgress } = {}) {
-    const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
-
-    // 1. tconst -> [rating, votes] for titles over the lower (episode) floor.
+  // tconst -> [rating, votes] for every title over the lower (episode) floor.
+  async function readRatings(minVotes, progress) {
     const floor = Math.min(minVotes, EPISODE_MIN_VOTES);
     const ratings = new Map();
     let first = true;
@@ -90,18 +92,34 @@ const RatingsBuilder = (() => {
       const votes = Number(line.slice(t2 + 1));
       if (votes >= floor) ratings.set(line.slice(0, t1), [Number(line.slice(t1 + 1, t2)), votes]);
     }
+    return ratings;
+  }
+
+  // The full build.
+  // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes', pct: 0..1, detail })
+  // onUsable(info) fires once the titles are live, before the episodes stream.
+  async function build({ minVotes = 25, onProgress, onUsable } = {}) {
+    const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
+
+    // 1. Ratings.
+    const ratings = await readRatings(minVotes, progress);
 
     // 2. Walk basics, keep rated movies/series, index by normalised title.
+    //    The ids table takes every rated title that is not an episode, kept
+    //    or not, so the weekly pass can tell a new title from one it has
+    //    seen before (db.js updateRatings).
     const index = new Map();
+    const ids = new Map();
     const seriesIds = new Set();
     let kept = 0;
-    first = true;
+    let first = true;
     for await (const line of lines(BASE + 'title.basics.tsv.gz', (r, t) => progress('basics', t ? r / t : 0, kept))) {
       if (first) { first = false; continue; }
       const t1 = line.indexOf('\t');
       const r = ratings.get(line.slice(0, t1));
       if (!r || r[1] < minVotes) continue;
       const f = line.split('\t');
+      if (f[1] !== 'tvEpisode') ids.set(f[0], [r[0], r[1]]);
       const type = TYPE[f[1]];
       if (!type) continue;
       if (f[1] === 'short' && r[1] < SHORT_MIN_VOTES) continue;
@@ -113,7 +131,24 @@ const RatingsBuilder = (() => {
     }
     for (const list of index.values()) list.sort((a, b) => b[4] - a[4]);
 
-    // 3. Episodes of those series: series id -> { season: [[ep, rating, votes]] }.
+    // 3. Titles go live now: badges can start while the episodes download.
+    progress('writing', 0);
+    const day = new Date().toISOString().slice(0, 10);
+    const info = {
+      built: day,
+      builtAt: Date.now(),
+      ratingsBuilt: day,
+      ratingsAt: Date.now(),
+      minVotes,
+      titles: kept,
+      format: RatingsDB.FORMAT,
+    };
+    await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1));
+    index.clear();
+    ids.clear();
+    if (onUsable) onUsable({ ...info, episodes: 0 });
+
+    // 4. Episodes of those series: series id -> { season: [[ep, rating, votes, id]] }.
     //    Columns: tconst, parentTconst, seasonNumber, episodeNumber.
     const episodes = new Map();
     let episodeCount = 0;
@@ -129,25 +164,29 @@ const RatingsBuilder = (() => {
       if (!Number.isInteger(season) || !Number.isInteger(ep)) continue; // '\N': unknown
       let show = episodes.get(f[1]);
       if (!show) episodes.set(f[1], (show = {}));
-      (show[season] || (show[season] = [])).push([ep, r[0], r[1]]);
+      (show[season] || (show[season] = [])).push([ep, r[0], r[1], f[0]]);
       episodeCount++;
     }
     for (const show of episodes.values()) for (const list of Object.values(show)) list.sort((a, b) => a[0] - b[0]);
     ratings.clear();
 
-    // 4. Write to IndexedDB and make it live.
-    progress('writing', 0);
-    const info = {
-      built: new Date().toISOString().slice(0, 10),
-      builtAt: Date.now(),
-      minVotes,
-      titles: kept,
-      episodes: episodeCount,
-      format: RatingsDB.FORMAT,
-    };
-    await RatingsDB.writeIndex(index, episodes, info, (done, total) => progress('writing', total ? done / total : 1));
+    // 5. Episodes into the live database.
+    progress('writing-episodes', 0);
+    await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1));
+    return { ...info, episodes: episodeCount };
+  }
+
+  // The weekly pass: ratings dump only, into the existing database.
+  // onProgress({ phase: 'ratings'|'updating', pct, detail })
+  // Returns { unknown, changed, episodesChanged } from RatingsDB.updateRatings.
+  async function refreshRatings({ minVotes = 25, onProgress } = {}) {
+    const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
+    const ratings = await readRatings(minVotes, progress);
+    progress('updating', 0);
+    const info = await RatingsDB.updateRatings(ratings, minVotes, (done, total) => progress('updating', total ? done / total : 1));
+    ratings.clear();
     return info;
   }
 
-  return { build };
+  return { build, refreshRatings };
 })();

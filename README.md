@@ -74,13 +74,23 @@ episodes of those series, and stores the result in the browser's IndexedDB.
 Lookups then happen locally, with no requests to anyone.
 
 Nothing downloads until you click **Update now** on the settings panel the
-first time. After that the database is rebuilt automatically once it is a
-week old (another 280 MB each time); the panel shows the title count, build
-date and progress, and the weekly refresh can be switched off there, which
-is the thing to do on a metered connection. A failed build (offline, say) is
+first time. That first build lands in two stages: the titles go live as
+soon as the title list has been read, so badges start showing while the
+episode list is still downloading.
+
+After that the refresh is sized to what changes. Once a week only the
+ratings file (about 9 MB) is re-read and every stored rating updated in
+place; it also counts the titles that have been rated since the last full
+build. The full rebuild (all three files, about 280 MB) runs about monthly,
+or every three months when a working OMDb key covers new titles meanwhile,
+and sooner once that count of waiting titles is large. The panel shows the
+title count, the dates of the last full build and ratings update, the next
+refresh with its size and due date, and progress; **Update now** is always
+a full rebuild. The automatic refresh can be switched off there, which is
+the thing to do on a metered connection. A failed build (offline, say) is
 retried a day later. An update that changes how the database is stored
 (`FORMAT` in `db.js`) also rebuilds it once, whatever its age; with the
-weekly refresh off, the panel asks for Update now instead.
+automatic refresh off, the panel asks for Update now instead.
 
 No ratings data ships with the extension and none is in this repository: the
 data is IMDb's, and their licence covers your own copy, not redistribution.
@@ -88,6 +98,11 @@ data is IMDb's, and their licence covers your own copy, not redistribution.
 Lookups go: stored answers, then the local database, then OMDb for titles
 the database doesn't have (brand-new releases, titles under 25 votes), if a
 key is set. The OMDb fallback can be switched off on the settings panel.
+An OMDb answer that names an IMDb ID is kept for good: from then on the
+title's rating comes from the local database by that ID (the weekly ratings
+file includes titles the database has no name for yet), falling back to
+OMDb's copy, and the title is never sent to OMDb again. A name the full
+rebuild learns later still wins.
 
 ## Layout
 
@@ -97,8 +112,8 @@ key is set. The OMDb fallback can be switched off on the settings panel.
 | `sites/netflix.js`, `sites/primevideo.js`, `sites/hulu.js`, `sites/hbomax.js`, `sites/appletv.js`, `sites/disneyplus.js`, `sites/paramountplus.js`, `sites/tubi.js` | Site adapters: which elements are title cards and hover previews, how to read the title (and movie/series type where available), and where the badge goes. |
 | `content.js` | Generic: watches the page, looks up titles as cards come near the viewport, draws badges, refreshes stale ones in the background. |
 | `background.js` | Service worker (an event page in Firefox, see below): answers from the store, then the local database, then OMDb (with a concurrency limit); permanent store in `chrome.storage.local`, daily request count, pause after a limit error. |
-| `db.js` | The local ratings database in IndexedDB, shared by the service worker (lookups), the build (writes) and the settings (status). |
-| `builder.js`, `build-worker.js` | Build the database from IMDb's data dumps in a web worker. |
+| `db.js` | The local ratings database in IndexedDB, shared by the service worker (lookups), the build (writes) and the settings (status). Ratings live in a table by IMDb ID that the weekly pass rewrites. |
+| `builder.js`, `build-worker.js` | Build the database from IMDb's data dumps in a web worker: the full build in two stages (titles, then episodes) and the weekly ratings-only pass. |
 | `offscreen.html/js` | Hidden page that hosts the build worker, since the service worker can't run minutes of work itself. |
 | `store/` | Store listing text, screenshots and the scripts that build the store ZIPs and the icons. Not part of the extension. |
 | `badge.css` | Badge styling, including per-site placement tweaks. |
@@ -159,10 +174,12 @@ this one."
   whose title isn't the one asked for (ignoring case, punctuation and a
   leading "The") is treated as a miss rather than shown; the badge tooltip
   says what OMDb offered. Misses are re-checked after three days, and the
-  weekly database rebuild picks new titles up once they have 25 votes.
+  full database rebuild picks new titles up once they have 25 votes.
 - **OMDb quota.** Only cards within about one screen of the viewport are
   looked up. Every answer is stored permanently and shown immediately; hits
-  are re-checked after 30 days and misses after 3, in the background. If
+  that named an IMDb ID are refreshed from the local database weekly and
+  never asked again, other hits are re-checked after 30 days and misses
+  after 3, in the background. If
   OMDb reports the daily limit, requests pause for an hour and stored
   ratings keep showing. The settings panel shows today's request count.
 - **Site markup changes.** Selectors rely on each site's stable test
