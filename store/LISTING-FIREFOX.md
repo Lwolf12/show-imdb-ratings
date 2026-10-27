@@ -23,7 +23,7 @@ The Chrome listing is in `LISTING.md`.
 
 **Name:** Show IMDb Ratings on Streaming Services
 
-**Add-on URL:** `show-imdb-ratings`
+**Add-on URL:** `imdb-ratings-on-streaming` (`show-imdb-ratings` was already taken; the limit is 30 characters)
 
 **Summary** (250 characters max):
 
@@ -78,7 +78,7 @@ lists of brand names beyond four.
 **Categories:** Photos, Music & Videos (and, if a second is allowed,
 Other).
 
-**Tags:** imdb, ratings, movies, tv, streaming
+**Tags:** fixed list on AMO; only `streaming` fits
 
 **Support website:** https://github.com/Lwolf12/show-imdb-ratings/issues
 
