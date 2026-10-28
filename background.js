@@ -9,9 +9,9 @@
 // (offscreen.html -> build-worker.js), started by the Update button on the
 // settings panel (a full build) and automatically by an alarm that checks a
 // few times a day what is due (refreshPlan): a ratings-only pass once a
-// week, the full rebuild once a month, or once a quarter when a working
-// OMDb key covers new titles meanwhile, or sooner when the ratings pass has
-// counted many titles the database has no name for. Until the first build,
+// week, the full rebuild once a month (both adjustable on the panel), or
+// sooner when the ratings pass has counted many titles the database has
+// no name for. Until the first build,
 // the toolbar icon carries a "!" badge.
 //
 // Content scripts send {type: 'rating', title, kind?, refresh?} and get back
@@ -42,16 +42,16 @@ const LIMIT_PAUSE_MS = 60 * 60 * 1000; // after OMDb reports the limit
 // carries nearly every weekly change, so it is re-read weekly; the title
 // and episode lists (the bulk of the download) only when new titles are
 // due. Without a working OMDb key the full rebuild is the only way new
-// titles arrive, so it comes monthly; with one, quarterly. Those are the
-// defaults: the settings page's Advanced section stores other intervals
-// as ratingsDays and fullDays in sync storage (refreshIntervals), fullDays 0
-// meaning the automatic choice. A ratings pass that finds this many
-// rated IDs without a name brings the full rebuild forward whatever the
-// interval: titles and episodes cross the 25-vote line at a few hundred
-// a week, so the usual schedule stays well under it.
+// titles arrive, so it comes monthly. Those are the defaults: the settings
+// page's Advanced section stores other intervals as ratingsDays and
+// fullDays in sync storage (refreshIntervals); someone with a working OMDb
+// key, which covers new titles meanwhile, can stretch the rebuild there.
+// A ratings pass that finds this many rated IDs without a name brings the
+// full rebuild forward whatever the interval: titles and episodes cross
+// the 25-vote line at a few hundred a week, so the usual schedule stays
+// well under it.
 const RATINGS_DAYS = 7;
 const FULL_DAYS = 30;
-const FULL_DAYS_KEYED = 91;
 const RATINGS_DAYS_CHOICES = [7, 14, 30];
 const FULL_DAYS_CHOICES = [30, 61, 91];
 const UNKNOWN_REBUILD = 10000;
@@ -465,26 +465,22 @@ async function omdbOnly() {
   return ratingsSource === 'omdb';
 }
 
-// The refresh intervals in force: { ratingsDays, fullDays, auto, keyed }.
+// The refresh intervals in force: { ratingsDays, fullDays, keyed }.
 // ratingsDays and fullDays are the user's choices from sync storage, or
 // the defaults; a value outside the offered choices counts as unset.
-// auto: the full interval was not chosen by the user, so it follows the
-// OMDb key (keyed: lookups on and the key confirmed).
+// keyed: OMDb lookups on and the key confirmed, for the texts.
 async function refreshIntervals() {
   const { ratingsDays, fullDays } = await chrome.storage.sync.get(['ratingsDays', 'fullDays']);
-  const keyed = await omdbUsable();
-  const auto = !FULL_DAYS_CHOICES.includes(fullDays);
   return {
     ratingsDays: RATINGS_DAYS_CHOICES.includes(ratingsDays) ? ratingsDays : RATINGS_DAYS,
-    fullDays: auto ? (keyed ? FULL_DAYS_KEYED : FULL_DAYS) : fullDays,
-    auto,
-    keyed,
+    fullDays: FULL_DAYS_CHOICES.includes(fullDays) ? fullDays : FULL_DAYS,
+    keyed: await omdbUsable(),
   };
 }
 
 // What the next automatic refresh is and when it is due, from the
 // database's meta record: { kind: 'full' | 'ratings', reason, due, mb,
-// keyed, ratingsDays, fullDays, auto } (the last four from refreshIntervals), or
+// keyed, ratingsDays, fullDays } (the last three from refreshIntervals), or
 // { kind: null } without a database. Shared by maybeRefresh and the
 // settings page (usage), so both tell the same story.
 //   format    built by an older version (db.js FORMAT): rebuilt once,
@@ -623,12 +619,11 @@ async function usage() {
   const next = await refreshPlan(await RatingsDB.getMeta().catch(() => null));
   const build = await getBuildState();
   const keyOk = await omdbKeyConfirmed();
-  // The intervals as chosen (fullDays 0 = automatic) for the Advanced
-  // selects, and the ones in force (schedule) for the texts.
+  // The intervals in force (schedule), for the Advanced selects and the texts.
   const schedule = await refreshIntervals();
   return {
     day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk,
-    ratingsDays: schedule.ratingsDays, fullDays: schedule.auto ? 0 : schedule.fullDays, schedule,
+    ratingsDays: schedule.ratingsDays, fullDays: schedule.fullDays, schedule,
     omdbOnly: await omdbOnly(),
   };
 }

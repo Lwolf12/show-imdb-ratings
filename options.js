@@ -143,7 +143,6 @@ async function refreshStats() {
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
   $('fullDays').disabled = omdbOnlyMode;
-  $('fullAuto').textContent = keyed ? 'automatic (3 months)' : 'automatic (monthly)';
   showBuild(u.build);
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
