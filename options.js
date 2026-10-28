@@ -128,7 +128,7 @@ async function refreshStats() {
   // selectable while chosen, so a broken key can still be switched away from).
   $('sourceLocal').checked = !omdbOnlyMode;
   $('sourceOmdb').checked = omdbOnlyMode;
-  $('sourceOmdb').disabled = !keyed && !omdbOnlyMode;
+  $('sourceOmdb').disabled = (!keyed && !omdbOnlyMode) || keyDirty();
   $('sourceOmdbLabel').classList.toggle('off', $('sourceOmdb').disabled);
   $('sourceOmdbLabel').title = $('sourceOmdb').disabled ? 'Needs a working OMDb key: set one up and click Test under OMDb lookups' : '';
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
@@ -147,7 +147,13 @@ async function refreshStats() {
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
-  loadExtras(keyed);
+  // A key being edited keeps everything below it greyed (see keyDirty),
+  // whatever a build or a lookup changed meanwhile.
+  if (keyDirty()) {
+    $('useOmdb').disabled = true;
+    $('useOmdb').parentElement.classList.add('off');
+    loadExtras(false, '(click Test to save and check the key)');
+  } else loadExtras(keyed);
 }
 
 // What the database holds and when it was built: the full build's date,
@@ -397,10 +403,12 @@ $('hideNA').addEventListener('change', async () => {
 // saved one. Unticking the checkbox keeps the key so it can be turned
 // back on without re-entering it.
 let savedKey = '';
+let keyEdited = false; // the field was typed in since the last load or Test
 
 async function loadOmdb() {
   const { omdbKey = '', omdbFallback = true } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback']);
   savedKey = omdbKey;
+  keyEdited = false;
   $('key').value = omdbKey;
   const on = !!omdbKey && omdbFallback && (await omdbConsent());
   $('useOmdb').checked = on;
@@ -410,18 +418,19 @@ async function loadOmdb() {
   $('testResult').textContent = '';
 }
 
-// A key being typed: nothing below it applies until Test saves it.
+// A key being typed: nothing below it applies until Test saves it. Any
+// edit counts, even one that ends with the saved key typed back in; only
+// Test (through loadOmdb) arms the fields again.
 function keyDirty() {
-  return $('key').value.trim() !== savedKey;
+  return keyEdited;
 }
 
 $('key').addEventListener('input', () => {
-  const dirty = keyDirty();
-  $('useOmdb').disabled = dirty || !savedKey;
-  $('useOmdb').parentElement.classList.toggle('off', dirty || !savedKey);
-  $('sourceOmdb').disabled = dirty || $('sourceOmdb').disabled;
-  if (dirty) loadExtras(false, '(click Test to save and check the key)');
-  else refreshStats();
+  keyEdited = true;
+  $('useOmdb').disabled = true;
+  $('useOmdb').parentElement.classList.add('off');
+  $('sourceOmdb').disabled = true;
+  loadExtras(false, '(click Test to save and check the key)');
 });
 $('key').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('test').click();
