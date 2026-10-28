@@ -131,6 +131,7 @@ async function refreshStats() {
   $('sourceOmdb').disabled = !keyed && !omdbOnlyMode;
   $('sourceOmdbLabel').classList.toggle('off', $('sourceOmdb').disabled);
   $('sourceOmdbLabel').title = $('sourceOmdb').disabled ? 'Needs a working OMDb key: set one up and click Test under OMDb lookups' : '';
+  $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
   $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : !l.present ? 'Not built yet. Click Update now; it takes a few minutes' + (keyed ? ', or choose OMDb only above.' : '.')
     : localStatus(l, building);
