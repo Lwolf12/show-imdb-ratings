@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <title>IMDb Ratings settings</title>
   <style>
+    /* Room for the scrollbar is always kept, so a status line that grows
+       past the window does not narrow the columns and rewrap the rows. */
+    html { scrollbar-gutter: stable; }
     body { font: 14px/1.45 system-ui, sans-serif; margin: 0 auto; padding: 16px 20px 14px; max-width: 560px; color: #222;
            min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; }
     header { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; margin: 0 0 12px; }
@@ -29,6 +32,7 @@
     select { font: inherit; padding: 4px 6px; }
     label.check { display: flex; gap: 7px; align-items: center; margin: 6px 0; }
     label.check.off { color: #999; }
+    label.check.nowrap { white-space: nowrap; }
     progress { width: 100%; height: 12px; margin-top: 4px; display: block; }
     #buildText { color: #555; font-size: 13px; margin-top: 4px; }
     .note { flex: 1; min-width: 180px; padding: 6px 10px; border-radius: 4px; background: #fff4d6; border: 1px solid #e8c56a; color: #5a4300; font-weight: 600; font-size: 13px; }
@@ -79,9 +83,9 @@
         <h2>Ratings database
           <span class="tip" tabindex="0" data-tip="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt about monthly (every three months with a working OMDb key, which covers new titles meanwhile), or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient."
                 aria-label="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt about monthly (every three months with a working OMDb key, which covers new titles meanwhile), or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient.">i</span></h2>
-        <div class="row">Ratings come from:
-          <label class="check"><input id="sourceLocal" type="radio" name="source" value="local"> Local database</label>
-          <label class="check" id="sourceOmdbLabel"><input id="sourceOmdb" type="radio" name="source" value="omdb"> OMDb only</label>
+        <div class="row">Ratings from:
+          <label class="check nowrap"><input id="sourceLocal" type="radio" name="source" value="local"> Local database</label>
+          <label class="check nowrap" id="sourceOmdbLabel"><input id="sourceOmdb" type="radio" name="source" value="omdb"> OMDb only</label>
           <span class="tip" tabindex="0" data-tip="Local database: built from IMDb's data, lookups happen on your computer with no limits, and only titles it lacks go to OMDb if a key is set. OMDb only: no database; every title is looked up at OMDb, which needs a working key (below), allows 1,000 lookups a day and remembers each answer for 30 days. A heavy day of browsing cards can reach that limit, and badges then stop until the next day. Title names are sent to OMDb for each lookup."
                 aria-label="Local database: built from IMDb's data, lookups happen on your computer with no limits, and only titles it lacks go to OMDb if a key is set. OMDb only: no database; every title is looked up at OMDb, which needs a working key (below), allows 1,000 lookups a day and remembers each answer for 30 days. A heavy day of browsing cards can reach that limit, and badges then stop until the next day. Title names are sent to OMDb for each lookup.">i</span></div>
         <p id="localStatus">…</p>
