@@ -169,13 +169,14 @@ function localStatus(l, building) {
 
 // The status line with OMDb only chosen. keyed: OMDb can answer (lookups
 // on, key confirmed); otherwise nothing can, and the line says what to fix.
-// A database still on the device (the choice synced from elsewhere) is
-// pointed out, since it is unused and takes space.
+// A database on the device is kept for switching back, and said so.
 function omdbOnlyStatus(l, keyed) {
   let s = keyed
     ? 'Not used: ratings come from OMDb (1,000 lookups a day, each remembered for 30 days).'
-    : 'OMDb only is chosen, but OMDb lookups are off or the key is not working (see OMDb lookups below). Fix that, or choose Local database and click Update now.';
-  if (l.present) s += ' A database is still on this device; Delete database under Advanced frees the space.';
+    : 'OMDb only is chosen, but OMDb lookups are off or the key is not working (see OMDb lookups below). Fix that, or choose Local database' + (l.present ? '.' : ' and click Update now.');
+  if (l.present) {
+    s += ' The database (' + l.titles.toLocaleString() + ' titles, built ' + l.built + ') is kept for switching back; Delete database under Advanced frees its space.';
+  }
   return s;
 }
 
@@ -535,29 +536,16 @@ $('deleteDb').addEventListener('click', async () => {
 });
 
 // Where ratings come from (sync ratingsSource, background.js omdbOnly).
-// Switching to OMDb only deletes a database that exists, after asking;
-// switching back shows Update now again, and nothing downloads until it
-// is clicked.
+// A database that exists is kept, unused, so switching back costs no
+// download; Delete database under Advanced frees its space. Without one,
+// switching back shows Update now, and nothing downloads until it is
+// clicked.
 for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
   box.addEventListener('change', async () => {
     if (!box.checked) return;
-    if (box.value === 'omdb') {
-      if (dbPresent) {
-        if (!confirm('Switch to OMDb only? The local ratings database is deleted. Choosing Local database again later means a new build (about 280 MB).')) {
-          $('sourceLocal').checked = true;
-          return;
-        }
-        if (!(await deleteDatabase())) {
-          $('sourceLocal').checked = true;
-          return;
-        }
-      }
-      await chrome.storage.sync.set({ ratingsSource: 'omdb' });
-      say('Ratings come from OMDb only' + (dbPresent ? '; the database was deleted. Reload open streaming tabs to see the change.' : '.'));
-    } else {
-      await chrome.storage.sync.set({ ratingsSource: 'local' });
-      say(dbPresent ? 'Ratings come from the local database.' : 'Click Update now to build the local database (about 280 MB).');
-    }
+    await chrome.storage.sync.set({ ratingsSource: box.value });
+    if (box.value === 'omdb') say('Ratings come from OMDb only. Reload open streaming tabs to see the change.');
+    else say(dbPresent ? 'Ratings come from the local database again. Reload open streaming tabs to see the change.' : 'Click Update now to build the local database (about 280 MB).');
     refreshStats();
   });
 }

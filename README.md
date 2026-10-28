@@ -99,10 +99,11 @@ automatic refresh off, the panel asks for Update now instead.
 **OMDb only.** With a working OMDb key the database can be skipped: the
 "Ratings come from" choice at the top of the Ratings database section
 offers OMDb only once the key has passed Test. Every lookup then goes to
-OMDb (1,000 a day, each answer remembered for 30 days), no database is
-built, refreshed or consulted, and one that exists is deleted on the
-switch after a confirmation. Choosing Local database again brings Update
-now back; nothing downloads until it is clicked.
+OMDb (1,000 a day, each answer remembered for 30 days), and no database is
+built, refreshed or consulted. One that exists is kept, unused, so
+switching back costs no download (Delete database under Advanced frees
+its space); without one, choosing Local database again brings Update now
+back, and nothing downloads until it is clicked.
 
 No ratings data ships with the extension and none is in this repository: the
 data is IMDb's, and their licence covers your own copy, not redistribution.
