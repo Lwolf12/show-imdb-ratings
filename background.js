@@ -897,7 +897,18 @@ function parseExtras(data) {
   return extras;
 }
 
+// The year is the site's hint. The local database treats it as a
+// preference among same-named titles, but OMDb takes y as a hard filter,
+// and for a series the site's year is often the latest season's ("2026 ·
+// 4 Parts" for a show that began in 2021). So a miss with the year is
+// asked again without it; the title guard below still applies.
 async function fetchRating(title, kind, year) {
+  const r = await fetchRatingOnce(title, kind, year);
+  if (year && !r.error && r.rating == null) return fetchRatingOnce(title, kind, null);
+  return r;
+}
+
+async function fetchRatingOnce(title, kind, year) {
   const r = await omdbRequest({ t: title, type: kind, y: year });
   if (r.error) return r;
   const data = r.data;
