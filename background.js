@@ -431,15 +431,20 @@ async function handleBuildMessage(msg) {
 // the database counts as the database's), so nothing still shows from it.
 // With no database the automatic refresh stays idle until Update now
 // builds one again.
+// "As if just installed": the database goes, and so does every remembered
+// answer (ratings 'r:', OMDb season lists 'e:', extras 'x:'), whichever
+// path gave it. Keeping OMDb's answers left cards showing ratings while
+// previews, whose keys were never stored, said n/a. Returns how many
+// ratings were forgotten.
 async function deleteDatabase() {
   if ((await getBuildState()).status === 'running') return { ok: false, message: 'a build is running' };
   await RatingsDB.clear();
   const all = await chrome.storage.local.get(null);
-  const local = Object.keys(all).filter((k) => k.startsWith('r:') && all[k] && all[k].source === 'local');
-  if (local.length) await chrome.storage.local.remove(local);
+  const keys = Object.keys(all).filter((k) => /^[rex]:/.test(k));
+  if (keys.length) await chrome.storage.local.remove(keys);
   await setBuildState({ status: 'idle' });
   await updateBadge();
-  return { ok: true, forgotten: local.length };
+  return { ok: true, forgotten: keys.filter((k) => k.startsWith('r:')).length };
 }
 
 // Best effort: Chrome only reports this on Android and ChromeOS. On desktop

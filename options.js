@@ -570,7 +570,7 @@ async function deleteDatabase() {
 }
 
 $('deleteDb').addEventListener('click', async () => {
-  if (!confirm('Delete the local ratings database? Ratings then come from OMDb only (if set up) until you click Update now, which downloads about 280 MB again.')) return;
+  if (!confirm('Delete the local ratings database and forget every remembered rating? Ratings then come from OMDb only (if set up) until you click Update now, which downloads about 280 MB again.')) return;
   await deleteDatabase();
   refreshStats();
 });
