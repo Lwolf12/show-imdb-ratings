@@ -72,7 +72,7 @@ chrome.action.onClicked.addListener(() => openSettings());
 // (two columns, see options.html). Chrome's embedded options dialog was easy
 // to miss and too short; a full tab was mostly white space. A window that is
 // already open is brought to the front instead of opening a second one.
-const SETTINGS_WINDOW = { width: 900, height: 680 };
+const SETTINGS_WINDOW = { width: 900, height: 740 }; // fits both columns with Advanced open
 
 async function openSettings() {
   const { settingsWindow } = await chrome.storage.session.get('settingsWindow');

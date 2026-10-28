@@ -143,7 +143,7 @@ async function refreshStats() {
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
   $('fullDays').disabled = omdbOnlyMode;
-  $('fullAuto').textContent = 'automatically (' + EVERY[keyed ? 91 : 30] + ')';
+  $('fullAuto').textContent = keyed ? 'automatic (3 months)' : 'automatic (monthly)';
   showBuild(u.build);
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
@@ -522,7 +522,7 @@ async function deleteDatabase() {
     builtAt = 0;
     confirmUntil = 0;
     showNote('');
-    say('Database deleted' + (r.forgotten ? ', with ' + r.forgotten.toLocaleString() + ' ratings remembered from it' : '') + '. Reload open streaming tabs to see the change.');
+    say('Database deleted' + (r.forgotten ? ' with ' + r.forgotten.toLocaleString() + ' remembered ratings' : '') + '; reload open streaming tabs.');
     return true;
   }
   say('Could not delete the database: ' + ((r && r.message) || 'no answer from the extension') + '.', 'bad');
@@ -544,8 +544,8 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
   box.addEventListener('change', async () => {
     if (!box.checked) return;
     await chrome.storage.sync.set({ ratingsSource: box.value });
-    if (box.value === 'omdb') say('Ratings come from OMDb only. Reload open streaming tabs to see the change.');
-    else say(dbPresent ? 'Ratings come from the local database again. Reload open streaming tabs to see the change.' : 'Click Update now to build the local database (about 280 MB).');
+    if (box.value === 'omdb') say('OMDb only; reload open streaming tabs.');
+    else say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (about 280 MB).');
     refreshStats();
   });
 }
