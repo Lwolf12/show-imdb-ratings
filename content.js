@@ -339,6 +339,17 @@
     }
   }
 
+  // "\nFrom the local database (ratings as of Oct 27)" or "\nVia OMDb";
+  // nothing for an entry that doesn't say. built is the database's
+  // ratings date, 'YYYY-MM-DD'.
+  function sourceLine(result) {
+    if (result.source === 'omdb') return '\nVia OMDb';
+    if (result.source !== 'local') return '';
+    const d = /^\d{4}-\d\d-\d\d$/.test(result.built || '') ? new Date(result.built + 'T00:00:00') : null;
+    const asOf = d ? ' (ratings as of ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ')' : '';
+    return '\nFrom the local database' + asOf;
+  }
+
   function render(badge, title, result, kind) {
     badge.textContent = '';
     const score = document.createElement('span');
@@ -363,9 +374,11 @@
     badge.classList.remove('imdbext-badge--none');
     score.textContent = result.rating.toFixed(1);
     const parts = [result.matchedTitle, result.year, result.votes && result.votes + ' votes'].filter(Boolean);
-    // Says where the number comes from, which the default star label doesn't.
+    // Says where the number comes from, which the default star label doesn't,
+    // and which path answered (both carry IMDb's rating; they differ in
+    // freshness).
     badge.title = 'IMDb rating ' + result.rating.toFixed(1) + ' · ' + parts.join(' · ') +
-      (result.imdbID ? '\nClick to open the IMDb page' : '');
+      sourceLine(result) + (result.imdbID ? '\nClick to open the IMDb page' : '');
     if (result.imdbID) badge.dataset.imdbId = result.imdbID;
     else delete badge.dataset.imdbId;
     badge.dataset.title = result.matchedTitle || title;

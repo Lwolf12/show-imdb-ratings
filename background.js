@@ -15,7 +15,8 @@
 // the toolbar icon carries a "!" badge.
 //
 // Content scripts send {type: 'rating', title, kind?, refresh?} and get back
-//   {rating, votes, year, imdbID, kind, matchedTitle, ts, stale, source}
+//   {rating, votes, year, imdbID, kind, matchedTitle, ts, stale, source,
+//    built}  (built: the database's ratings date, for source 'local')
 //   {rating: null, ...}                       no match anywhere
 //   {error: 'nokey' | 'http' | 'limit'}       nothing stored and OMDb failed
 // and {type: 'episodes', imdbID, season} for one season's episode ratings
