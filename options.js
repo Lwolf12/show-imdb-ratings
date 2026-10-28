@@ -558,6 +558,23 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
   });
 }
 
+// Every setting back to its default: all sites on, badges always with the
+// star label, no extras, OMDb lookups on if there is a key, the local
+// database with the default refresh. The key and the database stay.
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
+
+$('resetSettings').addEventListener('click', async () => {
+  if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;
+  const { omdbKey = '' } = await chrome.storage.sync.get('omdbKey');
+  await chrome.storage.sync.remove(SETTING_KEYS);
+  if (omdbKey) await chrome.storage.sync.set({ omdbFallback: true });
+  await loadSites();
+  await loadBadges();
+  await loadOmdb();
+  await refreshStats();
+  say('Settings reset to their defaults' + (omdbKey ? '; the OMDb key is kept.' : '.'));
+});
+
 // ------------------------------------------------------------------ go
 
 $('version').textContent = 'Version ' + chrome.runtime.getManifest().version;
