@@ -532,10 +532,12 @@
 
   function applyBadgePrefs({ cardBadges, hideNA, badgeLabel, extraRatings, omdbFallback }) {
     cardMode = cardBadges === 'hover' || cardBadges === 'off' ? cardBadges : 'always';
-    extraWant = omdbFallback === false ? {} : { ...(extraRatings || {}) };
+    // Nothing saved yet means every extra on and "n/a" cards hidden (the
+    // same defaults as options.js).
+    extraWant = omdbFallback === false ? {} : { ...(extraRatings || { rt: true, mc: true, awards: true, cards: true }) };
     const cl = document.documentElement.classList;
     cl.toggle('imdbext-cards-hover', cardMode === 'hover');
-    cl.toggle('imdbext-hide-na', !!hideNA);
+    cl.toggle('imdbext-hide-na', hideNA !== false);
     cl.toggle('imdbext-label-imdb', badgeLabel === 'imdb');
   }
 

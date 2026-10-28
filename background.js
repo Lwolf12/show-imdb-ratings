@@ -864,7 +864,8 @@ async function omdbKeyConfirmed() {
 // request per title ever opened, not per card, so it fits a free key's
 // 1,000 a day. -> {extras: {rt: '92%', mc: 74, awards: 'Won 3 Oscars'} | null}
 async function lookupExtras(imdbID) {
-  const { extraRatings = {}, omdbFallback = true } = await omdbSettings(['extraRatings']);
+  // Nothing saved means every extra on (the same default as options.js).
+  const { extraRatings = { rt: true, mc: true, awards: true, cards: true }, omdbFallback = true } = await omdbSettings(['extraRatings']);
   if (!omdbFallback || !(extraRatings.rt || extraRatings.mc || extraRatings.awards)) return { extras: null };
   const key = 'x:' + imdbID;
   const stored = (await chrome.storage.local.get(key))[key];

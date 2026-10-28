@@ -359,7 +359,7 @@ const MODE_SAID = {
 const LABEL_BOXES = [...document.querySelectorAll('input[name=badgeLabel]')];
 
 async function loadBadges() {
-  const { cardBadges = 'always', hideNA = false, badgeLabel = 'star' } =
+  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star' } =
     await chrome.storage.sync.get(['cardBadges', 'hideNA', 'badgeLabel']);
   for (const box of MODE_BOXES) box.checked = box.value === cardBadges;
   $('hideNA').checked = hideNA;
@@ -456,19 +456,20 @@ $('test').addEventListener('click', async () => {
   refreshStats();
 });
 
-// Extra scores from OMDb (sync extraRatings {rt, mc, awards}). The boxes are
-// greyed out, with a note, until the saved key is confirmed working (a
-// passed Test, or any OMDb answer); ticks are kept while greyed, so they
-// apply again once the key works.
+// Extra scores from OMDb (sync extraRatings {rt, mc, awards, cards}; all
+// four on until the user unticks one, the same default as content.js and
+// background.js). The boxes are greyed out, with a note, until the saved
+// key is confirmed working (a passed Test, or any OMDb answer); ticks are
+// kept while greyed, so they apply again once the key works.
 const EXTRA_BOXES = [...document.querySelectorAll('input.extra')];
+const EXTRAS_DEFAULT = { rt: true, mc: true, awards: true, cards: true };
 
 async function loadExtras(keyOk) {
-  const { extraRatings = {} } = await chrome.storage.sync.get('extraRatings');
+  const { extraRatings = EXTRAS_DEFAULT } = await chrome.storage.sync.get('extraRatings');
   for (const box of EXTRA_BOXES) {
     box.checked = !!extraRatings[box.dataset.extra];
     box.disabled = !keyOk;
   }
-  $('xAll').disabled = !keyOk;
   $('extras').classList.toggle('off', !keyOk);
   $('extrasNote').hidden = !!keyOk;
 }
@@ -485,13 +486,6 @@ for (const box of EXTRA_BOXES) {
     say(box.parentElement.textContent.trim() + (box.checked ? ' on.' : ' off.'));
   });
 }
-
-// One click for all four, for the people who tick them every time.
-$('xAll').addEventListener('click', async () => {
-  for (const b of EXTRA_BOXES) b.checked = true;
-  await saveExtras();
-  say('Rotten Tomatoes, Metacritic, Awards and On cards too on.');
-});
 
 // ------------------------------------------------------------ advanced
 

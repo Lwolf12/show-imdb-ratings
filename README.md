@@ -48,7 +48,8 @@ is a small adapter file, so more services can be added.
    an awards headline next to the IMDb rating in previews, banners and
    title pages (one request per title, remembered for 30 days), and with
    **On cards too** the two scores on card badges as well, which uses more
-   of the 1,000 lookups a day. Mostly films: OMDb rarely has these scores
+   of the 1,000 lookups a day. All four are on until you untick one.
+   Mostly films: OMDb rarely has these scores
    for series. Clicking the tomato score opens Rotten Tomatoes and the MC
    score Metacritic (the title's page when OMDb knows it, else that site's
    search); the rest of the badge opens IMDb. Until the key works those
@@ -59,9 +60,10 @@ is a small adapter file, so more services can be added.
    there. Changes apply to open tabs at once.
 5. Optional: under **Badges on title cards**, show card badges always,
    only when the mouse is over a card, or not at all (previews, banners
-   and title pages keep their rating either way); hide the grey "n/a"
-   badges; and pick the label before the score, a star (default) or the
-   yellow IMDb tag. Hovering any badge says it is the IMDb rating.
+   and title pages keep their rating either way); show the grey "n/a"
+   badges, hidden by default; and pick the label before the score, a star
+   (default) or the yellow IMDb tag. Hovering any badge says it is the
+   IMDb rating and where it came from.
 
 ## Local database
 
