@@ -85,8 +85,9 @@ build. The full rebuild (all three files, about 280 MB) runs monthly, and
 sooner once that count of waiting titles is large. Both intervals can be
 changed under Advanced on the panel: the ratings weekly, every two weeks
 or monthly; the full rebuild monthly, every two or every three months,
-which costs little with a working OMDb key covering new titles meanwhile.
-The panel shows the
+which costs little with a working OMDb key covering new titles meanwhile,
+or only when you click Update now, for a capped connection that can take
+the 9 MB but not the 280. The panel shows the
 title count, the dates of the last full build and ratings update, the next
 refresh with its size and due date, and progress; **Update now** is always
 a full rebuild, and **Update ratings only** under Advanced runs the 9 MB

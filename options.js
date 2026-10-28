@@ -33,7 +33,7 @@ function due(ts) {
 const WAITING = (n) => n.toLocaleString() + ' newly rated title' + (n === 1 ? '' : 's') + ' waiting for the full rebuild';
 
 // The refresh intervals (background.js schedule) as words.
-const EVERY = { 7: 'weekly', 14: 'every two weeks', 30: 'monthly', 61: 'every two months', 91: 'every three months' };
+const EVERY = { 0: 'only when you click Update now', 7: 'weekly', 14: 'every two weeks', 30: 'monthly', 61: 'every two months', 91: 'every three months' };
 
 // What the automatic refresh does with the intervals in force.
 function scheduleText(s) {
@@ -134,7 +134,7 @@ async function refreshStats() {
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
   $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : !l.present ? 'Not built yet. Click Update now; it takes a few minutes' + (keyed ? ', or choose OMDb only above.' : '.')
-    : localStatus(l, building);
+    : localStatus(l, building, !!(u.schedule && u.schedule.manual));
   $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
@@ -155,14 +155,22 @@ async function refreshStats() {
 // stage was interrupted has titles only until the next full rebuild. One
 // built by an older version is rebuilt once by itself, unless the
 // automatic refresh is off: then this line asks for it.
-function localStatus(l, building) {
+// manual: the full rebuild is Update now's alone (Advanced), so what waits
+// for one says so.
+function localStatus(l, building, manual) {
   let s = l.titles.toLocaleString() + ' titles' + (l.episodes ? ' and ' + l.episodes.toLocaleString() + ' episodes' : '') +
     ', built ' + l.built + ' (' + ago(l.builtAt) + ')';
   if (l.ratingsAt > l.builtAt) s += '; ratings updated ' + l.ratingsBuilt + ' (' + ago(l.ratingsAt) + ')';
   s += '.';
-  if (l.unknown) s += ' ' + WAITING(l.unknown).replace(/^./, (c) => c.toUpperCase()) + '.';
-  if (!l.episodes) s += building ? ' Episode ratings are still downloading.' : ' Episode ratings arrive with the next full rebuild.';
-  if (l.outdated) s += ' Built by an older version; the next automatic refresh rebuilds it (or click Update now).';
+  if (l.unknown) s += ' ' + WAITING(l.unknown).replace(/^./, (c) => c.toUpperCase()) + (manual ? ' (Update now).' : '.');
+  if (!l.episodes) {
+    s += building ? ' Episode ratings are still downloading.'
+      : manual ? ' Episode ratings arrive when you click Update now.' : ' Episode ratings arrive with the next full rebuild.';
+  }
+  if (l.outdated) {
+    s += manual ? ' Built by an older version; click Update now to rebuild it, which ratings updates need too.'
+      : ' Built by an older version; the next automatic refresh rebuilds it (or click Update now).';
+  }
   return s;
 }
 
@@ -195,6 +203,7 @@ function nextRefresh(u) {
     episodes: 'the episode list never finished',
     format: 'it was built by an older version',
   }[n.reason];
+  if (n.manual) return 'Waiting for Update now: full rebuild (about ' + n.mb + ' MB)' + (why ? ', because ' + why : '') + '.';
   return 'Next: full rebuild (about ' + n.mb + ' MB), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
 }
 
