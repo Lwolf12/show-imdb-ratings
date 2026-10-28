@@ -50,7 +50,8 @@ The Chrome listing is in `LISTING.md`.
 > file (about 9 MB) is re-read each week; the full title list is rebuilt
 > about monthly, and the refresh can be switched off for metered
 > connections. Lookups happen on your device, without sending the titles
-> you browse to anyone.
+> you browse to anyone (or, with an OMDb key, skip the database and look
+> every title up at OMDb).
 > Nothing downloads until you click Update now in the settings, which open
 > in a small window right after installing. Later, the extension's toolbar
 > button opens them. Every service is on from the start; any of them can

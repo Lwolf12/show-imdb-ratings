@@ -150,7 +150,7 @@ async function omdbSettings(more = []) {
 // every lookup comes back empty. building: a build is running right now.
 async function setupStatus() {
   const { omdbFallback = true, omdbKey } = await omdbSettings();
-  const present = (await RatingsDB.status().catch(() => ({ present: false }))).present;
+  const present = !(await omdbOnly()) && (await RatingsDB.status().catch(() => ({ present: false }))).present;
   const needed = !present && (!omdbFallback || !omdbKey || omdbKeyRejected);
   const state = await getBuildState();
   return { needed, building: state.status === 'running' };
@@ -159,7 +159,7 @@ async function setupStatus() {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
   if (changes.omdbKey) omdbKeyRejected = false;
-  if (changes.omdbKey || changes.omdbFallback) updateBadge();
+  if (changes.omdbKey || changes.omdbFallback || changes.ratingsSource) updateBadge();
 });
 
 // Stored answers from before OMDb's fuzzy matches were rejected may carry
@@ -454,6 +454,16 @@ async function omdbUsable() {
   return omdbFallback && (await omdbKeyConfirmed());
 }
 
+// The user chose "OMDb only" on the settings page (sync ratingsSource):
+// no local database is built, refreshed or consulted, and every lookup
+// goes to OMDb. The page offers the choice once the key is confirmed and
+// deletes the database on the switch; a database that arrives anyway (a
+// synced setting on a device that has one) is simply left unused.
+async function omdbOnly() {
+  const { ratingsSource } = await chrome.storage.sync.get('ratingsSource');
+  return ratingsSource === 'omdb';
+}
+
 // The refresh intervals in force: { ratingsDays, fullDays, auto, keyed }.
 // ratingsDays and fullDays are the user's choices from sync storage, or
 // the defaults; a value outside the offered choices counts as unset.
@@ -483,7 +493,7 @@ async function refreshIntervals() {
 //             the database has no name for
 //   age       the usual schedule
 async function refreshPlan(meta) {
-  if (!meta) return { kind: null };
+  if (!meta || (await omdbOnly())) return { kind: null };
   const now = Date.now();
   const s = await refreshIntervals();
   const full = (reason, due) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full, ...s });
@@ -618,6 +628,7 @@ async function usage() {
   return {
     day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk,
     ratingsDays: schedule.ratingsDays, fullDays: schedule.auto ? 0 : schedule.fullDays, schedule,
+    omdbOnly: await omdbOnly(),
   };
 }
 
@@ -642,7 +653,7 @@ async function lookup(title, kind, refresh, year) {
   // remembered miss. The local database answers first; it costs no requests.
   // A remembered miss (OMDb's, from while there was no database, say) must
   // not hide a rating the database has now, so it gets this check too.
-  const local = await lookupLocal(title, kind, year);
+  const local = (await omdbOnly()) ? null : await lookupLocal(title, kind, year);
   if (local) {
     const entry = { ...local, ts: Date.now() };
     const writes = { [key]: entry };
@@ -663,7 +674,7 @@ async function lookup(title, kind, refresh, year) {
   // a miss. (If there is no local database either, fetchRating() reports
   // 'nokey' so the page can warn.)
   const { omdbFallback = true, omdbKey } = await omdbSettings();
-  const localPresent = (await RatingsDB.status()).present;
+  const localPresent = !(await omdbOnly()) && (await RatingsDB.status()).present;
   if (!omdbFallback || (!omdbKey && localPresent)) {
     return stored ? { ...stored, stale: false } : { rating: null, source: 'local' };
   }
@@ -697,7 +708,7 @@ async function lookup(title, kind, refresh, year) {
 const SEASON_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function lookupEpisodes(imdbID, season) {
-  const local = await RatingsDB.lookupEpisodes(imdbID, season).catch(() => null);
+  const local = (await omdbOnly()) ? null : await RatingsDB.lookupEpisodes(imdbID, season).catch(() => null);
   if (local) return { episodes: local, source: 'local' };
 
   const key = 'e:' + imdbID + ':' + season;

@@ -50,22 +50,27 @@ const DONE_RECENT_MS = 10 * 60 * 1000;
 // The ratings-only pass (Advanced) needs a finished full build of the
 // current format to update; refreshStats says whether there is one.
 let ratingsPassOk = false;
+// "OMDb only" chosen (background.js omdbOnly): the build and refresh
+// controls are greyed, since no database is built or consulted.
+let omdbOnlyMode = false;
+let dbPresent = false;
 
 function showBuild(build) {
   const box = $('buildProgress');
   const btn = $('build');
   const running = !!build && build.status === 'running';
+  btn.title = omdbOnlyMode ? 'Not used with OMDb only' : '';
   $('buildRatings').disabled = running || !ratingsPassOk;
   $('buildRatings').title = ratingsPassOk ? 'Re-reads IMDb’s ratings file and updates every stored rating' : 'Needs a finished full build first (Update now)';
   $('buildDone').hidden = true;
   if (!build || build.status === 'idle') {
     box.hidden = true;
-    btn.disabled = false;
+    btn.disabled = omdbOnlyMode;
     return;
   }
   if (build.status === 'done') {
     box.hidden = true;
-    btn.disabled = false;
+    btn.disabled = omdbOnlyMode;
     if (Date.now() - (build.at || 0) < DONE_RECENT_MS) {
       $('doneText').textContent = build.kind === 'ratings'
         ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
@@ -115,14 +120,29 @@ async function refreshStats() {
   const l = u.local || {};
   builtAt = l.present ? l.builtAt || 0 : 0;
   const building = u.build && u.build.status === 'running';
-  ratingsPassOk = !!(l.present && !l.outdated && l.episodes);
-  $('localStatus').textContent = !l.present ? 'Not built yet. Click Update now; it takes a few minutes.' : localStatus(l, building);
-  $('nextRefresh').textContent = l.present && !building ? nextRefresh(u) : '';
+  const keyed = !!(u.schedule && u.schedule.keyed); // OMDb lookups on, key confirmed
+  omdbOnlyMode = !!u.omdbOnly;
+  dbPresent = !!l.present;
+  ratingsPassOk = !omdbOnlyMode && !!(l.present && !l.outdated && l.episodes);
+  // The source choice: OMDb only is offered once the key works (it stays
+  // selectable while chosen, so a broken key can still be switched away from).
+  $('sourceLocal').checked = !omdbOnlyMode;
+  $('sourceOmdb').checked = omdbOnlyMode;
+  $('sourceOmdb').disabled = !keyed && !omdbOnlyMode;
+  $('sourceOmdbLabel').classList.toggle('off', $('sourceOmdb').disabled);
+  $('sourceOmdbLabel').title = $('sourceOmdb').disabled ? 'Needs a working OMDb key: set one up and click Test under OMDb lookups' : '';
+  $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
+    : !l.present ? 'Not built yet. Click Update now; it takes a few minutes' + (keyed ? ', or choose OMDb only above.' : '.')
+    : localStatus(l, building);
+  $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
+  $('auto').disabled = omdbOnlyMode;
   $('autoText').textContent = scheduleText(u.schedule);
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
-  $('fullAuto').textContent = 'automatically (' + EVERY[u.schedule.keyed ? 91 : 30] + ')';
+  $('ratingsDays').disabled = omdbOnlyMode;
+  $('fullDays').disabled = omdbOnlyMode;
+  $('fullAuto').textContent = 'automatically (' + EVERY[keyed ? 91 : 30] + ')';
   showBuild(u.build);
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
@@ -143,6 +163,18 @@ function localStatus(l, building) {
   if (l.unknown) s += ' ' + WAITING(l.unknown).replace(/^./, (c) => c.toUpperCase()) + '.';
   if (!l.episodes) s += building ? ' Episode ratings are still downloading.' : ' Episode ratings arrive with the next full rebuild.';
   if (l.outdated) s += ' Built by an older version; the next automatic refresh rebuilds it (or click Update now).';
+  return s;
+}
+
+// The status line with OMDb only chosen. keyed: OMDb can answer (lookups
+// on, key confirmed); otherwise nothing can, and the line says what to fix.
+// A database still on the device (the choice synced from elsewhere) is
+// pointed out, since it is unused and takes space.
+function omdbOnlyStatus(l, keyed) {
+  let s = keyed
+    ? 'Not used: ratings come from OMDb (1,000 lookups a day, each remembered for 30 days).'
+    : 'OMDb only is chosen, but OMDb lookups are off or the key is not working (see OMDb lookups below). Fix that, or choose Local database and click Update now.';
+  if (l.present) s += ' A database is still on this device; Delete database under Advanced frees the space.';
   return s;
 }
 
@@ -467,8 +499,10 @@ $('clear').addEventListener('click', async () => {
   refreshStats();
 });
 
-$('deleteDb').addEventListener('click', async () => {
-  if (!confirm('Delete the local ratings database? Ratings then come from OMDb only (if set up) until you click Update now, which downloads about 280 MB again.')) return;
+// Deletes the database (background.js deleteDatabase) and reports in the
+// status line; true when it went. Shared by Delete database and the
+// switch to OMDb only.
+async function deleteDatabase() {
   // Emptying ~420,000 titles takes a few seconds; keep Update now from
   // acting on the old build time meanwhile (it would say "current").
   $('build').disabled = true;
@@ -487,9 +521,45 @@ $('deleteDb').addEventListener('click', async () => {
     confirmUntil = 0;
     showNote('');
     say('Database deleted' + (r.forgotten ? ', with ' + r.forgotten.toLocaleString() + ' ratings remembered from it' : '') + '. Reload open streaming tabs to see the change.');
-  } else say('Could not delete the database: ' + ((r && r.message) || 'no answer from the extension') + '.', 'bad');
+    return true;
+  }
+  say('Could not delete the database: ' + ((r && r.message) || 'no answer from the extension') + '.', 'bad');
+  return false;
+}
+
+$('deleteDb').addEventListener('click', async () => {
+  if (!confirm('Delete the local ratings database? Ratings then come from OMDb only (if set up) until you click Update now, which downloads about 280 MB again.')) return;
+  await deleteDatabase();
   refreshStats();
 });
+
+// Where ratings come from (sync ratingsSource, background.js omdbOnly).
+// Switching to OMDb only deletes a database that exists, after asking;
+// switching back shows Update now again, and nothing downloads until it
+// is clicked.
+for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
+  box.addEventListener('change', async () => {
+    if (!box.checked) return;
+    if (box.value === 'omdb') {
+      if (dbPresent) {
+        if (!confirm('Switch to OMDb only? The local ratings database is deleted. Choosing Local database again later means a new build (about 280 MB).')) {
+          $('sourceLocal').checked = true;
+          return;
+        }
+        if (!(await deleteDatabase())) {
+          $('sourceLocal').checked = true;
+          return;
+        }
+      }
+      await chrome.storage.sync.set({ ratingsSource: 'omdb' });
+      say('Ratings come from OMDb only' + (dbPresent ? '; the database was deleted. Reload open streaming tabs to see the change.' : '.'));
+    } else {
+      await chrome.storage.sync.set({ ratingsSource: 'local' });
+      say(dbPresent ? 'Ratings come from the local database.' : 'Click Update now to build the local database (about 280 MB).');
+    }
+    refreshStats();
+  });
+}
 
 // ------------------------------------------------------------------ go
 

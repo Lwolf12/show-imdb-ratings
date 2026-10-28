@@ -31,7 +31,8 @@ with `store/build-zip.ps1` and lands in `dist/`.
 > episode list has finished). After that only the small ratings file (about
 > 9 MB) is re-read each week; the full title list is rebuilt about monthly,
 > and the refresh can be switched off for metered connections. Lookups
-> happen on your device, without sending the titles you browse to anyone. Nothing downloads until you click
+> happen on your device, without sending the titles you browse to anyone
+> (or, with an OMDb key, skip the database and look every title up at OMDb). Nothing downloads until you click
 > Update now in the settings, which open in a small window right after installing.
 > Later, the extension's icon (a poster with a gold star) in Chrome's
 > puzzle-piece menu opens them (pin it to
