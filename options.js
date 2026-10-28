@@ -147,7 +147,7 @@ async function refreshStats() {
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
-  loadExtras(u.keyOk);
+  loadExtras(keyed);
 }
 
 // What the database holds and when it was built: the full build's date,
@@ -390,14 +390,19 @@ $('hideNA').addEventListener('change', async () => {
 // ---------------------------------------------------------------- OMDb
 
 // The checkbox means "OMDb is in use": fallback enabled and a key saved.
-// Ticking it reveals the key fields; unticking disables the fallback but
-// keeps the key so it can be turned back on without re-entering it.
+// The key field is always there, since entering a key is how OMDb starts;
+// the checkbox stays greyed until one is saved (Save or Test turn the
+// lookups on), and unticking it keeps the key so it can be turned back on
+// without re-entering it. The extras below grey out until the lookups are
+// on with a working key (loadExtras).
 async function loadOmdb() {
   const { omdbKey = '', omdbFallback = true } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback']);
   $('key').value = omdbKey;
   const on = !!omdbKey && omdbFallback && (await omdbConsent());
   $('useOmdb').checked = on;
-  $('omdbBox').hidden = !on;
+  $('useOmdb').disabled = !omdbKey;
+  $('useOmdb').parentElement.classList.toggle('off', !omdbKey);
+  $('useOmdb').parentElement.title = omdbKey ? '' : 'Enter a key below first';
 }
 
 // Firefox: OMDb lookups send title names off the device, which Firefox has
@@ -412,10 +417,9 @@ $('useOmdb').addEventListener('change', async () => {
     say(NO_CONSENT, 'bad');
     return;
   }
-  $('omdbBox').hidden = !on;
   await chrome.storage.sync.set({ omdbFallback: on });
-  if (on && !$('key').value.trim()) $('key').focus();
-  else say(on ? 'OMDb lookups on.' : 'OMDb lookups off.');
+  say(on ? 'OMDb lookups on.' : 'OMDb lookups off.');
+  refreshStats();
 });
 
 $('save').addEventListener('click', async () => {
@@ -424,7 +428,8 @@ $('save').addEventListener('click', async () => {
   await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
   // A new key means an earlier "limit reached" pause no longer applies.
   await chrome.storage.local.remove(['limitHitDay', 'limitPauseUntil']);
-  say(omdbKey ? 'Key saved.' : 'Key cleared.');
+  say(omdbKey ? 'Key saved; OMDb lookups on.' : 'Key cleared.');
+  await loadOmdb();
   refreshStats();
 });
 
@@ -453,6 +458,7 @@ $('test').addEventListener('click', async () => {
   }
   out.className = r.ok ? 'ok' : 'bad';
   out.textContent = (r.ok ? 'OK: ' : 'Failed: ') + r.detail;
+  await loadOmdb();
   refreshStats();
 });
 
