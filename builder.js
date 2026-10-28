@@ -107,10 +107,15 @@ const RatingsBuilder = (() => {
     // 2. Walk basics, keep rated movies/series, index by normalised title.
     //    The ids table takes every rated title that is not an episode, kept
     //    or not, so the weekly pass can tell a new title from one it has
-    //    seen before (db.js updateRatings).
+    //    seen before (db.js updateRatings). Rated episodes are noted, and
+    //    those the episode pass does not store (their series is not kept)
+    //    join the table afterwards for the same reason; so does a rated ID
+    //    with no basics row at all. Without that, the first weekly pass
+    //    would report a few thousand "new" titles right after a build.
     const index = new Map();
     const ids = new Map();
     const seriesIds = new Set();
+    const episodeIds = new Set(); // rated episodes (minVotes), not yet stored
     let kept = 0;
     let first = true;
     for await (const line of lines(BASE + 'title.basics.tsv.gz', (r, t) => progress('basics', t ? r / t : 0, kept))) {
@@ -120,6 +125,7 @@ const RatingsBuilder = (() => {
       if (!r || r[1] < minVotes) continue;
       const f = line.split('\t');
       if (f[1] !== 'tvEpisode') ids.set(f[0], [r[0], r[1]]);
+      else episodeIds.add(f[0]);
       const type = TYPE[f[1]];
       if (!type) continue;
       if (f[1] === 'short' && r[1] < SHORT_MIN_VOTES) continue;
@@ -130,6 +136,9 @@ const RatingsBuilder = (() => {
       if (f[3] !== f[2]) add(index, RatingsDB.normalise(f[3]), entry);
     }
     for (const list of index.values()) list.sort((a, b) => b[4] - a[4]);
+    for (const [id, r] of ratings) {
+      if (r[1] >= minVotes && !ids.has(id) && !episodeIds.has(id)) ids.set(id, [r[0], r[1]]); // no basics row
+    }
 
     // 3. Titles go live now: badges can start while the episodes download.
     progress('writing', 0);
@@ -165,14 +174,19 @@ const RatingsBuilder = (() => {
       let show = episodes.get(f[1]);
       if (!show) episodes.set(f[1], (show = {}));
       (show[season] || (show[season] = [])).push([ep, r[0], r[1], f[0]]);
+      episodeIds.delete(f[0]);
       episodeCount++;
     }
     for (const show of episodes.values()) for (const list of Object.values(show)) list.sort((a, b) => a[0] - b[0]);
+    // Rated episodes that found no kept series: known to the ids table.
+    const leftover = new Map();
+    for (const id of episodeIds) leftover.set(id, ratings.get(id));
+    episodeIds.clear();
     ratings.clear();
 
     // 5. Episodes into the live database.
     progress('writing-episodes', 0);
-    await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1));
+    await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1), leftover);
     return { ...info, episodes: episodeCount };
   }
 

@@ -250,14 +250,20 @@ const RatingsDB = (() => {
   }
 
   // Stage two: the episodes (Map of series imdbID -> { season: [[ep, rating,
-  // votes, imdbID]] }) into the live pair's episode store. onProgress(done, total).
-  async function writeEpisodes(episodes, count, onProgress) {
+  // votes, imdbID]] }) into the live pair's episode store, and extraIds
+  // (Map of imdbID -> [rating, votes]: rated episodes with no kept series)
+  // into the ids table, so the ratings pass does not take them for new.
+  // onProgress(done, total).
+  async function writeEpisodes(episodes, count, onProgress, extraIds = null) {
     const db = await open();
     const m = await getMeta();
     if (!m) throw new Error('no database to add episodes to');
     const series = [...episodes.keys()];
-    await writeBatches(db, episodeStore(m.store), series, (s, k) => s.put({ k, s: episodes.get(k) }), onProgress, 0, series.length);
-    await putMeta({ ...m, episodes: count, episodesPending: false });
+    const extra = extraIds ? [...extraIds.keys()] : [];
+    const total = series.length + extra.length;
+    await writeBatches(db, episodeStore(m.store), series, (s, k) => s.put({ k, s: episodes.get(k) }), onProgress, 0, total);
+    await writeBatches(db, 'ids', extra, (s, k) => s.put(extraIds.get(k), k), onProgress, series.length, total);
+    await putMeta({ ...m, episodes: count, episodesPending: false, ids: (m.ids || 0) + extra.length });
   }
 
   // The weekly pass: ratings (Map of imdbID -> [rating, votes], every row of
