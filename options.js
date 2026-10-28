@@ -47,9 +47,16 @@ function scheduleText(s) {
 // already covered by the "built today" line above.
 const DONE_RECENT_MS = 10 * 60 * 1000;
 
+// The ratings-only pass (Advanced) needs a finished full build of the
+// current format to update; refreshStats says whether there is one.
+let ratingsPassOk = false;
+
 function showBuild(build) {
   const box = $('buildProgress');
   const btn = $('build');
+  const running = !!build && build.status === 'running';
+  $('buildRatings').disabled = running || !ratingsPassOk;
+  $('buildRatings').title = ratingsPassOk ? 'Re-reads IMDb’s ratings file and updates every stored rating' : 'Needs a finished full build first (Update now)';
   $('buildDone').hidden = true;
   if (!build || build.status === 'idle') {
     box.hidden = true;
@@ -108,6 +115,7 @@ async function refreshStats() {
   const l = u.local || {};
   builtAt = l.present ? l.builtAt || 0 : 0;
   const building = u.build && u.build.status === 'running';
+  ratingsPassOk = !!(l.present && !l.outdated && l.episodes);
   $('localStatus').textContent = !l.present ? 'Not built yet. Click Update now; it takes a few minutes.' : localStatus(l, building);
   $('nextRefresh').textContent = l.present && !building ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
@@ -188,6 +196,14 @@ $('build').addEventListener('click', async () => {
   showNote('');
   $('build').disabled = true;
   showBuild(await chrome.runtime.sendMessage({ type: 'build' }));
+});
+
+// The ratings-only pass by hand (Advanced): what the weekly refresh does,
+// so the progress and the "Ratings updated" box are the same.
+$('buildRatings').addEventListener('click', async () => {
+  showNote('');
+  $('buildRatings').disabled = true;
+  showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
 });
 
 $('auto').addEventListener('change', async () => {
