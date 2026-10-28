@@ -41,12 +41,18 @@ const LIMIT_PAUSE_MS = 60 * 60 * 1000; // after OMDb reports the limit
 // carries nearly every weekly change, so it is re-read weekly; the title
 // and episode lists (the bulk of the download) only when new titles are
 // due. Without a working OMDb key the full rebuild is the only way new
-// titles arrive, so it comes monthly; with one, quarterly. A ratings pass
-// that finds this many rated IDs without a name brings it forward: new
-// titles cross the 25-vote line at a couple of thousand a week.
-const RATINGS_MAX_AGE_MS = 7 * DAY_MS;
-const DB_MAX_AGE_MS = 30 * DAY_MS;
-const DB_MAX_AGE_KEYED_MS = 91 * DAY_MS;
+// titles arrive, so it comes monthly; with one, quarterly. Those are the
+// defaults: the settings page's Advanced section stores other intervals
+// as ratingsDays and fullDays in sync storage (refreshIntervals), fullDays 0
+// meaning the automatic choice. A ratings pass that finds this many
+// rated IDs without a name brings the full rebuild forward whatever the
+// interval: titles and episodes cross the 25-vote line at a few hundred
+// a week, so the usual schedule stays well under it.
+const RATINGS_DAYS = 7;
+const FULL_DAYS = 30;
+const FULL_DAYS_KEYED = 91;
+const RATINGS_DAYS_CHOICES = [7, 14, 30];
+const FULL_DAYS_CHOICES = [30, 61, 91];
 const UNKNOWN_REBUILD = 10000;
 const DOWNLOAD_MB = { ratings: 9, full: 280 }; // what the settings page says each costs
 const DB_CHECK_MINUTES = 360; // how often the alarm looks at what is due
@@ -448,10 +454,28 @@ async function omdbUsable() {
   return omdbFallback && (await omdbKeyConfirmed());
 }
 
+// The refresh intervals in force: { ratingsDays, fullDays, auto, keyed }.
+// ratingsDays and fullDays are the user's choices from sync storage, or
+// the defaults; a value outside the offered choices counts as unset.
+// auto: the full interval was not chosen by the user, so it follows the
+// OMDb key (keyed: lookups on and the key confirmed).
+async function refreshIntervals() {
+  const { ratingsDays, fullDays } = await chrome.storage.sync.get(['ratingsDays', 'fullDays']);
+  const keyed = await omdbUsable();
+  const auto = !FULL_DAYS_CHOICES.includes(fullDays);
+  return {
+    ratingsDays: RATINGS_DAYS_CHOICES.includes(ratingsDays) ? ratingsDays : RATINGS_DAYS,
+    fullDays: auto ? (keyed ? FULL_DAYS_KEYED : FULL_DAYS) : fullDays,
+    auto,
+    keyed,
+  };
+}
+
 // What the next automatic refresh is and when it is due, from the
 // database's meta record: { kind: 'full' | 'ratings', reason, due, mb,
-// keyed }, or { kind: null } without a database. Shared by maybeRefresh and
-// the settings page (usage), so both tell the same story.
+// keyed, ratingsDays, fullDays, auto } (the last four from refreshIntervals), or
+// { kind: null } without a database. Shared by maybeRefresh and the
+// settings page (usage), so both tell the same story.
 //   format    built by an older version (db.js FORMAT): rebuilt once,
 //             whatever its age, since lookups would miss some old keys
 //   episodes  the episode stage never finished (interrupted first run)
@@ -461,15 +485,15 @@ async function omdbUsable() {
 async function refreshPlan(meta) {
   if (!meta) return { kind: null };
   const now = Date.now();
-  const full = (reason, due, keyed) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full, keyed });
+  const s = await refreshIntervals();
+  const full = (reason, due) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full, ...s });
   if ((meta.format || 1) < RatingsDB.FORMAT) return full('format', now);
   if (!meta.episodes) return full('episodes', now);
-  const keyed = await omdbUsable();
-  if ((meta.unknown || 0) >= UNKNOWN_REBUILD) return full('unknown', now, keyed);
-  const fullDue = (meta.builtAt || 0) + (keyed ? DB_MAX_AGE_KEYED_MS : DB_MAX_AGE_MS);
-  const ratingsDue = (meta.ratingsAt || meta.builtAt || 0) + RATINGS_MAX_AGE_MS;
-  if (fullDue <= ratingsDue) return full('age', fullDue, keyed);
-  return { kind: 'ratings', reason: 'age', due: ratingsDue, mb: DOWNLOAD_MB.ratings, keyed };
+  if ((meta.unknown || 0) >= UNKNOWN_REBUILD) return full('unknown', now);
+  const fullDue = (meta.builtAt || 0) + s.fullDays * DAY_MS;
+  const ratingsDue = (meta.ratingsAt || meta.builtAt || 0) + s.ratingsDays * DAY_MS;
+  if (fullDue <= ratingsDue) return full('age', fullDue);
+  return { kind: 'ratings', reason: 'age', due: ratingsDue, mb: DOWNLOAD_MB.ratings, ...s };
 }
 
 // Runs whatever refresh is due (refreshPlan), if the user built a database
@@ -588,7 +612,13 @@ async function usage() {
   const next = await refreshPlan(await RatingsDB.getMeta().catch(() => null));
   const build = await getBuildState();
   const keyOk = await omdbKeyConfirmed();
-  return { day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk };
+  // The intervals as chosen (fullDays 0 = automatic) for the Advanced
+  // selects, and the ones in force (schedule) for the texts.
+  const schedule = await refreshIntervals();
+  return {
+    day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk,
+    ratingsDays: schedule.ratingsDays, fullDays: schedule.auto ? 0 : schedule.fullDays, schedule,
+  };
 }
 
 async function lookup(title, kind, refresh, year) {

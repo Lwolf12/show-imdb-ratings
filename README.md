@@ -83,7 +83,10 @@ ratings file (about 9 MB) is re-read and every stored rating updated in
 place; it also counts the titles that have been rated since the last full
 build. The full rebuild (all three files, about 280 MB) runs about monthly,
 or every three months when a working OMDb key covers new titles meanwhile,
-and sooner once that count of waiting titles is large. The panel shows the
+and sooner once that count of waiting titles is large. Both intervals can
+be changed under Advanced on the panel: the ratings weekly, every two weeks
+or monthly; the full rebuild monthly, every two or every three months. The
+panel shows the
 title count, the dates of the last full build and ratings update, the next
 refresh with its size and due date, and progress; **Update now** is always
 a full rebuild. The automatic refresh can be switched off there, which is

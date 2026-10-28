@@ -32,6 +32,14 @@ function due(ts) {
 
 const WAITING = (n) => n.toLocaleString() + ' newly rated title' + (n === 1 ? '' : 's') + ' waiting for the full rebuild';
 
+// The refresh intervals (background.js schedule) as words.
+const EVERY = { 7: 'weekly', 14: 'every two weeks', 30: 'monthly', 61: 'every two months', 91: 'every three months' };
+
+// What the automatic refresh does with the intervals in force.
+function scheduleText(s) {
+  return 'ratings ' + EVERY[s.ratingsDays] + ' (about 9 MB), the full title list ' + EVERY[s.fullDays] + ' (about 280 MB)';
+}
+
 // ------------------------------------------------------------ database
 
 // The green "All set" box is for a build that just finished; the session
@@ -103,6 +111,10 @@ async function refreshStats() {
   $('localStatus').textContent = !l.present ? 'Not built yet. Click Update now; it takes a few minutes.' : localStatus(l, building);
   $('nextRefresh').textContent = l.present && !building ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
+  $('autoText').textContent = scheduleText(u.schedule);
+  $('ratingsDays').value = String(u.ratingsDays);
+  $('fullDays').value = String(u.fullDays);
+  $('fullAuto').textContent = 'automatically (' + EVERY[u.schedule.keyed ? 91 : 30] + ')';
   showBuild(u.build);
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
@@ -134,8 +146,8 @@ function nextRefresh(u) {
   if (u.autoRefresh === false) return 'Automatic refresh is off. Update now rebuilds everything (about 280 MB).';
   if (!n.kind) return '';
   if (n.kind === 'ratings') {
-    return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild' +
-      (n.keyed ? ' (every three months; OMDb covers them meanwhile).' : ' (about monthly); an OMDb key covers them sooner.');
+    return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +
+      EVERY[n.fullDays] + (n.keyed ? '; OMDb covers them meanwhile).' : '); an OMDb key covers them sooner.');
   }
   const why = {
     unknown: 'many newly rated titles are waiting',
@@ -180,9 +192,19 @@ $('build').addEventListener('click', async () => {
 
 $('auto').addEventListener('change', async () => {
   await chrome.storage.sync.set({ autoRefresh: $('auto').checked });
-  say($('auto').checked ? 'Automatic refresh on: ratings weekly, the full title list about monthly.' : 'Automatic refresh off; use Update now when you want.');
+  say($('auto').checked ? 'Automatic refresh on; the intervals are under Advanced.' : 'Automatic refresh off; use Update now when you want.');
   refreshStats();
 });
+
+// The intervals (Advanced). A choice applies at the next six-hourly check;
+// the "Next:" line shows what it made due.
+for (const id of ['ratingsDays', 'fullDays']) {
+  $(id).addEventListener('change', async () => {
+    await chrome.storage.sync.set({ [id]: Number($(id).value) });
+    say('Refresh schedule saved.');
+    refreshStats();
+  });
+}
 
 // Live progress while a build runs: the worker writes its state to session
 // storage, which fires this for every update.
