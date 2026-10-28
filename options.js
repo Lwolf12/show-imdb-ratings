@@ -390,20 +390,42 @@ $('hideNA').addEventListener('change', async () => {
 // ---------------------------------------------------------------- OMDb
 
 // The checkbox means "OMDb is in use": fallback enabled and a key saved.
-// The key field is always there, since entering a key is how OMDb starts;
-// the checkbox stays greyed until one is saved (Save or Test turn the
-// lookups on), and unticking it keeps the key so it can be turned back on
-// without re-entering it. The extras below grey out until the lookups are
-// on with a working key (loadExtras).
+// The key field is always there, since entering a key is how OMDb starts.
+// Test is what saves it (and checks it); while the field holds something
+// other than the saved key, the checkbox, the OMDb-only choice and the
+// extras are greyed with a note, so a pasted key is never mistaken for a
+// saved one. Unticking the checkbox keeps the key so it can be turned
+// back on without re-entering it.
+let savedKey = '';
+
 async function loadOmdb() {
   const { omdbKey = '', omdbFallback = true } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback']);
+  savedKey = omdbKey;
   $('key').value = omdbKey;
   const on = !!omdbKey && omdbFallback && (await omdbConsent());
   $('useOmdb').checked = on;
   $('useOmdb').disabled = !omdbKey;
   $('useOmdb').parentElement.classList.toggle('off', !omdbKey);
-  $('useOmdb').parentElement.title = omdbKey ? '' : 'Enter a key below first';
+  $('useOmdb').parentElement.title = omdbKey ? '' : 'Enter a key below and click Test first';
+  $('testResult').textContent = '';
 }
+
+// A key being typed: nothing below it applies until Test saves it.
+function keyDirty() {
+  return $('key').value.trim() !== savedKey;
+}
+
+$('key').addEventListener('input', () => {
+  const dirty = keyDirty();
+  $('useOmdb').disabled = dirty || !savedKey;
+  $('useOmdb').parentElement.classList.toggle('off', dirty || !savedKey);
+  $('sourceOmdb').disabled = dirty || $('sourceOmdb').disabled;
+  if (dirty) loadExtras(false, '(click Test to save and check the key)');
+  else refreshStats();
+});
+$('key').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('test').click();
+});
 
 // Firefox: OMDb lookups send title names off the device, which Firefox has
 // the user approve. askOmdbConsent (compat.js) asks whenever OMDb is
@@ -422,17 +444,8 @@ $('useOmdb').addEventListener('change', async () => {
   refreshStats();
 });
 
-$('save').addEventListener('click', async () => {
-  const omdbKey = $('key').value.trim();
-  if (omdbKey && !(await askOmdbConsent())) return say(NO_CONSENT, 'bad');
-  await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
-  // A new key means an earlier "limit reached" pause no longer applies.
-  await chrome.storage.local.remove(['limitHitDay', 'limitPauseUntil']);
-  say(omdbKey ? 'Key saved; OMDb lookups on.' : 'Key cleared.');
-  await loadOmdb();
-  refreshStats();
-});
-
+// Test saves whatever is in the field (an empty field clears the key)
+// and then asks the worker to try it, so a pass means the saved key works.
 $('test').addEventListener('click', async () => {
   const out = $('testResult');
   const omdbKey = $('key').value.trim();
@@ -441,10 +454,17 @@ $('test').addEventListener('click', async () => {
     out.textContent = NO_CONSENT;
     return;
   }
+  await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
+  // A new key means an earlier "limit reached" pause no longer applies.
+  await chrome.storage.local.remove(['limitHitDay', 'limitPauseUntil']);
+  if (!omdbKey) {
+    say('Key cleared; OMDb lookups off.');
+    await loadOmdb();
+    refreshStats();
+    return;
+  }
   out.className = '';
   out.textContent = 'Testing…';
-  // Test whatever is in the box, saving it first so the worker sees it.
-  await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
   let r;
   try {
     r = await chrome.runtime.sendMessage({ type: 'test' });
@@ -456,9 +476,11 @@ $('test').addEventListener('click', async () => {
     out.textContent = STALE_WORKER;
     return;
   }
-  out.className = r.ok ? 'ok' : 'bad';
-  out.textContent = (r.ok ? 'OK: ' : 'Failed: ') + r.detail;
+  const text = (r.ok ? 'OK: ' : 'Failed: ') + r.detail;
   await loadOmdb();
+  out.className = r.ok ? 'ok' : 'bad';
+  out.textContent = text;
+  say(r.ok ? 'Key saved and working; OMDb lookups on.' : 'Key saved, but it did not work; see below.', r.ok ? 'ok' : 'bad');
   refreshStats();
 });
 
@@ -470,7 +492,7 @@ $('test').addEventListener('click', async () => {
 const EXTRA_BOXES = [...document.querySelectorAll('input.extra')];
 const EXTRAS_DEFAULT = { rt: true, mc: true, awards: true, cards: true };
 
-async function loadExtras(keyOk) {
+async function loadExtras(keyOk, note = '(needs lookups on with a working key)') {
   const { extraRatings = EXTRAS_DEFAULT } = await chrome.storage.sync.get('extraRatings');
   for (const box of EXTRA_BOXES) {
     box.checked = !!extraRatings[box.dataset.extra];
@@ -478,6 +500,7 @@ async function loadExtras(keyOk) {
   }
   $('extras').classList.toggle('off', !keyOk);
   $('extrasNote').hidden = !!keyOk;
+  $('extrasNote').textContent = note;
 }
 
 async function saveExtras() {

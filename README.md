@@ -41,7 +41,8 @@ is a small adapter file, so more services can be added.
    have, such as brand-new releases. Get one at
    <https://www.omdbapi.com/apikey.aspx> (1,000 lookups a day), activate it
    from the email they send, paste it into the settings panel (click the
-   extension's toolbar icon), **Save**, and use **Test key**. The key comes
+   extension's toolbar icon) and click **Test**, which saves the key and
+   checks it; nothing below the field applies until it passes. The key comes
    from OMDb, not IMDb: IMDb itself doesn't issue keys, and OMDb is a
    separate service that mirrors IMDb's ratings. Once the key works, the
    OMDb section also offers **Also show**: Rotten Tomatoes, Metacritic and
@@ -150,7 +151,7 @@ What differs:
   and the build page reports progress several times a second plus a
   heartbeat every 10 seconds.
 - **Data consent.** The manifest declares no data collection, with
-  "website content" as optional. Turning OMDb on (ticking it, Save or Test)
+  "website content" as optional. Turning OMDb on (ticking it, or Test)
   asks for that through Firefox's own prompt; until it is allowed, OMDb
   counts as off.
 - **Site access.** Firefox lets the user withdraw access to a single site

@@ -105,12 +105,12 @@
 
       <section>
         <h2>OMDb lookups
-          <span class="tip" tabindex="0" data-tip="Covers brand-new releases and titles with few votes that the database doesn't have. OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, and paste the key here. For ratings, only titles the database lacks are sent to OMDb. With Rotten Tomatoes, Metacritic or Awards ticked, the IMDb ID of each title shown is sent too, at most once a month per title."
-                aria-label="Covers brand-new releases and titles with few votes that the database doesn't have. OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, and paste the key here. For ratings, only titles the database lacks are sent to OMDb. With Rotten Tomatoes, Metacritic or Awards ticked, the IMDb ID of each title shown is sent too, at most once a month per title.">i</span></h2>
+          <span class="tip" tabindex="0" data-tip="Covers brand-new releases and titles with few votes that the database doesn't have. OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. For ratings, only titles the database lacks are sent to OMDb. With Rotten Tomatoes, Metacritic or Awards ticked, the IMDb ID of each title shown is sent too, at most once a month per title."
+                aria-label="Covers brand-new releases and titles with few votes that the database doesn't have. OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. For ratings, only titles the database lacks are sent to OMDb. With Rotten Tomatoes, Metacritic or Awards ticked, the IMDb ID of each title shown is sent too, at most once a month per title.">i</span></h2>
         <label class="check"><input id="useOmdb" type="checkbox"> <span id="useOmdbText">Also look up titles the database doesn't have</span></label>
         <div id="omdbBox">
-          <div class="row"><input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="OMDb API key">
-            <button id="save">Save</button><button id="test" type="button">Test</button></div>
+          <div class="row"><input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="OMDb API key, then click Test">
+            <button id="test" type="button">Test</button></div>
           <div id="testResult"></div>
           <div id="extras" class="row extras">Also show:
             <label class="check"><input id="xRt" class="extra" data-extra="rt" type="checkbox"> Rotten Tomatoes</label>
