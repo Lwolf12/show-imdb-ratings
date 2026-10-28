@@ -1,0 +1,15 @@
+# Chrome extension packaging output
+*.crx
+*.pem
+*.zip
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+
+# Store upload ZIPs (store/build-zip.ps1) and the locally built database
+dist/
+data/
