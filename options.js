@@ -54,6 +54,7 @@ let ratingsPassOk = false;
 // controls are greyed, since no database is built or consulted.
 let omdbOnlyMode = false;
 let dbPresent = false;
+let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
 function showBuild(build) {
   const box = $('buildProgress');
@@ -124,18 +125,17 @@ async function refreshStats() {
   omdbOnlyMode = !!u.omdbOnly;
   dbPresent = !!l.present;
   ratingsPassOk = !omdbOnlyMode && !!(l.present && !l.outdated && l.episodes);
-  // The source choice: OMDb only is offered once the key works (it stays
-  // selectable while chosen, so a broken key can still be switched away from).
+  // The source choice: both are always offered. OMDb only before the key
+  // works gives no ratings, which the status line says (in red), pointing
+  // at the key field below.
+  omdbConnected = keyed;
   $('sourceLocal').checked = !omdbOnlyMode;
   $('sourceOmdb').checked = omdbOnlyMode;
-  $('sourceOmdb').disabled = (!keyed && !omdbOnlyMode) || keyDirty();
-  $('sourceOmdbLabel').classList.toggle('off', $('sourceOmdb').disabled);
-  $('sourceOmdbLabel').title = $('sourceOmdb').disabled ? 'Needs a working OMDb key: set one up and click Test under OMDb lookups' : '';
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
   $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
-    : !l.present ? 'Not built yet. Click Update now; it takes a few minutes' +
-      (keyed ? ', or choose OMDb only above.' : ', or enter an OMDb key below to go without a database.')
+    : !l.present ? 'Not built yet. Click Update now; it takes a few minutes, or choose OMDb only above to go without a database.'
     : localStatus(l, building, !!(u.schedule && u.schedule.manual));
+  $('localStatus').classList.toggle('bad', omdbOnlyMode && !keyed);
   $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
@@ -187,7 +187,7 @@ function localStatus(l, building, manual) {
 function omdbOnlyStatus(l, keyed) {
   let s = keyed
     ? 'Not used: ratings come from OMDb (1,000 lookups a day, each remembered for 30 days).'
-    : 'OMDb only is chosen, but OMDb lookups are off or the key is not working (see OMDb lookups below). Fix that, or choose Local database' + (l.present ? '.' : ' and click Update now.');
+    : 'Not connected to OMDb yet, so no ratings show. Enter a key under OMDb lookups below and click Test, or choose Local database' + (l.present ? '.' : ' and click Update now.');
   if (l.present) {
     s += ' The database (' + l.titles.toLocaleString() + ' titles, built ' + l.built + ') is kept for switching back; Delete database under Advanced frees its space.';
   }
@@ -430,7 +430,6 @@ $('key').addEventListener('input', () => {
   keyEdited = true;
   $('useOmdb').disabled = true;
   $('useOmdb').parentElement.classList.add('off');
-  $('sourceOmdb').disabled = true;
   loadExtras(false, '(click Test to save and check the key)');
 });
 $('key').addEventListener('keydown', (e) => {
@@ -577,16 +576,24 @@ $('deleteDb').addEventListener('click', async () => {
 });
 
 // Where ratings come from (sync ratingsSource, background.js omdbOnly).
-// A database that exists is kept, unused, so switching back costs no
-// download; Delete database under Advanced frees its space. Without one,
-// switching back shows Update now, and nothing downloads until it is
-// clicked.
+// OMDb only can be chosen before there is a working key: the cursor then
+// goes to the key field, and the status line says nothing shows until
+// Test passes. A database that exists is kept, unused, so switching back
+// costs no download; Delete database under Advanced frees its space.
+// Without one, switching back shows Update now, and nothing downloads
+// until it is clicked.
 for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
   box.addEventListener('change', async () => {
     if (!box.checked) return;
     await chrome.storage.sync.set({ ratingsSource: box.value });
-    if (box.value === 'omdb') say('OMDb only; reload open streaming tabs.');
-    else say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (about 280 MB).');
+    if (box.value === 'omdb') {
+      if (omdbConnected && !keyDirty()) say('OMDb only; reload open streaming tabs.');
+      else {
+        say('OMDb only: enter a key below and click Test.', 'bad');
+        $('key').focus();
+        $('key').select();
+      }
+    } else say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (about 280 MB).');
     refreshStats();
   });
 }

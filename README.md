@@ -100,11 +100,12 @@ retried a day later. An update that changes how the database is stored
 (`FORMAT` in `db.js`) also rebuilds it once, whatever its age; with the
 automatic refresh off, the panel asks for Update now instead.
 
-**OMDb only.** With a working OMDb key the database can be skipped: the
-"Ratings from" choice at the top of the Ratings database section
-offers OMDb only once the key has passed Test. Every lookup then goes to
-OMDb (1,000 a day, each answer remembered for 30 days), and no database is
-built, refreshed or consulted. One that exists is kept, unused, so
+**OMDb only.** With an OMDb key the database can be skipped: choose OMDb
+only under "Ratings from" at the top of the Ratings database section.
+Every lookup then goes to OMDb (1,000 a day, each answer remembered for 30
+days), and no database is built, refreshed or consulted. Chosen before a
+key has passed Test, the cursor lands in the key field and the status line
+says no ratings show until one does. One that exists is kept, unused, so
 switching back costs no download (Delete database under Advanced frees
 its space); without one, choosing Local database again brings Update now
 back, and nothing downloads until it is clicked.

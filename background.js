@@ -463,8 +463,8 @@ async function omdbUsable() {
 
 // The user chose "OMDb only" on the settings page (sync ratingsSource):
 // no local database is built, refreshed or consulted, and every lookup
-// goes to OMDb. The page offers the choice once the key is confirmed; a
-// database that exists is kept, unused, so switching back costs nothing
+// goes to OMDb (none can be answered until a key works; the page says so).
+// A database that exists is kept, unused, so switching back costs nothing
 // (the next check then runs whatever refresh its age calls for).
 async function omdbOnly() {
   const { ratingsSource } = await chrome.storage.sync.get('ratingsSource');
