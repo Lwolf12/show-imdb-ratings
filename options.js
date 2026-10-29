@@ -133,7 +133,8 @@ async function refreshStats() {
   $('sourceOmdbLabel').title = $('sourceOmdb').disabled ? 'Needs a working OMDb key: set one up and click Test under OMDb lookups' : '';
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
   $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
-    : !l.present ? 'Not built yet. Click Update now; it takes a few minutes' + (keyed ? ', or choose OMDb only above.' : '.')
+    : !l.present ? 'Not built yet. Click Update now; it takes a few minutes' +
+      (keyed ? ', or choose OMDb only above.' : ', or enter an OMDb key below to go without a database.')
     : localStatus(l, building, !!(u.schedule && u.schedule.manual));
   $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
