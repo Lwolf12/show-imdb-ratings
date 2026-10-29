@@ -1,6 +1,6 @@
 # Privacy policy: Show IMDb Ratings on Streaming Services
 
-Last updated: 2026-10-26
+Last updated: 2026-10-28
 
 This extension shows IMDb user ratings on title cards while you browse
 Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+, Paramount+ and Tubi.
@@ -18,8 +18,9 @@ IndexedDB, and is removed when you uninstall the extension:
 - **Stored answers**: for each title you have scrolled past, the rating that
   was found (or that nothing was found), with a timestamp, so it does not
   have to be looked up again.
-- **Settings**: whether the weekly database refresh is on, whether the OMDb
-  fallback is on, and, if you entered one, your OMDb API key. Settings are
+- **Settings**: where ratings come from (the local database or OMDb only),
+  how often the database refreshes, whether the OMDb fallback and extra
+  scores are on, and, if you entered one, your OMDb API key. Settings are
   kept in the browser's synced extension storage, so if Chrome sync (or
   Firefox Sync with add-ons included) is on they follow your profile to
   your other devices through your Google or Mozilla account, as with any
@@ -27,23 +28,30 @@ IndexedDB, and is removed when you uninstall the extension:
 
 ## What leaves your browser
 
-- **To IMDb (datasets.imdbws.com)**: when you click Update now, or weekly if
-  the automatic refresh is on, the extension downloads IMDb's public data
-  dumps. The request carries no information about you beyond what any
-  download carries (your IP address).
-- **To OMDb (omdbapi.com)**: only if you turn on the OMDb fallback and enter
-  an API key. Then, for titles the local database does not have, the
-  extension sends that title's name (and, where the site provides it, its
-  year and whether it is a movie or series) together with your API key, so
-  OMDb can answer. If you also tick any of the extra scores (Rotten
-  Tomatoes, Metacritic, awards), then for each title whose preview, banner
-  or title page you look at (and, with "On cards too", each title card you
-  scroll past), the extension sends that title's IMDb ID with your key,
-  once a month at most. OMDb's own privacy policy applies to
-  those requests. With the fallback off, nothing is ever sent to OMDb. In
-  Firefox, turning OMDb on also asks you, through Firefox's own prompt, to
-  allow the extension to send website content (these title names); until
-  you allow it, nothing is sent to OMDb.
+- **To IMDb (datasets.imdbws.com)**: when you click Update now, and on the
+  schedule you chose in the settings (by default the ratings file weekly
+  and the full title list monthly; both can be set to run less often or
+  only when you click), the extension downloads IMDb's public data dumps.
+  The request carries no information about you beyond what any download
+  carries (your IP address). With "OMDb only" chosen, nothing is downloaded
+  from IMDb.
+- **To OMDb (omdbapi.com)**: only if you enter an API key, and then in one
+  of two ways. With the local database (the default) and the OMDb fallback
+  on, titles the local database does not have are looked up at OMDb. With
+  "OMDb only" chosen, every title is looked up at OMDb, since there is no
+  local database. In either case the extension sends that title's name
+  (and, where the site provides it, its year and whether it is a movie or
+  series) together with your API key, so OMDb can answer; each title is
+  sent once and the answer remembered. If you also tick any of the extra
+  scores (Rotten Tomatoes, Metacritic, awards), then for each title whose
+  preview, banner or title page you look at (and, with "On cards too", each
+  title card you scroll past), the extension sends that title's IMDb ID
+  with your key, once a month at most. OMDb's own privacy policy applies to
+  those requests. Without a key, or with the fallback off while using the
+  local database, nothing is ever sent to OMDb. In Firefox, turning OMDb on
+  also asks you, through Firefox's own prompt, to allow the extension to
+  send website content (these title names); until you allow it, nothing is
+  sent to OMDb.
 - **To Netflix (netflix.com)**: Netflix's episode cards (rows like "Hooked
   from the First Episode") don't say which show they belong to. For each
   such card, once, the extension asks Netflix for that episode's public
