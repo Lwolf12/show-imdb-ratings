@@ -98,7 +98,7 @@ anything personal in the frame (profile name, continue-watching row).
 featuring): skip for the first submission.
 
 **Official URL / Homepage:** https://github.com/Lwolf12/show-imdb-ratings
-**Support URL:** https://github.com/Lwolf12/show-imdb-ratings/issues
+**Support URL:** https://github.com/Lwolf12/show-imdb-ratings/issues/new/choose (lands on the issue-form chooser, not the empty issue list)
 
 ## Privacy practices tab
 

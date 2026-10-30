@@ -91,7 +91,7 @@ Other).
 
 **Tags:** fixed list on AMO; only `streaming` fits
 
-**Support website:** https://github.com/Lwolf12/show-imdb-ratings/issues
+**Support website:** https://github.com/Lwolf12/show-imdb-ratings/issues/new/choose (lands on the issue-form chooser, not the empty issue list)
 
 **Homepage:** https://github.com/Lwolf12/show-imdb-ratings
 
