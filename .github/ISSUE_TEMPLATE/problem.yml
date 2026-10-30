@@ -13,8 +13,6 @@ body:
       options:
         - Chrome (or another Chromium browser)
         - Firefox
-    validations:
-      required: true
   - type: dropdown
     id: site
     attributes:
@@ -29,8 +27,6 @@ body:
         - Paramount+
         - Tubi
         - Not about one site
-    validations:
-      required: true
   - type: textarea
     id: what
     attributes:
