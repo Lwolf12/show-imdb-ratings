@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How the extension works
+    url: https://github.com/Lwolf12/show-imdb-ratings#readme
+    about: Setup, the OMDb key, and what the settings do.

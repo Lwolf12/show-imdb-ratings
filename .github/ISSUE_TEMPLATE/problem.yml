@@ -1,0 +1,56 @@
+name: Report a problem
+description: A rating is missing, wrong or in the way, or something else is off.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A few details make it much quicker to find.
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome (or another Chromium browser)
+        - Firefox
+    validations:
+      required: true
+  - type: dropdown
+    id: site
+    attributes:
+      label: Streaming site
+      options:
+        - Netflix
+        - Prime Video
+        - Hulu
+        - HBO Max
+        - Apple TV
+        - Disney+
+        - Paramount+
+        - Tubi
+        - Not about one site
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. A screenshot helps; paste or drag it in here.
+      placeholder: On the Netflix home page the badges show on some rows but not on "Continue Watching"...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: Shown at the bottom of the settings panel ("Version 1.1.1").
+      placeholder: "1.1.1"
+  - type: dropdown
+    id: source
+    attributes:
+      label: Ratings come from
+      description: The choice at the top of the settings panel, if you know it.
+      options:
+        - Local database
+        - OMDb only
+        - Not sure
