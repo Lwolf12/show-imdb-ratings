@@ -721,6 +721,9 @@ $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;
   const { omdbKey = '' } = await chrome.storage.sync.get('omdbKey');
   await chrome.storage.sync.remove(SETTING_KEYS);
+  // The languages seen on streaming pages (background.js notePageLang)
+  // pre-tick the language list; after a reset nothing should come pre-ticked.
+  await chrome.storage.local.remove('pageLangs');
   if (omdbKey) await chrome.storage.sync.set({ omdbFallback: true });
   await loadSites();
   await loadBadges();
