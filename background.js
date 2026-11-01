@@ -159,10 +159,14 @@ async function setupStatus() {
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
+  // Reset settings forgets the page languages seen; the day's throttle on
+  // noting them goes too, so the next Polish page is noted again.
+  if (area === 'local' && changes.pageLangs && changes.pageLangs.newValue === undefined) notedLangs.clear();
   if (area !== 'sync') return;
   if (changes.omdbKey) omdbKeyRejected = false;
   if (changes.omdbKey || changes.omdbFallback || changes.ratingsSource) updateBadge();
   // The language choice changed (settings page): applied at once.
+  if (changes.otherLanguages) otherLanguagesCache = changes.otherLanguages.newValue === true;
   if (changes.otherLanguages || changes.titleLangs) applyLanguageChoice();
 });
 
@@ -172,7 +176,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // the automatic refresh off or the full rebuild set to manual too. With
 // no extract yet, nothing happens until the Download button (the build
 // message, kind 'akas'): the 520 MB is only ever the user's own click.
-// During a build the change waits; refreshPlan sees it afterwards.
+// During a build the change waits; handleBuildMessage applies it when
+// the build ends.
 async function applyLanguageChoice() {
   if ((await getBuildState()).status === 'running') return;
   if (!(await otherLanguagesOn())) {
@@ -452,10 +457,16 @@ async function handleBuildMessage(msg) {
     if (msg.kind === 'akas') {
       console.info('[imdbext] titles in ' + ((msg.info.langs || []).join(', ') || 'no other language') + ': ' + (msg.info.akas || 0).toLocaleString() + ' keys');
     }
+    // A language tick or untick made while this build ran was held back
+    // (applyLanguageChoice); it goes through now.
+    applyLanguageChoice();
   } else if (msg.type === 'error') {
     const state = await getBuildState();
     await setBuildState({ status: 'error', kind: state.kind, message: msg.message, at: Date.now() });
     await closeOffscreen();
+    // Likewise after another kind of build failed; not after a failed
+    // languages pass itself, which would only start it again at once.
+    if (state.kind !== 'akas') applyLanguageChoice();
   }
 }
 
@@ -556,9 +567,16 @@ async function seenLanguages() {
 // languages" is on (sync otherLanguages; off by default, since the akas
 // file is a 520 MB download that an English browser on English pages
 // never needs). Off, the akas store is neither built nor consulted.
+// Asked on every lookup, so the answer is kept in memory; the
+// storage.onChanged listener above updates it.
+let otherLanguagesCache = null;
+
 async function otherLanguagesOn() {
-  const { otherLanguages = false } = await chrome.storage.sync.get('otherLanguages');
-  return otherLanguages === true;
+  if (otherLanguagesCache === null) {
+    const { otherLanguages = false } = await chrome.storage.sync.get('otherLanguages');
+    otherLanguagesCache = otherLanguages === true;
+  }
+  return otherLanguagesCache;
 }
 
 async function titleLanguages() {
@@ -609,10 +627,12 @@ async function refreshPlan(meta) {
   const s = await refreshIntervals();
   const langs = await titleLanguages();
   const akas = langs.length > 0 && RatingsDB.akasStale(meta);
-  // fullMb rides on every plan: what Update now would download today.
+  // fullMb and akas ride on every plan: what Update now would download
+  // today, and whether that includes a fresh titles list.
   const fullMb = DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0);
   s.fullMb = fullMb;
-  const full = (reason, due) => ({ kind: 'full', reason, due, mb: fullMb, akas, langs, ...s });
+  s.akas = akas;
+  const full = (reason, due) => ({ kind: 'full', reason, due, mb: fullMb, langs, ...s });
   if ((meta.format || 1) < RatingsDB.FORMAT) return full('format', now);
   if (!meta.episodes) return full('episodes', now);
   const ratingsDue = (meta.ratingsAt || meta.builtAt || 0) + s.ratingsDays * DAY_MS;

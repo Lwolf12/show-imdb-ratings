@@ -236,9 +236,7 @@ function localStatus(l, building, manual, disk) {
 function renderLanguages(u, building) {
   const box = $('langList');
   if (!box.children.length && (u.langsAll || []).length) {
-    let dn = null;
-    try { dn = new Intl.DisplayNames(['en'], { type: 'language' }); } catch (e) { /* plain codes then */ }
-    const rows = u.langsAll.map((code) => ({ code, name: (dn && dn.of(code)) || code }));
+    const rows = u.langsAll.map((code) => ({ code, name: languageNames([code]) || code }));
     rows.sort((a, b) => a.name.localeCompare(b.name));
     for (const { code, name } of rows) {
       const label = document.createElement('label');
@@ -374,14 +372,14 @@ $('buildRatings').addEventListener('click', async () => {
 // The first time it is turned on, the languages seen come pre-ticked.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
+  const writes = { otherLanguages: on };
   if (on) {
     const { titleLangs } = await chrome.storage.sync.get('titleLangs');
     if (!Array.isArray(titleLangs)) {
-      const seen = [...new Set([...[...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value)])];
-      await chrome.storage.sync.set({ titleLangs: seen });
+      writes.titleLangs = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
     }
   }
-  await chrome.storage.sync.set({ otherLanguages: on });
+  await chrome.storage.sync.set(writes); // one write, one change event in the worker
   say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; their space is freed.');
   setTimeout(refreshStats, 500);
 });

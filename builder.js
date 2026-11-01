@@ -124,6 +124,7 @@ const RatingsBuilder = (() => {
     for (const list of Object.values(RatingsDB.LANGUAGES)) for (const r of list) regions.add(r);
     const gzip = new CompressionStream('gzip');
     const parts = [];
+    // Drains the compressed side as it comes; an abort below ends it too.
     const collect = (async () => {
       const reader = gzip.readable.getReader();
       for (;;) {
@@ -131,32 +132,43 @@ const RatingsBuilder = (() => {
         if (done) break;
         parts.push(value);
       }
-    })();
+    })().catch(() => {});
     const writer = gzip.writable.getWriter();
     const encoder = new TextEncoder();
     let buf = '';
     let count = 0;
     let first = true;
-    for await (const line of lines(BASE + 'title.akas.tsv.gz', (r, t) => progress('akas', t ? r / t : 0, count))) {
-      if (first) { first = false; continue; }
-      const t1 = line.indexOf('\t');
-      if (!byId.has(line.slice(0, t1))) continue;
-      // titleId, ordering, title, region, language, types, attributes, isOriginalTitle
-      const f = line.split('\t');
-      if (f[7] === '1') continue;
-      if (!langs.has(f[4]) && !regions.has(f[3])) continue;
-      if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') continue;
-      if (f[6] !== '\\N') continue;
-      buf += f[0] + '\t' + f[2] + '\t' + f[3] + '\t' + f[4] + '\n';
-      count++;
-      if (buf.length > 1 << 20) {
-        await writer.write(encoder.encode(buf));
-        buf = '';
+    let finished = false;
+    try {
+      for await (const line of lines(BASE + 'title.akas.tsv.gz', (r, t) => progress('akas', t ? r / t : 0, count))) {
+        if (first) { first = false; continue; }
+        const t1 = line.indexOf('\t');
+        if (!byId.has(line.slice(0, t1))) continue;
+        // titleId, ordering, title, region, language, types, attributes, isOriginalTitle
+        const f = line.split('\t');
+        if (f[7] === '1') continue;
+        if (!langs.has(f[4]) && !regions.has(f[3])) continue;
+        if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') continue;
+        if (f[6] !== '\\N') continue;
+        buf += f[0] + '\t' + f[2] + '\t' + f[3] + '\t' + f[4] + '\n';
+        count++;
+        if (buf.length > 1 << 20) {
+          await writer.write(encoder.encode(buf));
+          buf = '';
+        }
+      }
+      if (buf) await writer.write(encoder.encode(buf));
+      await writer.close();
+      await collect;
+      finished = true;
+    } finally {
+      // A dropped connection: let the streams and the parts go now rather
+      // than when the worker is terminated.
+      if (!finished) {
+        parts.length = 0;
+        writer.abort().catch(() => {});
       }
     }
-    if (buf) await writer.write(encoder.encode(buf));
-    await writer.close();
-    await collect;
     return new Blob(parts, { type: 'application/gzip' });
   }
 
