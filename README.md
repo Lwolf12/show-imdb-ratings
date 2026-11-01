@@ -87,9 +87,9 @@ Saul), and IMDb's title list has only the English and original names, so
 with a profile in another language the translated titles get no rating.
 Tick **Match titles in other languages** on the panel, tick the languages
 you use in the list that appears (your browser's language and any seen on
-a streaming page come pre-ticked), and click **Download**. The extension
-reads IMDb's list of titles by country once (about 520 MB, the biggest of
-the files; the file itself is not kept) and saves the useful part, the
+a streaming page come pre-ticked), and click **Get titles**. The extension
+streams IMDb's list of titles by country once (520 MB pass through, the
+biggest of the files; nothing is saved as a file) and keeps the useful part, the
 names of the database's titles in every supported language, about 50 MB
 in the browser's database. The languages you ticked are then keyed from
 that as extra names for the same ratings, and ticking another language

@@ -17,7 +17,7 @@ const PHASES = {
   writing: 'Saving titles to the database',
   'writing-episodes': 'Saving episodes to the database',
   updating: 'Updating ratings in the database',
-  akas: 'Downloading IMDb’s list of titles by country',
+  akas: 'Reading IMDb’s list of titles by country (520 MB pass through; about 50 MB kept)',
   keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
@@ -257,7 +257,7 @@ function otherLanguagesText(u, l, building) {
   const have = l.langs || [];
   if (!u.langsOn) return '';
   if (!l.present) return 'The first build will include them.';
-  if (!l.akasAt) return chosen.length ? 'Not downloaded yet.' : 'Open Languages above and tick the ones you use.';
+  if (!l.akasAt) return chosen.length ? 'Not fetched yet.' : 'Open Languages above and tick the ones you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
   if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
@@ -291,7 +291,7 @@ function nextRefresh(u) {
   // The language ticks changed: keyed again from the kept list (local,
   // seconds), or waiting for the Download button when there is none.
   if (n.kind === 'akas') {
-    if (n.mb) return 'Waiting for the Download button: titles in ' + languageNames(n.langs) + ' (about ' + n.mb + ' MB).';
+    if (n.mb) return 'Waiting for the Get titles button: titles in ' + languageNames(n.langs) + ' (reads ' + n.mb + ' MB, keeps about 50 MB).';
     return 'Next: titles in ' + (n.langs.length ? languageNames(n.langs) : 'no other language') + ', from the kept list, ' + due(n.due) + '.';
   }
   const why = {
@@ -358,7 +358,7 @@ $('otherLangs').addEventListener('change', async () => {
     }
   }
   await chrome.storage.sync.set({ otherLanguages: on });
-  say(on ? 'Tick the languages to match, then click Download.' : 'Titles in other languages off; their space is freed.');
+  say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; their space is freed.');
   setTimeout(refreshStats, 500);
 });
 
