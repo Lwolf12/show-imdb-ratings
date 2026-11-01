@@ -160,8 +160,9 @@ async function refreshStats() {
   $('autoText').textContent = scheduleText(u.schedule);
   $('otherLangs').checked = !!u.langsOn;
   $('otherLangs').disabled = omdbOnlyMode;
-  $('langList').hidden = !u.langsOn || omdbOnlyMode;
+  $('langBox').hidden = !u.langsOn || omdbOnlyMode;
   renderLanguages(u, building);
+  $('langSummary').textContent = (u.langs || []).length ? languageNames(u.langs) : 'none ticked';
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
   // Languages ticked but no extract yet: the one place the 520 MB is fetched.
   $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && !l.akasAt && (u.langs || []).length);
@@ -249,26 +250,18 @@ async function saveLanguages() {
   setTimeout(refreshStats, 600);
 }
 
-// Under the list: where things stand. The explanation of the option
-// itself is in its "i" tip.
+// Under the picker, one short line: where things stand. The explanation
+// of the option itself is in its "i" tip; the option off shows nothing.
 function otherLanguagesText(u, l, building) {
-  const seen = [...new Set([...(u.langsBrowser || []), ...(u.langsPages || [])])];
   const chosen = u.langs || [];
   const have = l.langs || [];
-  if (!u.langsOn) {
-    return 'Off. For a streaming profile set to another language.' + (seen.length ? ' Seen so far: ' + languageNames(seen) + '.' : '');
-  }
-  if (!l.present) return 'Tick the languages to match; the first build then includes them.';
-  if (!l.akasAt) {
-    return chosen.length
-      ? 'Click Download: IMDb’s list of titles by country is read once (about 520 MB, not kept) and the useful part saved (about 50 MB), so other languages can be ticked later without downloading again.'
-      : 'Tick the languages to match.';
-  }
-  const kept = ' IMDb’s title list from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB); the full rebuild fetches a fresh one after three months.';
-  let s = have.length ? 'Titles matched in ' + languageNames(have) + '.' : 'No language ticked.';
-  if (building) s += ' Changes to the ticks apply after the current build.';
-  else if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) s += ' Updating to ' + (chosen.length ? languageNames(chosen) : 'none') + '…';
-  return s + kept;
+  if (!u.langsOn) return '';
+  if (!l.present) return 'The first build will include them.';
+  if (!l.akasAt) return chosen.length ? 'Not downloaded yet.' : 'Open Languages above and tick the ones you use.';
+  const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
+  if (building) return 'Changes apply after the current build.' + kept;
+  if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
+  return (have.length ? 'Matched in ' + languageNames(have) + '.' : 'None ticked.') + kept;
 }
 
 // The status line with OMDb only chosen. keyed: OMDb can answer (lookups
