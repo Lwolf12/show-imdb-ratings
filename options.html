@@ -91,8 +91,8 @@
     <div class="col">
       <section>
         <h2>Ratings database
-          <span class="tip" tabindex="0" data-tip="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt monthly, or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient."
-                aria-label="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt monthly, or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient.">i</span></h2>
+          <span class="tip" tabindex="0" data-tip="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt monthly, or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient. The MB figures on this panel are what is read from IMDb over the network, not space on your disk; the status line says what the database takes on disk."
+                aria-label="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt monthly, or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient. The MB figures on this panel are what is read from IMDb over the network, not space on your disk; the status line says what the database takes on disk.">i</span></h2>
         <div class="row">Ratings from:
           <label class="check nowrap"><input id="sourceLocal" type="radio" name="source" value="local"> Local database</label>
           <label class="check nowrap"><input id="sourceOmdb" type="radio" name="source" value="omdb"> OMDb only</label>
@@ -108,7 +108,7 @@
           <div><b>All set.</b> <span id="doneText"></span></div>
           <button id="closeTab" type="button" hidden>Close</button>
         </div>
-        <label class="check"><input id="auto" type="checkbox"> Refresh automatically: <span id="autoText">ratings weekly (about 9 MB), the full title list about monthly (about 280 MB)</span></label>
+        <label class="check"><input id="auto" type="checkbox"> Refresh automatically: <span id="autoText">ratings weekly (reads 9 MB), the full title list about monthly (reads 280 MB)</span></label>
         <p id="nextRefresh" class="muted"></p>
       </section>
 
@@ -187,13 +187,13 @@
       <section>
         <details>
           <summary>Advanced</summary>
-          <div class="row">Refresh ratings (9 MB):
+          <div class="row">Refresh ratings (reads 9 MB):
             <select id="ratingsDays">
               <option value="7">weekly</option>
               <option value="14">every 2 weeks</option>
               <option value="30">monthly</option>
             </select></div>
-          <div class="row">Full rebuild (280 MB):
+          <div class="row">Full rebuild (reads 280 MB):
             <select id="fullDays">
               <option value="30">monthly</option>
               <option value="61">every 2 months</option>

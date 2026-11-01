@@ -53,7 +53,7 @@ const EVERY = { 0: 'only when you click Update now', 7: 'weekly', 14: 'every two
 
 // What the automatic refresh does with the intervals in force.
 function scheduleText(s) {
-  return 'ratings ' + EVERY[s.ratingsDays] + ' (about 9 MB), the full title list ' + EVERY[s.fullDays] + ' (about 280 MB)';
+  return 'ratings ' + EVERY[s.ratingsDays] + ' (reads 9 MB), the full title list ' + EVERY[s.fullDays] + ' (reads 280 MB)';
 }
 
 // ------------------------------------------------------------ database
@@ -154,7 +154,7 @@ async function refreshStats() {
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
   $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : !l.present ? 'Not built yet. Click Update now; it takes a few minutes, or choose OMDb only above to go without a database.'
-    : localStatus(l, building, !!(u.schedule && u.schedule.manual));
+    : localStatus(l, building, !!(u.schedule && u.schedule.manual), await diskUsage());
   $('localStatus').classList.toggle('bad', omdbOnlyMode && !keyed);
   $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
@@ -198,9 +198,22 @@ async function refreshStats() {
 // automatic refresh is off: then this line asks for it.
 // manual: the full rebuild is Update now's alone (Advanced), so what waits
 // for one says so.
-function localStatus(l, building, manual) {
+// What the extension's storage takes on disk, from the browser (the
+// database and the remembered ratings together), as "312 MB"; '' when
+// the browser won't say. The panel's other MB figures are reads from
+// IMDb over the network, which this line keeps apart.
+async function diskUsage() {
+  try {
+    const e = await navigator.storage.estimate();
+    return e && e.usage ? Math.round(e.usage / 1048576) + ' MB' : '';
+  } catch (err) {
+    return '';
+  }
+}
+
+function localStatus(l, building, manual, disk) {
   let s = l.titles.toLocaleString() + ' titles' + (l.episodes ? ' and ' + l.episodes.toLocaleString() + ' episodes' : '') +
-    ', built ' + l.built + ' (' + ago(l.builtAt) + ')';
+    ', built ' + l.built + ' (' + ago(l.builtAt) + ')' + (disk ? ', ' + disk + ' on disk' : '');
   if (l.ratingsAt > l.builtAt) s += '; ratings updated ' + l.ratingsBuilt + ' (' + ago(l.ratingsAt) + ')';
   s += '.';
   if (l.unknown) s += ' ' + WAITING(l.unknown).replace(/^./, (c) => c.toUpperCase()) + (manual ? ' (Update now).' : '.');
@@ -292,11 +305,11 @@ function nextRefresh(u) {
   const n = u.next || {};
   if (u.autoRefresh === false) {
     const mb = n.fullMb || 280;
-    return 'Automatic refresh is off. Update now rebuilds everything (about ' + mb + ' MB' + (n.akas ? ', with a fresh list of titles in other languages' : '') + ').';
+    return 'Automatic refresh is off. Update now rebuilds everything (reads ' + mb + ' MB from IMDb' + (n.akas ? ', with a fresh list of titles in other languages' : '') + ').';
   }
   if (!n.kind) return '';
   if (n.kind === 'ratings') {
-    return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +
+    return 'Next: ratings only (reads ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +
       EVERY[n.fullDays] + (n.keyed ? '; OMDb covers them meanwhile).' : '); an OMDb key covers them sooner.');
   }
   // The language ticks changed: keyed again from the kept list (local,
@@ -311,8 +324,8 @@ function nextRefresh(u) {
     format: 'it was built by an older version',
   }[n.reason];
   const withAkas = n.akas ? ', with a fresh list of titles in other languages' : '';
-  if (n.manual) return 'Waiting for Update now: full rebuild (about ' + n.mb + ' MB' + withAkas + ')' + (why ? ', because ' + why : '') + '.';
-  return 'Next: full rebuild (about ' + n.mb + ' MB' + withAkas + '), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
+  if (n.manual) return 'Waiting for Update now: full rebuild (reads ' + n.mb + ' MB' + withAkas + ')' + (why ? ', because ' + why : '') + '.';
+  return 'Next: full rebuild (reads ' + n.mb + ' MB' + withAkas + '), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
 }
 
 // Update now rebuilds regardless of age, but a database under a day old is
@@ -695,7 +708,7 @@ async function deleteDatabase() {
 }
 
 $('deleteDb').addEventListener('click', async () => {
-  if (!confirm('Delete the local ratings database and forget every remembered rating? Ratings then come from OMDb only (if set up) until you click Update now, which downloads about 280 MB again.')) return;
+  if (!confirm('Delete the local ratings database and forget every remembered rating? Ratings then come from OMDb only (if set up) until you click Update now, which reads about 280 MB from IMDb again.')) return;
   await deleteDatabase();
   refreshStats();
 });
@@ -718,7 +731,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
         $('key').focus();
         $('key').select();
       }
-    } else say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (about 280 MB).');
+    } else say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (reads about 280 MB from IMDb).');
     refreshStats();
   });
 }
