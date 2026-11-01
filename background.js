@@ -56,7 +56,7 @@ const FULL_DAYS = 30;
 const RATINGS_DAYS_CHOICES = [7, 14, 30];
 const FULL_DAYS_CHOICES = [30, 61, 91, 0]; // 0: only by Update now
 const UNKNOWN_REBUILD = 10000;
-const DOWNLOAD_MB = { ratings: 9, full: 280 }; // what the settings page says each costs
+const DOWNLOAD_MB = { ratings: 9, full: 280, akas: 520 }; // what the settings page says each costs
 const DB_CHECK_MINUTES = 360; // how often the alarm looks at what is due
 const MIN_VOTES = 25;
 
@@ -162,7 +162,22 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
   if (changes.omdbKey) omdbKeyRejected = false;
   if (changes.omdbKey || changes.omdbFallback || changes.ratingsSource) updateBadge();
+  // "Match titles in other languages" ticked: a language already seen
+  // starts downloading now. The tick is the user's own click, like
+  // Update now, so it runs with the automatic refresh off or the full
+  // rebuild set to manual too; later languages wait for the schedule.
+  if (changes.otherLanguages) {
+    if (changes.otherLanguages.newValue === true) startLanguages();
+    else maybeRefresh();
+  }
 });
+
+async function startLanguages() {
+  if ((await getBuildState()).status === 'running') return;
+  const plan = await refreshPlan(await RatingsDB.getMeta());
+  if (plan.kind === 'akas') await startBuild('manual', 'akas', plan.langs);
+  else maybeRefresh();
+}
 
 // Stored answers from before OMDb's fuzzy matches were rejected may carry
 // some other title's rating for up to 30 days. Drop those once, on the first
@@ -249,6 +264,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'rating' && typeof msg.title === 'string') {
     const kind = msg.kind === 'movie' || msg.kind === 'series' ? msg.kind : null;
     const year = /^(19|20)\d\d$/.test(String(msg.year || '')) ? String(msg.year) : null;
+    notePageLang(msg.lang);
     lookup(msg.title, kind, !!msg.refresh, year).then(sendResponse, (e) => sendResponse({ error: String(e) }));
     return true; // keep the channel open for the async reply
   }
@@ -269,8 +285,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'build') {
-    // Update now is the full rebuild; kind 'ratings' is there for testing.
-    startBuild('manual', msg.kind === 'ratings' ? 'ratings' : 'full').then(sendResponse);
+    // Update now is the full rebuild; kinds 'ratings' and 'akas' are there for testing.
+    startBuild('manual', ['ratings', 'akas'].includes(msg.kind) ? msg.kind : 'full').then(sendResponse);
     return true;
   }
   if (msg.type === 'setup') {
@@ -363,16 +379,18 @@ async function recoverInterruptedBuild() {
 }
 
 // Returns the build state after starting (or the current one if already
-// running). kind: 'full' (the three dumps) or 'ratings' (the ratings dump
-// into the existing database; see builder.js).
-async function startBuild(trigger, kind = 'full') {
+// running). kind: 'full' (the dumps), 'ratings' (the ratings dump into the
+// existing database) or 'akas' (titles in more languages into it); see
+// builder.js. langs: the languages to add (kind 'akas') or to have (full);
+// the ones wanted (titleLanguages) when not given.
+async function startBuild(trigger, kind = 'full', langs = null) {
   const state = await getBuildState();
   if (state.status === 'running') return state;
   const next = { status: 'running', trigger, kind, phase: 'starting', pct: 0, startedAt: Date.now() };
   await setBuildState(next);
   try {
     await ensureOffscreen();
-    const start = { target: 'offscreen', type: 'build', kind, minVotes: MIN_VOTES };
+    const start = { target: 'offscreen', type: 'build', kind, minVotes: MIN_VOTES, langs: langs || (await titleLanguages()) };
     try {
       await chrome.runtime.sendMessage(start);
     } catch (e) {
@@ -418,6 +436,9 @@ async function handleBuildMessage(msg) {
       console.info('[imdbext] ratings refreshed: ' + msg.info.changed.toLocaleString() + ' titles and ' +
         msg.info.episodesChanged.toLocaleString() + ' series changed; ' + msg.info.unknown.toLocaleString() +
         ' rated IDs have no name since the last full build');
+    }
+    if (msg.kind === 'akas') {
+      console.info('[imdbext] titles in ' + (msg.info.langs || []).join(', ') + ' added: ' + (msg.info.akas || 0).toLocaleString() + ' keys');
     }
   } else if (msg.type === 'error') {
     await setBuildState({ status: 'error', message: msg.message, at: Date.now() });
@@ -487,10 +508,62 @@ async function refreshIntervals() {
   };
 }
 
+// Languages besides English the database could match titles in (db.js
+// LANGUAGES): the browser's own (navigator.languages, "pl-PL" -> pl) and
+// those of the streaming pages seen, which content scripts send with each
+// lookup (a Polish Netflix profile in an English browser). Streaming sites
+// show titles in the profile's language, and IMDb's title list has only
+// the English and original names, so without this a Polish user sees no
+// badge on "Zadzwoń do Saula". A page language not seen for half a year
+// is forgotten.
+const PAGE_LANG_KEEP_MS = 180 * DAY_MS;
+
+async function seenLanguages() {
+  const { pageLangs = {} } = await chrome.storage.local.get('pageLangs');
+  const tags = [...(navigator.languages || []), ...Object.keys(pageLangs).filter((l) => Date.now() - pageLangs[l] < PAGE_LANG_KEEP_MS)];
+  const out = [];
+  for (const tag of tags) {
+    const l = String(tag).toLowerCase().split(/[-_]/)[0];
+    if (RatingsDB.LANGUAGES[l] && !out.includes(l)) out.push(l);
+  }
+  return out;
+}
+
+// The languages the database should match titles in: the seen ones, once
+// the user has ticked "Match titles in other languages" on the settings
+// page (sync otherLanguages; off by default, since the akas file is a 520
+// MB download that an English browser on English pages never needs).
+// Off, the akas store is neither built nor consulted, and the next full
+// rebuild drops it.
+async function otherLanguagesOn() {
+  const { otherLanguages = false } = await chrome.storage.sync.get('otherLanguages');
+  return otherLanguages === true;
+}
+
+async function titleLanguages() {
+  return (await otherLanguagesOn()) ? seenLanguages() : [];
+}
+
+// A streaming page's language, from a lookup. Written once a day per
+// language; a language new to the list may need its titles now, so the
+// refresh check runs at once rather than at the next alarm.
+const notedLangs = new Map();
+
+async function notePageLang(tag) {
+  const l = String(tag || '').toLowerCase().split(/[-_]/)[0];
+  if (!RatingsDB.LANGUAGES[l] || Date.now() - (notedLangs.get(l) || 0) < DAY_MS) return;
+  notedLangs.set(l, Date.now());
+  const { pageLangs = {} } = await chrome.storage.local.get('pageLangs');
+  const fresh = !pageLangs[l];
+  pageLangs[l] = Date.now();
+  await chrome.storage.local.set({ pageLangs });
+  if (fresh) maybeRefresh();
+}
+
 // What the next automatic refresh is and when it is due, from the
-// database's meta record: { kind: 'full' | 'ratings', reason, due, mb,
-// keyed, ratingsDays, fullDays, manual } (the last four from
-// refreshIntervals), or { kind: null } without a database. Shared by
+// database's meta record: { kind: 'full' | 'ratings' | 'akas', reason,
+// due, mb, langs, keyed, ratingsDays, fullDays, manual } (the last four
+// from refreshIntervals), or { kind: null } without a database. Shared by
 // maybeRefresh and the settings page (usage), so both tell the same story.
 //   format    built by an older version (db.js FORMAT): rebuilt once,
 //             whatever its age, since lookups would miss some old keys
@@ -498,23 +571,32 @@ async function refreshIntervals() {
 //   unknown   the ratings pass found UNKNOWN_REBUILD or more rated IDs
 //             the database has no name for
 //   age       the usual schedule
-// With manual set, a full plan is only what Update now would do: format
-// and episodes still come back (the ratings pass cannot run on such a
-// database, so nothing runs by itself), the other reasons do not, and
-// the ratings pass keeps its schedule.
+//   languages (kind 'akas') a language seen for the first time: its
+//             titles come from the akas file alone, without a full rebuild
+// A full plan's mb includes the akas file when the build will read it
+// (akas: true); a full rebuild that is due anyway covers a new language.
+// With manual set, a full or akas plan is only what Update now would do:
+// format and episodes still come back (the ratings pass cannot run on
+// such a database, so nothing runs by itself), the other reasons do not,
+// and the ratings pass keeps its schedule.
 async function refreshPlan(meta) {
   if (!meta || (await omdbOnly())) return { kind: null };
   const now = Date.now();
   const s = await refreshIntervals();
-  const full = (reason, due) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full, ...s });
+  const langs = await titleLanguages();
+  const akas = RatingsDB.akasDue(meta, langs);
+  const full = (reason, due) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0), akas, langs, ...s });
   if ((meta.format || 1) < RatingsDB.FORMAT) return full('format', now);
   if (!meta.episodes) return full('episodes', now);
   const ratingsDue = (meta.ratingsAt || meta.builtAt || 0) + s.ratingsDays * DAY_MS;
+  const fullDue = (meta.builtAt || 0) + s.fullDays * DAY_MS;
   if (!s.manual) {
     if ((meta.unknown || 0) >= UNKNOWN_REBUILD) return full('unknown', now);
-    const fullDue = (meta.builtAt || 0) + s.fullDays * DAY_MS;
-    if (fullDue <= ratingsDue) return full('age', fullDue);
+    if (fullDue <= now) return full('age', fullDue);
   }
+  const missing = langs.filter((l) => !(meta.langs || []).includes(l));
+  if (missing.length) return { kind: 'akas', reason: 'languages', due: now, mb: DOWNLOAD_MB.akas, langs: missing, ...s };
+  if (!s.manual && fullDue <= ratingsDue) return full('age', fullDue);
   return { kind: 'ratings', reason: 'age', due: ratingsDue, mb: DOWNLOAD_MB.ratings, ...s };
 }
 
@@ -530,9 +612,9 @@ async function maybeRefresh() {
   if (state.status === 'error' && Date.now() - (state.at || 0) < DAY_MS) return;
   const plan = await refreshPlan(await RatingsDB.getMeta());
   if (!plan.kind || plan.due > Date.now()) return;
-  if (plan.kind === 'full' && plan.manual) return; // Update now's job
+  if (plan.kind !== 'ratings' && plan.manual) return; // Update now's job
   if (looksMetered()) return; // try again at the next check
-  await startBuild(plan.reason === 'format' ? 'format' : 'auto', plan.kind);
+  await startBuild(plan.reason === 'format' ? 'format' : 'auto', plan.kind, plan.kind === 'akas' ? plan.langs : null);
 }
 
 // ----------------------------------------------------------------- lookups
@@ -580,10 +662,11 @@ function titleVariants(title, kind) {
 }
 
 async function lookupLocal(title, kind, year) {
-  const exact = await RatingsDB.lookup(title, kind, year);
+  const akas = await otherLanguagesOn(); // titles in other languages only when asked for
+  const exact = await RatingsDB.lookup(title, kind, year, akas);
   if (exact) return exact;
   for (const v of titleVariants(title, kind)) {
-    const hit = await RatingsDB.lookup(v.title, v.kind, v.year || year);
+    const hit = await RatingsDB.lookup(v.title, v.kind, v.year || year, akas);
     if (hit) return hit;
   }
   return null;
@@ -641,6 +724,9 @@ async function usage() {
     day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk,
     ratingsDays: schedule.ratingsDays, fullDays: schedule.fullDays, schedule,
     omdbOnly: await omdbOnly(),
+    langs: await titleLanguages(),
+    langsOn: await otherLanguagesOn(),
+    langsSeen: await seenLanguages(),
   };
 }
 

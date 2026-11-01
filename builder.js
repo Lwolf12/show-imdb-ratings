@@ -14,6 +14,10 @@
 // refreshRatings(): the weekly pass. Streams only title.ratings.tsv.gz and
 // hands it to RatingsDB.updateRatings, which refreshes every stored rating
 // and counts the titles rated since the last full build.
+//
+// addLanguages(): titles in other languages (title.akas.tsv.gz, ~520 MB)
+// for an existing database; the full build does the same as its last
+// stage when a wanted language is missing or the copy is old (akasDue).
 
 const RatingsBuilder = (() => {
   'use strict';
@@ -95,11 +99,53 @@ const RatingsBuilder = (() => {
     return ratings;
   }
 
-  // The full build.
-  // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes', pct: 0..1, detail })
+  // Alternate titles (title.akas.tsv.gz, ~520 MB, the biggest of the dumps)
+  // for the languages wanted: the rows of titles the build kept, in those
+  // languages or from their regions (db.js LANGUAGES), as a Map of
+  // normalised title -> entries like the title index. Only what IMDb shows
+  // as the title there (types imdbDisplay, or none): working, festival and
+  // DVD titles, and rows with an attribute ("literal title", "fake working
+  // title") are left out, since a streaming site shows none of those. The
+  // original title is a key already.
+  async function readAkas(langs, byId, progress) {
+    const want = new Set(langs);
+    const regions = new Set();
+    for (const l of langs) for (const r of RatingsDB.LANGUAGES[l] || []) regions.add(r);
+    const extra = new Map();
+    let count = 0;
+    let first = true;
+    for await (const line of lines(BASE + 'title.akas.tsv.gz', (r, t) => progress('akas', t ? r / t : 0, count))) {
+      if (first) { first = false; continue; }
+      const t1 = line.indexOf('\t');
+      const entry = byId.get(line.slice(0, t1));
+      if (!entry) continue;
+      // titleId, ordering, title, region, language, types, attributes, isOriginalTitle
+      const f = line.split('\t');
+      if (f[7] === '1') continue;
+      if (!want.has(f[4]) && !regions.has(f[3])) continue;
+      if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') continue;
+      if (f[6] !== '\\N') continue;
+      const key = RatingsDB.normalise(f[2]);
+      if (!key) continue;
+      const list = extra.get(key);
+      if (!list) extra.set(key, [entry]);
+      else if (!list.some((e) => e[0] === entry[0])) list.push(entry);
+      else continue;
+      count++;
+    }
+    for (const list of extra.values()) list.sort((a, b) => b[4] - a[4]);
+    return extra;
+  }
+
+  // The full build. langs: languages besides English whose titles the
+  // database should match (background.js titleLanguages); the akas file is
+  // read when the database lacks one of them or its copy is old (db.js
+  // akasDue), and the old copy carried over otherwise.
+  // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'writing-akas', pct: 0..1, detail })
   // onUsable(info) fires once the titles are live, before the episodes stream.
-  async function build({ minVotes = 25, onProgress, onUsable } = {}) {
+  async function build({ minVotes = 25, langs = [], onProgress, onUsable } = {}) {
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
+    const readAkasFile = RatingsDB.akasDue(await RatingsDB.getMeta(), langs);
 
     // 1. Ratings.
     const ratings = await readRatings(minVotes, progress);
@@ -152,7 +198,13 @@ const RatingsBuilder = (() => {
       titles: kept,
       format: RatingsDB.FORMAT,
     };
-    await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1));
+    // The old alternate titles come along unless the file is re-read now
+    // or no language is wanted any more (the option was switched off).
+    await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1), !readAkasFile && langs.length > 0);
+    // The akas rows name titles by ID; the entries stay (the same arrays,
+    // no copies) while the index's keys go.
+    const byId = new Map();
+    if (readAkasFile) for (const list of index.values()) for (const e of list) if (!byId.has(e[0])) byId.set(e[0], e);
     index.clear();
     ids.clear();
     if (onUsable) onUsable({ ...info, episodes: 0 });
@@ -187,7 +239,33 @@ const RatingsBuilder = (() => {
     // 5. Episodes into the live database.
     progress('writing-episodes', 0);
     await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1), leftover);
-    return { ...info, episodes: episodeCount };
+    episodes.clear();
+
+    // 6. Titles in other languages, last: everything above works without
+    //    them, and most people need none.
+    let akas = null;
+    if (readAkasFile) {
+      const extra = await readAkas(langs, byId, progress);
+      byId.clear();
+      progress('writing-akas', 0);
+      akas = await RatingsDB.writeAkas(extra, langs, (done, total) => progress('writing-akas', total ? done / total : 1));
+    }
+    return { ...info, episodes: episodeCount, ...(akas || {}) };
+  }
+
+  // Titles in more languages for an existing database (background.js
+  // refreshPlan 'akas': a language seen for the first time): the akas
+  // dump only, into the live akas store.
+  // onProgress({ phase: 'akas'|'writing-akas', pct, detail })
+  // Returns { akas, langs } from RatingsDB.writeAkas.
+  async function addLanguages({ langs = [], onProgress } = {}) {
+    const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
+    if (!langs.length) throw new Error('no languages to add');
+    const byId = await RatingsDB.readEntries();
+    const extra = await readAkas(langs, byId, progress);
+    byId.clear();
+    progress('writing-akas', 0);
+    return RatingsDB.writeAkas(extra, langs, (done, total) => progress('writing-akas', total ? done / total : 1));
   }
 
   // The weekly pass: ratings dump only, into the existing database.
@@ -202,5 +280,5 @@ const RatingsBuilder = (() => {
     return info;
   }
 
-  return { build, refreshRatings };
+  return { build, refreshRatings, addLanguages };
 })();

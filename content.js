@@ -28,6 +28,14 @@
     http: 'Could not reach OMDb (network error or unexpected response).',
   };
 
+  // The page's language ("pl" on a Polish Netflix profile), sent with each
+  // lookup so the worker can add that language's titles to the database
+  // (background.js notePageLang). Read each time: a site can switch it
+  // without a page load.
+  function pageLang() {
+    return (document.documentElement.lang || '').slice(0, 12);
+  }
+
   function warnOnce(kind, detail) {
     if (warned.has(kind)) return;
     warned.add(kind);
@@ -115,7 +123,7 @@
     for (const candidate of candidates) {
       title = candidate;
       try {
-        result = await chrome.runtime.sendMessage({ type: 'rating', title, kind, year });
+        result = await chrome.runtime.sendMessage({ type: 'rating', title, kind, year, lang: pageLang() });
       } catch (e) {
         // Usually "Extension context invalidated" after a reload of the
         // extension; a page reload picks things up again.
@@ -159,7 +167,7 @@
     if (result.stale) {
       let fresh;
       try {
-        fresh = await chrome.runtime.sendMessage({ type: 'rating', title, kind, year, refresh: true });
+        fresh = await chrome.runtime.sendMessage({ type: 'rating', title, kind, year, refresh: true, lang: pageLang() });
       } catch (e) {
         return;
       }
@@ -276,7 +284,7 @@
     const bySeason = {};
     try {
       const year = typeof target.yearOf === 'function' ? target.yearOf(el) || null : null;
-      series = await chrome.runtime.sendMessage({ type: 'rating', title: show, kind: 'series', year });
+      series = await chrome.runtime.sendMessage({ type: 'rating', title: show, kind: 'series', year, lang: pageLang() });
       if (el.getAttribute(PROCESSED) !== key) return;
       if (!series || !series.imdbID) {
         el.setAttribute('data-imdbext-done', ''); // show not found: nothing to rate

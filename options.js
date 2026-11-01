@@ -17,7 +17,22 @@ const PHASES = {
   writing: 'Saving titles to the database',
   'writing-episodes': 'Saving episodes to the database',
   updating: 'Updating ratings in the database',
+  akas: 'Downloading titles in other languages',
+  'writing-akas': 'Saving titles in other languages',
 };
+
+// "Polish", "Polish and German", "Polish, German and French".
+function languageNames(langs) {
+  let names;
+  try {
+    const dn = new Intl.DisplayNames(['en'], { type: 'language' });
+    names = (langs || []).map((l) => dn.of(l) || l);
+  } catch (e) {
+    names = [...(langs || [])];
+  }
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
 
 function ago(ts) {
   const days = Math.floor((Date.now() - ts) / 86400000);
@@ -75,6 +90,8 @@ function showBuild(build) {
     if (Date.now() - (build.at || 0) < DONE_RECENT_MS) {
       $('doneText').textContent = build.kind === 'ratings'
         ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
+        : build.kind === 'akas'
+        ? 'Titles in ' + languageNames(build.info.langs) + ' added (reload any streaming sites that are already open).'
         : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
           '(reload any that are already open).';
       $('buildDone').hidden = false;
@@ -140,6 +157,9 @@ async function refreshStats() {
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
   $('autoText').textContent = scheduleText(u.schedule);
+  $('otherLangs').checked = !!u.langsOn;
+  $('otherLangs').disabled = omdbOnlyMode;
+  $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l);
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
@@ -181,6 +201,26 @@ function localStatus(l, building, manual) {
   return s;
 }
 
+// Under "Match titles in other languages": what it would do, or does,
+// for the languages seen (the browser's and the streaming pages'). The
+// explanation of the option itself is in its "i" tip.
+function otherLanguagesText(u, l) {
+  const seen = u.langsSeen || [];
+  const have = l.langs || [];
+  if (!u.langsOn) {
+    if (!seen.length) return 'Off. For a streaming profile set to another language; no other language has been seen yet (the browser is in English, and so were the pages opened), so ticking this downloads nothing until one is.';
+    return 'Off. ' + languageNames(seen) + ' seen (your browser’s language, or a streaming page you opened): ticking this downloads IMDb’s list of titles by country (about 520 MB, once) so titles in ' + languageNames(seen) + ' get ratings too. Tick it before Update now and the first build includes it.';
+  }
+  if (!seen.length) return 'On, but no other language has been seen yet; the download starts when a streaming page in another language is opened.';
+  const missing = seen.filter((x) => !have.includes(x));
+  let s = have.length ? 'Titles matched in ' + languageNames(have) + '.' : '';
+  if (missing.length) {
+    const auto = u.autoRefresh !== false && !(u.schedule && u.schedule.manual);
+    s += (s ? ' ' : '') + 'Titles in ' + languageNames(missing) + (auto ? ' arrive with the next refresh (about 520 MB).' : ' arrive when you click Update now (about 520 MB on top).');
+  }
+  return s;
+}
+
 // The status line with OMDb only chosen. keyed: OMDb can answer (lookups
 // on, key confirmed); otherwise nothing can, and the line says what to fix.
 // A database on the device is kept for switching back, and said so.
@@ -205,13 +245,20 @@ function nextRefresh(u) {
     return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +
       EVERY[n.fullDays] + (n.keyed ? '; OMDb covers them meanwhile).' : '); an OMDb key covers them sooner.');
   }
+  // A language seen for the first time (the browser's, or a streaming
+  // page's): its titles from IMDb's akas file, without a full rebuild.
+  if (n.kind === 'akas') {
+    const what = 'titles in ' + languageNames(n.langs) + ' (about ' + n.mb + ' MB)';
+    return n.manual ? 'Waiting for Update now: ' + what + '.' : 'Next: ' + what + ', ' + due(n.due) + '.';
+  }
   const why = {
     unknown: 'many newly rated titles are waiting',
     episodes: 'the episode list never finished',
     format: 'it was built by an older version',
   }[n.reason];
-  if (n.manual) return 'Waiting for Update now: full rebuild (about ' + n.mb + ' MB)' + (why ? ', because ' + why : '') + '.';
-  return 'Next: full rebuild (about ' + n.mb + ' MB), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
+  const withAkas = n.akas ? ', with titles in ' + languageNames(n.langs) : '';
+  if (n.manual) return 'Waiting for Update now: full rebuild (about ' + n.mb + ' MB' + withAkas + ')' + (why ? ', because ' + why : '') + '.';
+  return 'Next: full rebuild (about ' + n.mb + ' MB' + withAkas + '), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
 }
 
 // Update now rebuilds regardless of age, but a database under a day old is
@@ -253,6 +300,14 @@ $('buildRatings').addEventListener('click', async () => {
   showNote('');
   $('buildRatings').disabled = true;
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
+});
+
+// The worker runs its refresh check when this changes (storage.onChanged),
+// so a language already seen starts downloading at once.
+$('otherLangs').addEventListener('change', async () => {
+  await chrome.storage.sync.set({ otherLanguages: $('otherLangs').checked });
+  say($('otherLangs').checked ? 'Titles in other languages on; the download starts once a language has been seen.' : 'Titles in other languages off; the next full rebuild drops them.');
+  setTimeout(refreshStats, 500);
 });
 
 $('auto').addEventListener('change', async () => {
@@ -601,7 +656,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
 // Every setting back to its default: all sites on, badges always with the
 // star label, no extras, OMDb lookups on if there is a key, the local
 // database with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;

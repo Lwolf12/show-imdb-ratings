@@ -15,14 +15,40 @@ function videoMeta(el) {
   return (el.querySelector('[data-uia="videoMetadata--container"]')?.textContent || '').trim();
 }
 
+// Netflix writes its labels in the profile's language, so the words that
+// tell a show from a film, a season from a running time, are matched in
+// the languages the extension reads: English and Polish checked on the
+// site, German, French, Spanish, Portuguese, Italian and Dutch from
+// Netflix's usual wording there. In another language the titles still
+// match (db.js LANGUAGES); only the type, year and season hints are lost.
+const SEASON = 'seasons?|sezon(?:y|ów)?|staffeln?|saisons?|temporadas?|stagion[ei]|seizoen(?:en)?';
+const EPISODE = 'episodes?|odcin(?:ek|ki|ków)|folgen?|épisodes?|epis[oó]dios?|episod[io]|afleveringe?n?';
+const PART = 'parts?|część|części|teile?|parties?|partes?|part[ei]|de(?:el|len)|volumes?|tomy?|bände?';
+const LIMITED = 'limited series|mini-?series|miniserial|miniserie|mini-série|minissérie';
+// "Show", "Serial" (pl), "Serie" (de, es, it, nl), "Série" (fr, pt),
+// "Program" (pl billboard); "Movie", "Film", "Filme" (pt), "Película".
+// Not followed by a lower-case letter: textContent runs the pieces together
+// ("FilmR2 godz. 11 minHD"), so \b would not do. Case-sensitive, since
+// with the i flag \p{Ll} would match the "R" too; Netflix capitalises.
+const SERIES_WORD = /^(Show|Series|Serial|Serie|Série|Program|Programa)(?!\p{Ll})/u;
+const MOVIE_WORD = /^(Movie|Film|Filme|Película|Pelicula)(?!\p{Ll})/u;
+// A film's running time: "2h 50m", "2 godz. 50 min", "2 Std. 50 Min.", "2 h 50 min".
+const RUNTIME = /^\s*(\d+\s*(h|hr|std\.?|godz\.?|u\.?|ore?|uur)\s*)?(\d+\s*(m|min\.?))?\s*$/iu;
+// A watched show's "S1:E3" line, with the episode letter in Netflix's
+// language ("S1:O1" in Polish).
+const SEASON_EPISODE = /S\d+:\p{Lu}\d+/u;
+// "Season 2" -> 2 in the episode list's dropdown.
+const SEASON_NUMBER = new RegExp('(?:' + SEASON + ')\\s*(\\d+)', 'iu');
+const LIMITED_SERIES = new RegExp(LIMITED, 'iu');
+
 // "Episodes & info" on an episode card's preview opens the show's detail
 // modal in episode view: the episode list is the show's, but the box art,
 // story art and tab title all name the episode ("Pilot") and the metadata
 // line gives the episode's running time ("2008 58m") instead of "5 Seasons".
 // SHOW_LENGTH is a show's length in that line: "5 Seasons", "8 Episodes",
-// "Limited Series", "2 Parts". No word boundaries: textContent runs the
-// pieces together ("20135 SeasonsHD").
-const SHOW_LENGTH = /\d+\s*(seasons?|episodes|parts?|volumes?)|limited series/i;
+// "Limited Series", "2 Parts", "5 sezonów". No word boundaries: textContent
+// runs the pieces together ("20135 SeasonsHD").
+const SHOW_LENGTH = new RegExp('\\d+\\s*(' + SEASON + '|' + EPISODE + '|' + PART + ')|' + LIMITED, 'iu');
 
 function isEpisodeView(modal) {
   return (
@@ -183,11 +209,13 @@ function modalTitle(el) {
   const title = (img && img.alt.trim()) || null;
   if (isEpisodeView(el)) return showOfEpisode(jbvOf(location.search));
   // An episode preview: box art "Days Gone Bye" and the line S1:E1 "Days
-  // Gone Bye". A show's preview with a watched episode also has an S1:E3
-  // line, but there the box art names the show, so the two differ. No \b
-  // before the S: textContent runs words together ('…matchS1:E1').
-  const ep = el.textContent.match(/S\d+:E\d+\s*["“]([^"”]+)["”]/);
-  if (title && ep && ep[1].trim().toLowerCase() === title.toLowerCase()) {
+  // Gone Bye" (in Polish S1:O1 Days Gone Bye, without the quotes). A show's
+  // preview with a watched episode also has an S1:E3 line, but there the
+  // box art names the show, so the two differ. No \b before the S:
+  // textContent runs words together ('…matchS1:E1').
+  const ep = el.textContent.match(/S\d+:\p{Lu}\d+\s*["“]?/u);
+  const after = ep ? el.textContent.slice(ep.index + ep[0].length).trim().toLowerCase() : '';
+  if (title && ep && after.startsWith(title.toLowerCase())) {
     const card = nf.lastEpisodeCard;
     return card && card.label.toLowerCase() === title.toLowerCase() ? showOfEpisode(card.id) : null;
   }
@@ -253,7 +281,7 @@ window.IMDBEXT_SITE = {
       typeOf(el) {
         const length = el.querySelector('.duration')?.textContent || '';
         if (SHOW_LENGTH.test(length)) return 'series';
-        return /^\s*(\d+h)?\s*(\d+m)?\s*$/.test(length) && /\d/.test(length) ? 'movie' : null;
+        return RUNTIME.test(length) && /\d/.test(length) ? 'movie' : null;
       },
       yearOf(el) {
         if (this.typeOf(el) !== 'movie') return null;
@@ -280,28 +308,36 @@ window.IMDBEXT_SITE = {
     },
     {
       // Featured banner at the top of the home page: [data-uia="billboard"]
-      // with aria-label "Featured Content: <title>[, <season name>][, Show]".
-      // The season name is free text ("Season 1", "East Blue", "Limited
-      // Series") and the logo image has no usable alt, so the label is the
-      // only title source. Candidates are tried in order: the whole label
-      // first (titles can contain commas), then with trailing comma segments
-      // dropped one at a time. The chip goes in the Play / More Info row.
+      // with aria-label "Featured Content: <title>[, <season name>][, Show]"
+      // ("Polecane treści: <title>" in Polish). The season name is free
+      // text ("Season 1", "East Blue", "Limited Series") and the logo image
+      // has no usable alt, so the label is the only title source.
+      // Candidates are tried in order: the whole label first (titles can
+      // contain commas), then with trailing comma segments dropped one at a
+      // time. In a language whose prefix is not known here, the part after
+      // the first colon goes last, since "Star Trek: Discovery" must be
+      // tried whole first. The chip goes in the Play / More Info row.
       kind: 'detail',
       selector: '[data-uia="billboard"]',
       titleOf(el) {
-        let t = (el.getAttribute('aria-label') || '').replace(/^featured content:\s*/i, '').trim();
-        t = t.replace(/,\s*(show|movie|film)\s*$/i, '').trim();
+        const label = (el.getAttribute('aria-label') || '').trim();
+        const known = /^(featured content|polecane treści):\s*/iu;
+        let t = label.replace(known, '');
+        t = t.replace(/,\s*(show|movie|film|serial|program)\s*$/iu, '').trim();
         if (!t) return null;
         const parts = t.split(/\s*,\s*/);
         const out = [];
         for (let n = parts.length; n >= 1; n--) out.push(parts.slice(0, n).join(', '));
+        const prefixed = !known.test(label) && t.match(/^[^:,]{3,40}:\s+(.+)$/);
+        if (prefixed) out.push(prefixed[1]);
         return out;
       },
-      // The attribute row starts with "Show" or "Movie".
+      // The attribute row starts with "Show" or "Movie" ("Program" or
+      // "Film" in Polish).
       typeOf(el) {
         const first = (el.querySelector('[data-uia="attributes-elements"]')?.textContent || '').trim();
-        if (/^(show|series)/i.test(first)) return 'series';
-        if (/^(movie|film)/i.test(first)) return 'movie';
+        if (SERIES_WORD.test(first)) return 'series';
+        if (MOVIE_WORD.test(first)) return 'movie';
         return null;
       },
       host(el) {
@@ -322,7 +358,9 @@ window.IMDBEXT_SITE = {
       titleOf: modalTitle,
       // Cards carry no type or year, but the popup does: a "Show|Drama" or
       // "Movie|Action" line ([data-uia="makeover-content-type-genre"]) and a
-      // "2026•7 Episodes•TV-MA•HD" line ([data-uia="makeover-metadata"]).
+      // "2026•7 Episodes•TV-MA•HD" line ([data-uia="makeover-metadata"]);
+      // the newer popup has instead a "Film R 2h 11m HD" line
+      // ([data-uia="videoMetadata--container"]) starting with the type.
       // Both hints fix titles that would otherwise match a same-named older
       // film (East of Eden, 2026 series vs 1955 film). Watched shows show
       // "S1:E3" instead of the type line.
@@ -331,17 +369,17 @@ window.IMDBEXT_SITE = {
       // that year is the latest season's, so it is not used as a hint.
       typeOf(el) {
         const line = el.querySelector('[data-uia="makeover-content-type-genre"]');
-        const first = line ? line.textContent.split('|')[0].trim() : '';
-        if (/^(show|series)$/i.test(first)) return 'series';
-        if (/^(movie|film)$/i.test(first)) return 'movie';
+        const first = line ? line.textContent.split('|')[0].trim() : videoMeta(el);
+        if (SERIES_WORD.test(first)) return 'series';
+        if (MOVIE_WORD.test(first)) return 'movie';
         if (SHOW_LENGTH.test(videoMeta(el))) return 'series';
         if (el.querySelector('[data-uia="episode-selector"]')) return 'series';
-        return /S\d+:E\d+/.test(el.textContent) ? 'series' : null;
+        return SEASON_EPISODE.test(el.textContent) ? 'series' : null;
       },
       // An episode's year (preview or episode view) is not the show's, so
       // only titles without an S:E line or episode list give a year hint.
       yearOf(el) {
-        if (/S\d+:E\d+/.test(el.textContent) && el.classList.contains('mini-modal')) return null;
+        if (SEASON_EPISODE.test(el.textContent) && el.classList.contains('mini-modal')) return null;
         const meta = el.querySelector('[data-uia="makeover-metadata"]');
         let m = meta && meta.textContent.match(/\b(19|20)\d\d\b/);
         if (!m && !el.querySelector('[data-uia="episode-selector"]')) m = videoMeta(el).match(/\b(19|20)\d\d\b/);
@@ -375,22 +413,22 @@ window.IMDBEXT_SITE = {
         const modal = el.closest('.previewModal--wrapper');
         return modal ? modalTitle(modal) : null;
       },
-      // "Season 2" -> 2. Some shows name seasons after themselves
-      // ("Stranger Things 5" -> 5, and plain "Stranger Things" for the
-      // first). No dropdown (one season) or "Limited Series" -> 1. Anything
-      // else ("Part 2", "Volume 1") doesn't map onto IMDb's seasons
-      // reliably, so those lists get no ratings.
+      // "Season 2" ("Sezon 2") -> 2. Some shows name seasons after
+      // themselves ("Stranger Things 5" -> 5, and plain "Stranger Things"
+      // for the first). No dropdown (one season) or "Limited Series" -> 1.
+      // Anything else ("Part 2", "Volume 1") doesn't map onto IMDb's
+      // seasons reliably, so those lists get no ratings.
       seasonOf(el) {
         const toggle = el.querySelector('[data-uia="dropdown-toggle"]');
         const text = ((toggle ? toggle.textContent : el.querySelector('.episodeSelector-header')?.textContent) || '').trim();
-        const m = text.match(/season\s*(\d+)/i);
+        const m = text.match(SEASON_NUMBER);
         if (m) return Number(m[1]);
         const named = text.match(/^(.*\S)\s+(\d+)$/);
         const show = this.showOf(el);
         const key = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
         if (named && show && key(named[1]) === key(show)) return Number(named[2]);
         if (show && key(text) === key(show)) return 1;
-        if (!toggle || /limited series|miniseries/i.test(text)) return 1;
+        if (!toggle || LIMITED_SERIES.test(text)) return 1;
         return null;
       },
       // Anthologies (Black Mirror) list their episodes without the number;
