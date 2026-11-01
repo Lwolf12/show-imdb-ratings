@@ -160,6 +160,11 @@ async function refreshStats() {
   $('otherLangs').checked = !!u.langsOn;
   $('otherLangs').disabled = omdbOnlyMode;
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l);
+  // A language seen but not in the database yet: a button fetches just
+  // that (the akas file), without waiting for the schedule or Update now.
+  const missingLangs = u.langsOn && l.present && !building && !omdbOnlyMode ? (u.langsSeen || []).filter((x) => !(l.langs || []).includes(x)) : [];
+  $('addLangs').hidden = !missingLangs.length;
+  $('addLangs').textContent = 'Add titles in ' + languageNames(missingLangs) + ' (about 520 MB)';
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
@@ -216,7 +221,7 @@ function otherLanguagesText(u, l) {
   let s = have.length ? 'Titles matched in ' + languageNames(have) + '.' : '';
   if (missing.length) {
     const auto = u.autoRefresh !== false && !(u.schedule && u.schedule.manual);
-    s += (s ? ' ' : '') + 'Titles in ' + languageNames(missing) + (auto ? ' arrive with the next refresh (about 520 MB).' : ' arrive when you click Update now (about 520 MB on top).');
+    s += (s ? ' ' : '') + 'Titles in ' + languageNames(missing) + (auto ? ' arrive with the next refresh (about 520 MB), or now with the button below.' : ' are not downloaded by themselves while the automatic refresh is off: use the button below.');
   }
   return s;
 }
@@ -308,6 +313,13 @@ $('otherLangs').addEventListener('change', async () => {
   await chrome.storage.sync.set({ otherLanguages: $('otherLangs').checked });
   say($('otherLangs').checked ? 'Titles in other languages on; the download starts once a language has been seen.' : 'Titles in other languages off; the next full rebuild drops them.');
   setTimeout(refreshStats, 500);
+});
+
+$('addLangs').addEventListener('click', async () => {
+  $('addLangs').disabled = true;
+  showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  $('addLangs').disabled = false;
+  refreshStats();
 });
 
 $('auto').addEventListener('change', async () => {

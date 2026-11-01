@@ -172,10 +172,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+// Also behind the settings page's "Add titles in <language>" button, for
+// a language seen while the automatic refresh is off (or the full rebuild
+// set to manual): the languages missing, from the akas file alone, or the
+// full rebuild when one is due anyway and would read the file.
 async function startLanguages() {
   if ((await getBuildState()).status === 'running') return;
   const plan = await refreshPlan(await RatingsDB.getMeta());
   if (plan.kind === 'akas') await startBuild('manual', 'akas', plan.langs);
+  else if (plan.kind === 'full' && plan.akas) await startBuild('manual', 'full');
   else maybeRefresh();
 }
 
@@ -285,8 +290,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'build') {
-    // Update now is the full rebuild; kinds 'ratings' and 'akas' are there for testing.
-    startBuild('manual', ['ratings', 'akas'].includes(msg.kind) ? msg.kind : 'full').then(sendResponse);
+    // Update now is the full rebuild; 'ratings' is Update ratings only
+    // (Advanced), 'akas' the "Add titles in <language>" button.
+    if (msg.kind === 'akas') startLanguages().then(getBuildState).then(sendResponse);
+    else startBuild('manual', msg.kind === 'ratings' ? 'ratings' : 'full').then(sendResponse);
     return true;
   }
   if (msg.type === 'setup') {
