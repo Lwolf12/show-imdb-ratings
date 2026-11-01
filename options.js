@@ -113,7 +113,9 @@ function showBuild(build) {
   box.hidden = false;
   btn.disabled = false;
   $('buildBar').value = 0;
-  $('buildText').textContent = 'Failed: ' + build.message + ' (will retry automatically in a day)';
+  // The titles list is only ever fetched on the Get titles button, so a
+  // failed one waits for the next click, not the schedule.
+  $('buildText').textContent = 'Failed: ' + build.message + (build.kind === 'akas' ? ' (click Get titles to try again)' : ' (will retry automatically in a day)');
 }
 
 // In its own window (the usual way it opens) or a tab, the panel offers to
