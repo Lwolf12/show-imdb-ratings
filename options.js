@@ -176,6 +176,9 @@ async function refreshStats() {
   $('ratingsDays').disabled = omdbOnlyMode;
   $('fullDays').disabled = omdbOnlyMode;
   showBuild(u.build);
+  // "All set. Titles in Polish matched" is stale once the option was
+  // switched off (the kept list is gone) within the box's ten minutes.
+  if (u.build && u.build.kind === 'akas' && !l.akasAt) $('buildDone').hidden = true;
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
