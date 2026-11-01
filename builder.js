@@ -15,9 +15,16 @@
 // hands it to RatingsDB.updateRatings, which refreshes every stored rating
 // and counts the titles rated since the last full build.
 //
-// addLanguages(): titles in other languages (title.akas.tsv.gz, ~520 MB)
-// for an existing database; the full build does the same as its last
-// stage when a wanted language is missing or the copy is old (akasDue).
+// addLanguages(): titles in other languages for an existing database.
+// IMDb's title.akas.tsv.gz (~520 MB) holds every title's name in every
+// language; downloadAkas streams it once and keeps the useful part (the
+// database's titles, in the languages db.js LANGUAGES knows) as a gzip'd
+// extract of about 50 MB in the database (RatingsDB.putFile), and
+// keyFromExtract turns that into keys for the languages chosen, in
+// seconds. So choosing another language later costs no download; the
+// full build fetches the file again only once the extract is AKAS_DAYS
+// old (RatingsDB.akasStale), and keys the chosen languages from the
+// extract each time it rebuilds the titles.
 
 const RatingsBuilder = (() => {
   'use strict';
@@ -47,7 +54,11 @@ const RatingsBuilder = (() => {
   async function* lines(url, onBytes) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
-    const total = Number(res.headers.get('content-length')) || 0;
+    yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes);
+  }
+
+  // The same over any stream of gzip'd text (a Blob's, say).
+  async function* linesFrom(body, total, onBytes) {
     let read = 0;
     const counter = new TransformStream({
       transform(chunk, ctrl) {
@@ -56,7 +67,7 @@ const RatingsBuilder = (() => {
         ctrl.enqueue(chunk);
       },
     });
-    const reader = res.body
+    const reader = body
       .pipeThrough(counter)
       .pipeThrough(new DecompressionStream('gzip'))
       .pipeThrough(new TextDecoderStream())
@@ -99,33 +110,72 @@ const RatingsBuilder = (() => {
     return ratings;
   }
 
-  // Alternate titles (title.akas.tsv.gz, ~520 MB, the biggest of the dumps)
-  // for the languages wanted: the rows of titles the build kept, in those
-  // languages or from their regions (db.js LANGUAGES), as a Map of
-  // normalised title -> entries like the title index. Only what IMDb shows
-  // as the title there (types imdbDisplay, or none): working, festival and
-  // DVD titles, and rows with an attribute ("literal title", "fake working
-  // title") are left out, since a streaming site shows none of those. The
-  // original title is a key already.
-  async function readAkas(langs, byId, progress) {
-    const want = new Set(langs);
+  // The useful part of title.akas.tsv.gz (~520 MB, the biggest of the
+  // dumps), as a gzip'd Blob of "imdbID\ttitle\tregion\tlanguage" lines:
+  // the rows of titles the database has (byId), in any language or region
+  // db.js LANGUAGES knows. Only what IMDb shows as the title there (types
+  // imdbDisplay, or none): working, festival and DVD titles, and rows with
+  // an attribute ("literal title", "fake working title") are left out,
+  // since a streaming site shows none of those. The original title is a
+  // key already. About 4 million rows, 50 MB compressed.
+  async function downloadAkas(byId, progress) {
+    const langs = new Set(Object.keys(RatingsDB.LANGUAGES));
     const regions = new Set();
-    for (const l of langs) for (const r of RatingsDB.LANGUAGES[l] || []) regions.add(r);
-    const extra = new Map();
+    for (const list of Object.values(RatingsDB.LANGUAGES)) for (const r of list) regions.add(r);
+    const gzip = new CompressionStream('gzip');
+    const parts = [];
+    const collect = (async () => {
+      const reader = gzip.readable.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+      }
+    })();
+    const writer = gzip.writable.getWriter();
+    const encoder = new TextEncoder();
+    let buf = '';
     let count = 0;
     let first = true;
     for await (const line of lines(BASE + 'title.akas.tsv.gz', (r, t) => progress('akas', t ? r / t : 0, count))) {
       if (first) { first = false; continue; }
       const t1 = line.indexOf('\t');
-      const entry = byId.get(line.slice(0, t1));
-      if (!entry) continue;
+      if (!byId.has(line.slice(0, t1))) continue;
       // titleId, ordering, title, region, language, types, attributes, isOriginalTitle
       const f = line.split('\t');
       if (f[7] === '1') continue;
-      if (!want.has(f[4]) && !regions.has(f[3])) continue;
+      if (!langs.has(f[4]) && !regions.has(f[3])) continue;
       if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') continue;
       if (f[6] !== '\\N') continue;
-      const key = RatingsDB.normalise(f[2]);
+      buf += f[0] + '\t' + f[2] + '\t' + f[3] + '\t' + f[4] + '\n';
+      count++;
+      if (buf.length > 1 << 20) {
+        await writer.write(encoder.encode(buf));
+        buf = '';
+      }
+    }
+    if (buf) await writer.write(encoder.encode(buf));
+    await writer.close();
+    await collect;
+    return new Blob(parts, { type: 'application/gzip' });
+  }
+
+  // Keys for the languages langs from the extract: a Map of normalised
+  // title -> entries like the title index, for the titles in byId.
+  async function keyFromExtract(blob, langs, byId, progress) {
+    const want = new Set(langs);
+    const regions = new Set();
+    for (const l of langs) for (const r of RatingsDB.LANGUAGES[l] || []) regions.add(r);
+    const extra = new Map();
+    let count = 0;
+    for await (const line of linesFrom(blob.stream(), blob.size, (r, t) => progress('keying', t ? r / t : 0, count))) {
+      // imdbID, title, region, language
+      const f = line.split('\t');
+      if (f.length < 4) continue;
+      if (!want.has(f[3]) && !regions.has(f[2])) continue;
+      const entry = byId.get(f[0]);
+      if (!entry) continue;
+      const key = RatingsDB.normalise(f[1]);
       if (!key) continue;
       const list = extra.get(key);
       if (!list) extra.set(key, [entry]);
@@ -137,15 +187,29 @@ const RatingsBuilder = (() => {
     return extra;
   }
 
-  // The full build. langs: languages besides English whose titles the
-  // database should match (background.js titleLanguages); the akas file is
-  // read when the database lacks one of them or its copy is old (db.js
-  // akasDue), and the old copy carried over otherwise.
-  // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'writing-akas', pct: 0..1, detail })
+  // The chosen languages into the live akas store, from the extract on
+  // hand, or from a fresh download of the file when there is none or it
+  // is old (or when told to). Returns { akas, langs } from writeAkas.
+  async function applyLanguages(langs, byId, progress, download) {
+    let blob = download ? null : await RatingsDB.getFile();
+    if (!blob) {
+      blob = await downloadAkas(byId, progress);
+      await RatingsDB.putFile(blob);
+    }
+    const extra = await keyFromExtract(blob, langs, byId, progress);
+    progress('writing-akas', 0);
+    return RatingsDB.writeAkas(extra, langs, (done, total) => progress('writing-akas', total ? done / total : 1));
+  }
+
+  // The full build. langs: the languages besides English the user chose
+  // (background.js titleLanguages); their keys are made again from the
+  // extract right after the titles go live, and the akas file is fetched
+  // again, last, once the extract is old (db.js akasStale) or missing.
+  // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'keying'|'writing-akas', pct: 0..1, detail })
   // onUsable(info) fires once the titles are live, before the episodes stream.
   async function build({ minVotes = 25, langs = [], onProgress, onUsable } = {}) {
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
-    const readAkasFile = RatingsDB.akasDue(await RatingsDB.getMeta(), langs);
+    const fetchAkas = langs.length > 0 && RatingsDB.akasStale(await RatingsDB.getMeta());
 
     // 1. Ratings.
     const ratings = await readRatings(minVotes, progress);
@@ -198,15 +262,18 @@ const RatingsBuilder = (() => {
       titles: kept,
       format: RatingsDB.FORMAT,
     };
-    // The old alternate titles come along unless the file is re-read now
-    // or no language is wanted any more (the option was switched off).
-    await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1), !readAkasFile && langs.length > 0);
+    await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1));
     // The akas rows name titles by ID; the entries stay (the same arrays,
     // no copies) while the index's keys go.
     const byId = new Map();
-    if (readAkasFile) for (const list of index.values()) for (const e of list) if (!byId.has(e[0])) byId.set(e[0], e);
+    if (langs.length) for (const list of index.values()) for (const e of list) if (!byId.has(e[0])) byId.set(e[0], e);
     index.clear();
     ids.clear();
+    // The chosen languages, from the extract on hand (even an old one, to
+    // be refreshed at the end): seconds, so they are back before the
+    // titles are announced live.
+    let akas = null;
+    if (langs.length && (await RatingsDB.getFile())) akas = await applyLanguages(langs, byId, progress, false);
     if (onUsable) onUsable({ ...info, episodes: 0 });
 
     // 4. Episodes of those series: series id -> { season: [[ep, rating, votes, id]] }.
@@ -241,31 +308,29 @@ const RatingsBuilder = (() => {
     await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1), leftover);
     episodes.clear();
 
-    // 6. Titles in other languages, last: everything above works without
-    //    them, and most people need none.
-    let akas = null;
-    if (readAkasFile) {
-      const extra = await readAkas(langs, byId, progress);
-      byId.clear();
-      progress('writing-akas', 0);
-      akas = await RatingsDB.writeAkas(extra, langs, (done, total) => progress('writing-akas', total ? done / total : 1));
-    }
+    // 6. A fresh akas extract, last: everything above works without it,
+    //    and most people need none.
+    if (fetchAkas) akas = await applyLanguages(langs, byId, progress, true);
+    byId.clear();
     return { ...info, episodes: episodeCount, ...(akas || {}) };
   }
 
-  // Titles in more languages for an existing database (background.js
-  // refreshPlan 'akas': a language seen for the first time): the akas
-  // dump only, into the live akas store.
-  // onProgress({ phase: 'akas'|'writing-akas', pct, detail })
+  // The chosen languages for an existing database (the settings page's
+  // language list, or its Download button): from the extract on hand, or
+  // the file when there is none. download: fetch the file even so (not
+  // used by the settings page today; the full rebuild refreshes it).
+  // onProgress({ phase: 'akas'|'keying'|'writing-akas', pct, detail })
   // Returns { akas, langs } from RatingsDB.writeAkas.
-  async function addLanguages({ langs = [], onProgress } = {}) {
+  async function addLanguages({ langs = [], download = false, onProgress } = {}) {
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
-    if (!langs.length) throw new Error('no languages to add');
+    if (!langs.length) {
+      // None chosen: the keys go, the extract stays for next time.
+      return RatingsDB.writeAkas(new Map(), [], null);
+    }
     const byId = await RatingsDB.readEntries();
-    const extra = await readAkas(langs, byId, progress);
+    const out = await applyLanguages(langs, byId, progress, download);
     byId.clear();
-    progress('writing-akas', 0);
-    return RatingsDB.writeAkas(extra, langs, (done, total) => progress('writing-akas', total ? done / total : 1));
+    return out;
   }
 
   // The weekly pass: ratings dump only, into the existing database.

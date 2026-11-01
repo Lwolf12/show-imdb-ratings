@@ -13,13 +13,18 @@
 //             s: { "<season>": [[episode, rating, votes, imdbID], ...] } };
 //             paired with titles_a/_b and flipped with them.
 //   akas_a, akas_b  same shape as titles_a/_b: titles in other languages
-//             (IMDb's title.akas, see builder.js readAkas) for the
-//             languages in meta.langs, keyed like the titles and pointing
-//             at the same entries. Looked up after the title store misses.
-//             Paired and flipped with titles_a/_b; a full build carries the
-//             live pair's copy over (writeTitles carryAkas) unless it is
-//             re-reading the file, which is twice the size of the rest.
-//             meta.akasAt is when the file was last read.
+//             for the languages in meta.langs (the user's choice), keyed
+//             like the titles and pointing at the same entries. Looked up
+//             after the title store misses. Paired and flipped with
+//             titles_a/_b; a build keys them again from the extract below.
+//   files     key 'akas' -> Blob: the useful part of IMDb's title.akas
+//             file (builder.js downloadAkas), gzip'd lines of
+//             "imdbID, title, region, language" for every title in the
+//             database in every language LANGUAGES knows, about 50 MB.
+//             Kept so a language chosen later is keyed from it in seconds
+//             instead of downloading the 520 MB file again; meta.akasAt
+//             and akasSize say when it was fetched and how big it is. A
+//             full build fetches it again once it is AKAS_DAYS old.
 //   ids       key imdbID -> [rating, votes] for every title (not episode)
 //             with minVotes or more votes, as of the last ratings pass; a
 //             third element 1 marks an ID the database has no name for
@@ -41,7 +46,7 @@ const RatingsDB = (() => {
   'use strict';
 
   const NAME = 'imdbext-ratings';
-  const VERSION = 4; // 2 added the episode stores, 3 the ids store, 4 the akas stores
+  const VERSION = 5; // 2 added the episode stores, 3 the ids store, 4 the akas stores, 5 the files store
   let conn = null;
 
   // Languages whose titles can be added from IMDb's title.akas file, with
@@ -89,20 +94,16 @@ const RatingsDB = (() => {
   //      weekly ratings-only pass needs
   const FORMAT = 3;
 
-  // How old the akas copy may be before a full build re-reads the file.
-  // Titles get new translations rarely, and the file costs more than the
-  // other three together.
+  // How old the akas extract may be before a full build fetches the file
+  // again. Titles get new translations rarely, and the file costs more
+  // than the other three together.
   const AKAS_DAYS = 90;
 
-  // Whether a full build must read the akas file for langs (the languages
-  // wanted, background.js titleLanguages): one the database lacks, or a
-  // copy older than AKAS_DAYS. Shared by builder.js and background.js
-  // (refreshPlan), which says what the build downloads.
-  function akasDue(meta, langs) {
-    if (!langs || !langs.length) return false;
-    if (!meta) return true;
-    const have = meta.langs || [];
-    return langs.some((l) => !have.includes(l)) || Date.now() - (meta.akasAt || 0) > AKAS_DAYS * 24 * 60 * 60 * 1000;
+  // Whether the extract is missing or older than AKAS_DAYS, so a build
+  // that wants any language must fetch the file. Shared by builder.js and
+  // background.js (refreshPlan), which says what the build downloads.
+  function akasStale(meta) {
+    return !meta || !meta.akasAt || Date.now() - meta.akasAt > AKAS_DAYS * 24 * 60 * 60 * 1000;
   }
 
   // Used for both building and lookup. Keep in one place.
@@ -132,6 +133,7 @@ const RatingsDB = (() => {
         }
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
         if (!db.objectStoreNames.contains('ids')) db.createObjectStore('ids');
+        if (!db.objectStoreNames.contains('files')) db.createObjectStore('files');
       };
       req.onsuccess = () => {
         conn = req.result;
@@ -184,6 +186,7 @@ const RatingsDB = (() => {
           outdated: (m.format || 1) < FORMAT,
           langs: m.langs || [],
           akasAt: m.akasAt || 0,
+          akasSize: m.akasSize || 0,
           akas: m.akas || 0,
         }
       : { present: false };
@@ -282,11 +285,10 @@ const RatingsDB = (() => {
   // entries) and the ids table (Map of imdbID -> [rating, votes]) go into
   // the stores that are not live, then become live, with the episode store
   // of the new pair empty until writeEpisodes fills it. onProgress(done, total).
-  // carryAkas: the live pair's akas store (and meta.langs, akasAt, akas)
-  // move to the new pair, so the build need not re-read the akas file;
-  // otherwise the new pair starts with none and the builder adds them
-  // (writeAkas) once the episodes are in.
-  async function writeTitles(index, ids, info, onProgress, carryAkas = false) {
+  // The new pair's akas store starts empty (the builder keys the chosen
+  // languages again from the extract right after); the extract itself,
+  // in files, is not part of the pair and stays, as do its meta fields.
+  async function writeTitles(index, ids, info, onProgress) {
     const db = await open();
     const old = await getMeta();
     const target = old && old.store === 'titles_a' ? 'titles_b' : 'titles_a';
@@ -306,18 +308,6 @@ const RatingsDB = (() => {
     await writeBatches(db, target, keys, (s, k) => s.put({ k, e: index.get(k) }), onProgress, 0, total);
     await writeBatches(db, 'ids', idKeys, (s, k) => s.put(ids.get(k), k), onProgress, keys.length, total);
 
-    // The old pair's alternate titles, copied over before it is cleared.
-    // Their entries are the previous build's (a title that has since
-    // dropped under minVotes keeps its old key; the rating comes from the
-    // ids table anyway, as for every lookup).
-    const carried = carryAkas && old && old.store && old.store !== target && (old.langs || []).length;
-    if (carried) {
-      tx = db.transaction(akasStore(old.store));
-      const rows = await result(tx.objectStore(akasStore(old.store)).getAll());
-      await complete(tx);
-      await writeBatches(db, akTarget, rows, (s, row) => s.put(row), null, 0, rows.length);
-    }
-
     await putMeta({
       ...info,
       store: target,
@@ -326,9 +316,10 @@ const RatingsDB = (() => {
       unknown: 0,
       episodes: 0,
       episodesPending: true,
-      langs: carried ? old.langs : [],
-      akasAt: carried ? old.akasAt : 0,
-      akas: carried ? old.akas : 0,
+      langs: [],
+      akas: 0,
+      akasAt: (old && old.akasAt) || 0,
+      akasSize: (old && old.akasSize) || 0,
     });
 
     if (old && old.store !== target) {
@@ -355,49 +346,56 @@ const RatingsDB = (() => {
   }
 
   // Alternate titles (Map of normalised title -> entries, builder.js
-  // readAkas) into the live pair's akas store, merged with what is there,
-  // and langs noted in meta as present. Idempotent: a second pass for the
-  // same language adds nothing. onProgress(done, total).
+  // keyFromExtract, for the languages langs) replace the live pair's akas
+  // store, and langs become meta.langs. Replacing, not merging: the Map
+  // is the whole chosen set, so a language unticked disappears too.
+  // onProgress(done, total).
   async function writeAkas(extra, langs, onProgress) {
     const db = await open();
     const m = await getMeta();
     if (!m || !m.store) throw new Error('no database to add titles to');
     const name = akasStore(m.store);
-    const keys = [...extra.keys()];
-    const BATCH = 2000;
-    for (let i = 0; i < keys.length; i += BATCH) {
-      const tx = db.transaction(name, 'readwrite');
-      const store = tx.objectStore(name);
-      for (const k of keys.slice(i, i + BATCH)) {
-        const fresh = extra.get(k);
-        store.get(k).onsuccess = (ev) => {
-          const have = ev.target.result;
-          if (!have) {
-            store.put({ k, e: fresh });
-            return;
-          }
-          let changed = false;
-          for (const e of fresh) {
-            if (!have.e.some((x) => x[0] === e[0])) {
-              have.e.push(e);
-              changed = true;
-            }
-          }
-          if (changed) {
-            have.e.sort((a, b) => b[4] - a[4]);
-            store.put(have);
-          }
-        };
-      }
-      await complete(tx);
-      if (onProgress) onProgress(Math.min(i + BATCH, keys.length), keys.length);
-    }
-    const tx = db.transaction(name);
-    const count = await result(tx.objectStore(name).count());
+    let tx = db.transaction(name, 'readwrite');
+    tx.objectStore(name).clear();
     await complete(tx);
+    const keys = [...extra.keys()];
+    await writeBatches(db, name, keys, (s, k) => s.put({ k, e: extra.get(k) }), onProgress, 0, keys.length);
+    if (onProgress) onProgress(keys.length, keys.length);
     const cur = (await getMeta()) || m; // the episode stage may have moved on meanwhile
-    await putMeta({ ...cur, langs: [...new Set([...(cur.langs || []), ...langs])], akasAt: Date.now(), akas: count });
-    return { akas: count, langs: [...new Set([...(cur.langs || []), ...langs])] };
+    await putMeta({ ...cur, langs: [...langs], akas: keys.length });
+    return { akas: keys.length, langs: [...langs] };
+  }
+
+  // The akas extract (see files in the layout): putFile stores a fresh
+  // one and notes when and how big; getFile returns it or null.
+  async function putFile(blob) {
+    const db = await open();
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').put(blob, 'akas');
+    await complete(tx);
+    const m = await getMeta();
+    if (m) await putMeta({ ...m, akasAt: Date.now(), akasSize: blob.size });
+  }
+
+  async function getFile() {
+    const db = await open();
+    const tx = db.transaction('files');
+    const blob = await result(tx.objectStore('files').get('akas'));
+    await complete(tx);
+    return blob || null;
+  }
+
+  // "Match titles in other languages" switched off: the keys, the extract
+  // and their meta fields go, freeing the space at once.
+  async function clearAkas() {
+    const db = await open();
+    const tx = db.transaction(['akas_a', 'akas_b', 'files'], 'readwrite');
+    tx.objectStore('akas_a').clear();
+    tx.objectStore('akas_b').clear();
+    tx.objectStore('files').delete('akas');
+    await complete(tx);
+    const m = await getMeta();
+    if (m) await putMeta({ ...m, langs: [], akas: 0, akasAt: 0, akasSize: 0 });
   }
 
   // Stage two: the episodes (Map of series imdbID -> { season: [[ep, rating,
@@ -496,11 +494,11 @@ const RatingsDB = (() => {
   // The next Update now builds from scratch.
   async function clear() {
     const db = await open();
-    const stores = ['meta', 'titles_a', 'titles_b', 'episodes_a', 'episodes_b', 'akas_a', 'akas_b', 'ids'];
+    const stores = ['meta', 'titles_a', 'titles_b', 'episodes_a', 'episodes_b', 'akas_a', 'akas_b', 'files', 'ids'];
     const tx = db.transaction(stores, 'readwrite');
     for (const s of stores) tx.objectStore(s).clear();
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, AKAS_DAYS, akasDue, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, writeEpisodes, readEntries, writeAkas, updateRatings, clear };
+  return { FORMAT, LANGUAGES, AKAS_DAYS, akasStale, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
 })();

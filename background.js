@@ -162,27 +162,31 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
   if (changes.omdbKey) omdbKeyRejected = false;
   if (changes.omdbKey || changes.omdbFallback || changes.ratingsSource) updateBadge();
-  // "Match titles in other languages" ticked: a language already seen
-  // starts downloading now. The tick is the user's own click, like
-  // Update now, so it runs with the automatic refresh off or the full
-  // rebuild set to manual too; later languages wait for the schedule.
-  if (changes.otherLanguages) {
-    if (changes.otherLanguages.newValue === true) startLanguages();
-    else maybeRefresh();
-  }
+  // The language choice changed (settings page): applied at once.
+  if (changes.otherLanguages || changes.titleLangs) applyLanguageChoice();
 });
 
-// Also behind the settings page's "Add titles in <language>" button, for
-// a language seen while the automatic refresh is off (or the full rebuild
-// set to manual): the languages missing, from the akas file alone, or the
-// full rebuild when one is due anyway and would read the file.
-async function startLanguages() {
+// "Match titles in other languages" or its language list changed. Off:
+// the keys and the extract go. On: the chosen languages are keyed again
+// from the extract on hand, a local job of seconds, so it runs now, with
+// the automatic refresh off or the full rebuild set to manual too. With
+// no extract yet, nothing happens until the Download button (the build
+// message, kind 'akas'): the 520 MB is only ever the user's own click.
+// During a build the change waits; refreshPlan sees it afterwards.
+async function applyLanguageChoice() {
   if ((await getBuildState()).status === 'running') return;
-  const plan = await refreshPlan(await RatingsDB.getMeta());
-  if (plan.kind === 'akas') await startBuild('manual', 'akas', plan.langs);
-  else if (plan.kind === 'full' && plan.akas) await startBuild('manual', 'full');
-  else maybeRefresh();
+  if (!(await otherLanguagesOn())) {
+    await RatingsDB.clearAkas();
+    return;
+  }
+  const meta = await RatingsDB.getMeta();
+  if (!meta) return;
+  const langs = await titleLanguages();
+  if (sameSet(langs, meta.langs || [])) return;
+  if (!langs.length || (await RatingsDB.getFile())) await startBuild('manual', 'akas', langs);
 }
+
+const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 
 // Stored answers from before OMDb's fuzzy matches were rejected may carry
 // some other title's rating for up to 30 days. Drop those once, on the first
@@ -291,8 +295,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'build') {
     // Update now is the full rebuild; 'ratings' is Update ratings only
-    // (Advanced), 'akas' the "Add titles in <language>" button.
-    if (msg.kind === 'akas') startLanguages().then(getBuildState).then(sendResponse);
+    // (Advanced), 'akas' the languages' Download button (the chosen
+    // languages, fetching the akas file when there is no extract yet).
+    if (msg.kind === 'akas') titleLanguages().then((langs) => startBuild('manual', 'akas', langs)).then(sendResponse);
     else startBuild('manual', msg.kind === 'ratings' ? 'ratings' : 'full').then(sendResponse);
     return true;
   }
@@ -445,7 +450,7 @@ async function handleBuildMessage(msg) {
         ' rated IDs have no name since the last full build');
     }
     if (msg.kind === 'akas') {
-      console.info('[imdbext] titles in ' + (msg.info.langs || []).join(', ') + ' added: ' + (msg.info.akas || 0).toLocaleString() + ' keys');
+      console.info('[imdbext] titles in ' + ((msg.info.langs || []).join(', ') || 'no other language') + ': ' + (msg.info.akas || 0).toLocaleString() + ' keys');
     }
   } else if (msg.type === 'error') {
     await setBuildState({ status: 'error', message: msg.message, at: Date.now() });
@@ -515,7 +520,7 @@ async function refreshIntervals() {
   };
 }
 
-// Languages besides English the database could match titles in (db.js
+// Languages besides English the settings page suggests ticking (db.js
 // LANGUAGES): the browser's own (navigator.languages, "pl-PL" -> pl) and
 // those of the streaming pages seen, which content scripts send with each
 // lookup (a Polish Netflix profile in an English browser). Streaming sites
@@ -525,46 +530,54 @@ async function refreshIntervals() {
 // is forgotten.
 const PAGE_LANG_KEEP_MS = 180 * DAY_MS;
 
-async function seenLanguages() {
-  const { pageLangs = {} } = await chrome.storage.local.get('pageLangs');
-  const tags = [...(navigator.languages || []), ...Object.keys(pageLangs).filter((l) => Date.now() - pageLangs[l] < PAGE_LANG_KEEP_MS)];
+const langCode = (tag) => String(tag || '').toLowerCase().split(/[-_]/)[0];
+
+function browserLanguages() {
   const out = [];
-  for (const tag of tags) {
-    const l = String(tag).toLowerCase().split(/[-_]/)[0];
+  for (const tag of navigator.languages || []) {
+    const l = langCode(tag);
     if (RatingsDB.LANGUAGES[l] && !out.includes(l)) out.push(l);
   }
   return out;
 }
 
-// The languages the database should match titles in: the seen ones, once
-// the user has ticked "Match titles in other languages" on the settings
-// page (sync otherLanguages; off by default, since the akas file is a 520
-// MB download that an English browser on English pages never needs).
-// Off, the akas store is neither built nor consulted, and the next full
-// rebuild drops it.
+async function pageLanguages() {
+  const { pageLangs = {} } = await chrome.storage.local.get('pageLangs');
+  return Object.keys(pageLangs).filter((l) => RatingsDB.LANGUAGES[l] && Date.now() - pageLangs[l] < PAGE_LANG_KEEP_MS);
+}
+
+async function seenLanguages() {
+  return [...new Set([...browserLanguages(), ...(await pageLanguages())])];
+}
+
+// The languages the database should match titles in: the ones ticked on
+// the settings page (sync titleLangs), once "Match titles in other
+// languages" is on (sync otherLanguages; off by default, since the akas
+// file is a 520 MB download that an English browser on English pages
+// never needs). Off, the akas store is neither built nor consulted.
 async function otherLanguagesOn() {
   const { otherLanguages = false } = await chrome.storage.sync.get('otherLanguages');
   return otherLanguages === true;
 }
 
 async function titleLanguages() {
-  return (await otherLanguagesOn()) ? seenLanguages() : [];
+  if (!(await otherLanguagesOn())) return [];
+  const { titleLangs = [] } = await chrome.storage.sync.get('titleLangs');
+  return (Array.isArray(titleLangs) ? titleLangs : []).filter((l) => RatingsDB.LANGUAGES[l]);
 }
 
-// A streaming page's language, from a lookup. Written once a day per
-// language; a language new to the list may need its titles now, so the
-// refresh check runs at once rather than at the next alarm.
+// A streaming page's language, from a lookup, written once a day per
+// language. It only ever suggests; nothing downloads until the user ticks
+// the language and clicks Download.
 const notedLangs = new Map();
 
 async function notePageLang(tag) {
-  const l = String(tag || '').toLowerCase().split(/[-_]/)[0];
+  const l = langCode(tag);
   if (!RatingsDB.LANGUAGES[l] || Date.now() - (notedLangs.get(l) || 0) < DAY_MS) return;
   notedLangs.set(l, Date.now());
   const { pageLangs = {} } = await chrome.storage.local.get('pageLangs');
-  const fresh = !pageLangs[l];
   pageLangs[l] = Date.now();
   await chrome.storage.local.set({ pageLangs });
-  if (fresh) maybeRefresh();
 }
 
 // What the next automatic refresh is and when it is due, from the
@@ -578,20 +591,23 @@ async function notePageLang(tag) {
 //   unknown   the ratings pass found UNKNOWN_REBUILD or more rated IDs
 //             the database has no name for
 //   age       the usual schedule
-//   languages (kind 'akas') a language seen for the first time: its
-//             titles come from the akas file alone, without a full rebuild
-// A full plan's mb includes the akas file when the build will read it
-// (akas: true); a full rebuild that is due anyway covers a new language.
-// With manual set, a full or akas plan is only what Update now would do:
-// format and episodes still come back (the ratings pass cannot run on
-// such a database, so nothing runs by itself), the other reasons do not,
-// and the ratings pass keeps its schedule.
+//   languages (kind 'akas', mb 0) the chosen languages differ from the
+//             keyed ones and the extract is on hand: keyed again from it
+//   download  (kind 'akas', mb 520) languages chosen but no extract yet:
+//             waits for the settings page's Download button, never runs
+//             by itself
+// A full plan's mb includes the akas file when the build will fetch it
+// (akas: true: languages chosen and the extract old or missing).
+// With manual set, a full plan is only what Update now would do: format
+// and episodes still come back (the ratings pass cannot run on such a
+// database, so nothing runs by itself), the other reasons do not, and
+// the ratings pass keeps its schedule.
 async function refreshPlan(meta) {
   if (!meta || (await omdbOnly())) return { kind: null };
   const now = Date.now();
   const s = await refreshIntervals();
   const langs = await titleLanguages();
-  const akas = RatingsDB.akasDue(meta, langs);
+  const akas = langs.length > 0 && RatingsDB.akasStale(meta);
   const full = (reason, due) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0), akas, langs, ...s });
   if ((meta.format || 1) < RatingsDB.FORMAT) return full('format', now);
   if (!meta.episodes) return full('episodes', now);
@@ -601,8 +617,10 @@ async function refreshPlan(meta) {
     if ((meta.unknown || 0) >= UNKNOWN_REBUILD) return full('unknown', now);
     if (fullDue <= now) return full('age', fullDue);
   }
-  const missing = langs.filter((l) => !(meta.langs || []).includes(l));
-  if (missing.length) return { kind: 'akas', reason: 'languages', due: now, mb: DOWNLOAD_MB.akas, langs: missing, ...s };
+  if (!sameSet(langs, meta.langs || [])) {
+    const have = !!meta.akasAt;
+    return { kind: 'akas', reason: have || !langs.length ? 'languages' : 'download', due: now, mb: have || !langs.length ? 0 : DOWNLOAD_MB.akas, langs, ...s };
+  }
   if (!s.manual && fullDue <= ratingsDue) return full('age', fullDue);
   return { kind: 'ratings', reason: 'age', due: ratingsDue, mb: DOWNLOAD_MB.ratings, ...s };
 }
@@ -612,16 +630,23 @@ async function refreshPlan(meta) {
 // first build is always the user's own click, so nothing downloads unasked.
 async function maybeRefresh() {
   const { autoRefresh = true } = await chrome.storage.sync.get('autoRefresh');
-  if (!autoRefresh) return;
   const state = await getBuildState();
   if (state.status === 'running') return;
   // Don't hammer IMDb if builds keep failing: wait a day after an error.
   if (state.status === 'error' && Date.now() - (state.at || 0) < DAY_MS) return;
   const plan = await refreshPlan(await RatingsDB.getMeta());
   if (!plan.kind || plan.due > Date.now()) return;
-  if (plan.kind !== 'ratings' && plan.manual) return; // Update now's job
+  if (plan.kind === 'akas') {
+    // Keying the chosen languages from the extract is local work the
+    // user asked for by ticking them, so it needs no automatic refresh;
+    // fetching the file is the Download button's alone.
+    if (!plan.mb) await startBuild('auto', 'akas', plan.langs);
+    return;
+  }
+  if (!autoRefresh) return;
+  if (plan.kind === 'full' && plan.manual) return; // Update now's job
   if (looksMetered()) return; // try again at the next check
-  await startBuild(plan.reason === 'format' ? 'format' : 'auto', plan.kind, plan.kind === 'akas' ? plan.langs : null);
+  await startBuild(plan.reason === 'format' ? 'format' : 'auto', plan.kind);
 }
 
 // ----------------------------------------------------------------- lookups
@@ -733,7 +758,9 @@ async function usage() {
     omdbOnly: await omdbOnly(),
     langs: await titleLanguages(),
     langsOn: await otherLanguagesOn(),
-    langsSeen: await seenLanguages(),
+    langsAll: Object.keys(RatingsDB.LANGUAGES),
+    langsBrowser: browserLanguages(),
+    langsPages: await pageLanguages(),
   };
 }
 

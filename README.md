@@ -85,19 +85,21 @@ episode list is still downloading.
 titles in your profile's language ("Zadzwoń do Saula" for Better Call
 Saul), and IMDb's title list has only the English and original names, so
 with a profile in another language the translated titles get no rating.
-Tick **Match titles in other languages** on the panel and the extension
-also reads IMDb's list of titles by country (about 520 MB, the biggest of
-the files) and keeps the names in the languages your browser is set to and
-the languages of the streaming pages you open, as extra names for the same
-ratings. It is a one-time download per language: a language seen for the
-first time is added by itself soon after, from that file alone, and a full
-rebuild keeps the copy and re-reads the file only once it is three months
-old. An English browser on English pages has no use for it, which is why
-it is off. Languages written in the Latin alphabet are covered (Polish,
-German, French, Spanish, Portuguese, Italian, Dutch, the Nordic and most
-Central European languages, Turkish, Indonesian, Vietnamese); Cyrillic,
-Greek and Asian scripts are not yet. The panel says which languages have
-been seen and which the database has. Netflix's own labels (a show's "5
+Tick **Match titles in other languages** on the panel, tick the languages
+you use in the list that appears (your browser's language and any seen on
+a streaming page come pre-ticked), and click **Download**. The extension
+reads IMDb's list of titles by country once (about 520 MB, the biggest of
+the files; the file itself is not kept) and saves the useful part, the
+names of the database's titles in every supported language, about 50 MB
+in the browser's database. The languages you ticked are then keyed from
+that as extra names for the same ratings, and ticking another language
+later takes seconds, with no download. The full rebuild fetches a fresh
+list once the kept one is three months old. An English browser on English
+pages has no use for any of this, which is why it is off; unticking the
+option frees the space. Languages written in the Latin alphabet are
+covered (Polish, German, French, Spanish, Portuguese, Italian, Dutch, the
+Nordic and most Central European languages, Turkish, Indonesian,
+Vietnamese); Cyrillic, Greek and Asian scripts are not yet. Netflix's own labels (a show's "5
 Seasons", the season dropdown, "Show" or "Movie") are read in English,
 Polish, German, French, Spanish, Portuguese, Italian and Dutch; in other
 languages titles still match, but the hints that tell a 2026 series from a

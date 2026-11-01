@@ -17,7 +17,8 @@ const PHASES = {
   writing: 'Saving titles to the database',
   'writing-episodes': 'Saving episodes to the database',
   updating: 'Updating ratings in the database',
-  akas: 'Downloading titles in other languages',
+  akas: 'Downloading IMDb’s list of titles by country',
+  keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
 
@@ -91,7 +92,7 @@ function showBuild(build) {
       $('doneText').textContent = build.kind === 'ratings'
         ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
         : build.kind === 'akas'
-        ? 'Titles in ' + languageNames(build.info.langs) + ' added (reload any streaming sites that are already open).'
+        ? ((build.info.langs || []).length ? 'Titles in ' + languageNames(build.info.langs) + ' matched' : 'Titles in other languages removed') + ' (reload any streaming sites that are already open).'
         : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
           '(reload any that are already open).';
       $('buildDone').hidden = false;
@@ -159,12 +160,11 @@ async function refreshStats() {
   $('autoText').textContent = scheduleText(u.schedule);
   $('otherLangs').checked = !!u.langsOn;
   $('otherLangs').disabled = omdbOnlyMode;
-  $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l);
-  // A language seen but not in the database yet: a button fetches just
-  // that (the akas file), without waiting for the schedule or Update now.
-  const missingLangs = u.langsOn && l.present && !building && !omdbOnlyMode ? (u.langsSeen || []).filter((x) => !(l.langs || []).includes(x)) : [];
-  $('addLangs').hidden = !missingLangs.length;
-  $('addLangs').textContent = 'Add titles in ' + languageNames(missingLangs) + ' (about 520 MB)';
+  $('langList').hidden = !u.langsOn || omdbOnlyMode;
+  renderLanguages(u, building);
+  $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
+  // Languages ticked but no extract yet: the one place the 520 MB is fetched.
+  $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && !l.akasAt && (u.langs || []).length);
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
@@ -206,24 +206,69 @@ function localStatus(l, building, manual) {
   return s;
 }
 
-// Under "Match titles in other languages": what it would do, or does,
-// for the languages seen (the browser's and the streaming pages'). The
-// explanation of the option itself is in its "i" tip.
-function otherLanguagesText(u, l) {
-  const seen = u.langsSeen || [];
+// The language list under "Match titles in other languages": every
+// language the database can key (usage langsAll), by English name, the
+// chosen ones ticked, with a hint on the browser's own language and on
+// languages seen on streaming pages. Built once; later calls only update
+// the ticks.
+function renderLanguages(u, building) {
+  const box = $('langList');
+  if (!box.children.length && (u.langsAll || []).length) {
+    let dn = null;
+    try { dn = new Intl.DisplayNames(['en'], { type: 'language' }); } catch (e) { /* plain codes then */ }
+    const rows = u.langsAll.map((code) => ({ code, name: (dn && dn.of(code)) || code }));
+    rows.sort((a, b) => a.name.localeCompare(b.name));
+    for (const { code, name } of rows) {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = code;
+      input.addEventListener('change', saveLanguages);
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(' ' + name + ' '));
+      const hint = document.createElement('span');
+      hint.className = 'hint';
+      label.appendChild(hint);
+      box.appendChild(label);
+    }
+  }
+  const chosen = new Set(u.langs || []);
+  const browser = new Set(u.langsBrowser || []);
+  const pages = new Set(u.langsPages || []);
+  for (const label of box.querySelectorAll('label')) {
+    const input = label.querySelector('input');
+    input.checked = chosen.has(input.value);
+    input.disabled = !!building;
+    label.querySelector('.hint').textContent = browser.has(input.value) ? '(your browser)' : pages.has(input.value) ? '(seen on a streaming page)' : '';
+  }
+}
+
+async function saveLanguages() {
+  const titleLangs = [...$('langList').querySelectorAll('input:checked')].map((i) => i.value);
+  await chrome.storage.sync.set({ titleLangs });
+  setTimeout(refreshStats, 600);
+}
+
+// Under the list: where things stand. The explanation of the option
+// itself is in its "i" tip.
+function otherLanguagesText(u, l, building) {
+  const seen = [...new Set([...(u.langsBrowser || []), ...(u.langsPages || [])])];
+  const chosen = u.langs || [];
   const have = l.langs || [];
   if (!u.langsOn) {
-    if (!seen.length) return 'Off. For a streaming profile set to another language; no other language has been seen yet (the browser is in English, and so were the pages opened), so ticking this downloads nothing until one is.';
-    return 'Off. ' + languageNames(seen) + ' seen (your browser’s language, or a streaming page you opened): ticking this downloads IMDb’s list of titles by country (about 520 MB, once) so titles in ' + languageNames(seen) + ' get ratings too. Tick it before Update now and the first build includes it.';
+    return 'Off. For a streaming profile set to another language.' + (seen.length ? ' Seen so far: ' + languageNames(seen) + '.' : '');
   }
-  if (!seen.length) return 'On, but no other language has been seen yet; the download starts when a streaming page in another language is opened.';
-  const missing = seen.filter((x) => !have.includes(x));
-  let s = have.length ? 'Titles matched in ' + languageNames(have) + '.' : '';
-  if (missing.length) {
-    const auto = u.autoRefresh !== false && !(u.schedule && u.schedule.manual);
-    s += (s ? ' ' : '') + 'Titles in ' + languageNames(missing) + (auto ? ' arrive with the next refresh (about 520 MB), or now with the button below.' : ' are not downloaded by themselves while the automatic refresh is off: use the button below.');
+  if (!l.present) return 'Tick the languages to match; the first build then includes them.';
+  if (!l.akasAt) {
+    return chosen.length
+      ? 'Click Download: IMDb’s list of titles by country is read once (about 520 MB, not kept) and the useful part saved (about 50 MB), so other languages can be ticked later without downloading again.'
+      : 'Tick the languages to match.';
   }
-  return s;
+  const kept = ' IMDb’s title list from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB); the full rebuild fetches a fresh one after three months.';
+  let s = have.length ? 'Titles matched in ' + languageNames(have) + '.' : 'No language ticked.';
+  if (building) s += ' Changes to the ticks apply after the current build.';
+  else if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) s += ' Updating to ' + (chosen.length ? languageNames(chosen) : 'none') + '…';
+  return s + kept;
 }
 
 // The status line with OMDb only chosen. keyed: OMDb can answer (lookups
@@ -250,18 +295,18 @@ function nextRefresh(u) {
     return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +
       EVERY[n.fullDays] + (n.keyed ? '; OMDb covers them meanwhile).' : '); an OMDb key covers them sooner.');
   }
-  // A language seen for the first time (the browser's, or a streaming
-  // page's): its titles from IMDb's akas file, without a full rebuild.
+  // The language ticks changed: keyed again from the kept list (local,
+  // seconds), or waiting for the Download button when there is none.
   if (n.kind === 'akas') {
-    const what = 'titles in ' + languageNames(n.langs) + ' (about ' + n.mb + ' MB)';
-    return n.manual ? 'Waiting for Update now: ' + what + '.' : 'Next: ' + what + ', ' + due(n.due) + '.';
+    if (n.mb) return 'Waiting for the Download button: titles in ' + languageNames(n.langs) + ' (about ' + n.mb + ' MB).';
+    return 'Next: titles in ' + (n.langs.length ? languageNames(n.langs) : 'no other language') + ', from the kept list, ' + due(n.due) + '.';
   }
   const why = {
     unknown: 'many newly rated titles are waiting',
     episodes: 'the episode list never finished',
     format: 'it was built by an older version',
   }[n.reason];
-  const withAkas = n.akas ? ', with titles in ' + languageNames(n.langs) : '';
+  const withAkas = n.akas ? ', with a fresh list of titles in other languages' : '';
   if (n.manual) return 'Waiting for Update now: full rebuild (about ' + n.mb + ' MB' + withAkas + ')' + (why ? ', because ' + why : '') + '.';
   return 'Next: full rebuild (about ' + n.mb + ' MB' + withAkas + '), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
 }
@@ -307,18 +352,27 @@ $('buildRatings').addEventListener('click', async () => {
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
 });
 
-// The worker runs its refresh check when this changes (storage.onChanged),
-// so a language already seen starts downloading at once.
+// The worker applies a change at once (storage.onChanged): off drops the
+// keys and the kept list; on keys the ticked languages from the kept list.
+// The first time it is turned on, the languages seen come pre-ticked.
 $('otherLangs').addEventListener('change', async () => {
-  await chrome.storage.sync.set({ otherLanguages: $('otherLangs').checked });
-  say($('otherLangs').checked ? 'Titles in other languages on; the download starts once a language has been seen.' : 'Titles in other languages off; the next full rebuild drops them.');
+  const on = $('otherLangs').checked;
+  if (on) {
+    const { titleLangs } = await chrome.storage.sync.get('titleLangs');
+    if (!Array.isArray(titleLangs)) {
+      const seen = [...new Set([...[...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value)])];
+      await chrome.storage.sync.set({ titleLangs: seen });
+    }
+  }
+  await chrome.storage.sync.set({ otherLanguages: on });
+  say(on ? 'Tick the languages to match, then click Download.' : 'Titles in other languages off; their space is freed.');
   setTimeout(refreshStats, 500);
 });
 
-$('addLangs').addEventListener('click', async () => {
-  $('addLangs').disabled = true;
+$('downloadLangs').addEventListener('click', async () => {
+  $('downloadLangs').disabled = true;
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
-  $('addLangs').disabled = false;
+  $('downloadLangs').disabled = false;
   refreshStats();
 });
 
@@ -668,7 +722,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
 // Every setting back to its default: all sites on, badges always with the
 // star label, no extras, OMDb lookups on if there is a key, the local
 // database with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;
