@@ -166,6 +166,9 @@ async function refreshStats() {
   renderLanguages(u, building);
   $('langSummary').textContent = (u.langs || []).length ? languageNames(u.langs) : 'none ticked';
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
+  // Languages ticked but the list never fetched: said in red, since the
+  // option looks on while nothing matches yet.
+  $('otherLangsText').classList.toggle('bad', !!(u.langsOn && l.present && !l.akasAt && (u.langs || []).length && !building));
   // Languages ticked but no extract yet: the one place the 520 MB is fetched.
   $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && !l.akasAt && (u.langs || []).length);
   $('ratingsDays').value = String(u.ratingsDays);
@@ -259,7 +262,7 @@ function otherLanguagesText(u, l, building) {
   const have = l.langs || [];
   if (!u.langsOn) return '';
   if (!l.present) return 'The first build will include them.';
-  if (!l.akasAt) return chosen.length ? 'Not fetched yet.' : 'Open Languages above and tick the ones you use.';
+  if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles below has run.' : 'Open Languages above and tick the ones you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
   if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
