@@ -290,7 +290,10 @@ function omdbOnlyStatus(l, keyed) {
 // OMDb key.
 function nextRefresh(u) {
   const n = u.next || {};
-  if (u.autoRefresh === false) return 'Automatic refresh is off. Update now rebuilds everything (about 280 MB).';
+  if (u.autoRefresh === false) {
+    const mb = n.fullMb || 280;
+    return 'Automatic refresh is off. Update now rebuilds everything (about ' + mb + ' MB' + (n.akas ? ', with a fresh list of titles in other languages' : '') + ').';
+  }
   if (!n.kind) return '';
   if (n.kind === 'ratings') {
     return 'Next: ratings only (about ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +

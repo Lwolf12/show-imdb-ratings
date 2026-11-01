@@ -609,7 +609,10 @@ async function refreshPlan(meta) {
   const s = await refreshIntervals();
   const langs = await titleLanguages();
   const akas = langs.length > 0 && RatingsDB.akasStale(meta);
-  const full = (reason, due) => ({ kind: 'full', reason, due, mb: DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0), akas, langs, ...s });
+  // fullMb rides on every plan: what Update now would download today.
+  const fullMb = DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0);
+  s.fullMb = fullMb;
+  const full = (reason, due) => ({ kind: 'full', reason, due, mb: fullMb, akas, langs, ...s });
   if ((meta.format || 1) < RatingsDB.FORMAT) return full('format', now);
   if (!meta.episodes) return full('episodes', now);
   const ratingsDue = (meta.ratingsAt || meta.builtAt || 0) + s.ratingsDays * DAY_MS;
