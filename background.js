@@ -387,7 +387,7 @@ recoverInterruptedBuild();
 async function recoverInterruptedBuild() {
   const state = await getBuildState();
   if (state.status !== 'running' || (await hasBuildPage())) return;
-  await setBuildState({ status: 'error', message: 'the build was interrupted; click Update now to start it again', at: Date.now() });
+  await setBuildState({ status: 'error', kind: state.kind, message: 'the build was interrupted; click Update now to start it again', at: Date.now() });
 }
 
 // Returns the build state after starting (or the current one if already
@@ -411,7 +411,7 @@ async function startBuild(trigger, kind = 'full', langs = null) {
       await chrome.runtime.sendMessage(start);
     }
   } catch (e) {
-    const failed = { status: 'error', message: String((e && e.message) || e), at: Date.now() };
+    const failed = { status: 'error', kind, message: String((e && e.message) || e), at: Date.now() };
     await setBuildState(failed);
     await closeOffscreen();
     return failed;
@@ -453,7 +453,8 @@ async function handleBuildMessage(msg) {
       console.info('[imdbext] titles in ' + ((msg.info.langs || []).join(', ') || 'no other language') + ': ' + (msg.info.akas || 0).toLocaleString() + ' keys');
     }
   } else if (msg.type === 'error') {
-    await setBuildState({ status: 'error', message: msg.message, at: Date.now() });
+    const state = await getBuildState();
+    await setBuildState({ status: 'error', kind: state.kind, message: msg.message, at: Date.now() });
     await closeOffscreen();
   }
 }
