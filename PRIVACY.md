@@ -42,8 +42,9 @@ IndexedDB, and is removed when you uninstall the extension:
   local database. In either case the extension sends that title's name
   (and, where the site provides it, its year and whether it is a movie or
   series) together with your API key, so OMDb can answer; each title is
-  sent once and the answer remembered. If you also tick any of the extra
-  scores (Rotten Tomatoes, Metacritic, awards), then for each title whose
+  sent once and the answer remembered. If you also tick any of the "Also
+  show" boxes (Rotten Tomatoes, Metacritic, awards, the IMDb rating per
+  OMDb), then for each title whose
   preview, banner or title page you look at (and, with "On cards too", each
   title card you scroll past), the extension sends that title's IMDb ID
   with your key, once a month at most. OMDb's own privacy policy applies to
