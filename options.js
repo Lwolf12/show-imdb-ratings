@@ -695,11 +695,12 @@ $('test').addEventListener('click', async () => {
   refreshStats();
 });
 
-// Extra scores from OMDb (sync extraRatings {rt, mc, awards, cards}; all
-// four on until the user unticks one, the same default as content.js and
-// background.js). The boxes are greyed out, with a note, until the saved
-// key is confirmed working (a passed Test, or any OMDb answer); ticks are
-// kept while greyed, so they apply again once the key works.
+// Extra scores from OMDb (sync extraRatings {rt, mc, awards, imdb, cards};
+// the scores, awards and cards on and the IMDb figure off until the user
+// changes a box, the same default as content.js and background.js). The
+// boxes are greyed out, with a note, until the saved key is confirmed
+// working (a passed Test, or any OMDb answer); ticks are kept while greyed,
+// so they apply again once the key works.
 const EXTRA_BOXES = [...document.querySelectorAll('input.extra')];
 const EXTRAS_DEFAULT = { rt: true, mc: true, awards: true, cards: true };
 

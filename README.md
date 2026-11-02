@@ -48,10 +48,13 @@ is a small adapter file, so more services can be added.
    OMDb section also offers **Also show**: Rotten Tomatoes, Metacritic and
    an awards headline next to the IMDb rating in previews, banners and
    title pages (one request per title, remembered for 30 days), and with
-   **On cards too** the two scores on card badges as well, which uses more
-   of the 1,000 lookups a day. All four are on until you untick one.
+   **On cards too** the scores on card badges as well, which uses more
+   of the 1,000 lookups a day. Those four are on until you untick one.
    Mostly films: OMDb rarely has these scores
-   for series. Clicking the tomato score opens Rotten Tomatoes and the MC
+   for series. **IMDb rating per OMDb** (off until ticked) adds OMDb's own
+   copy of the IMDb rating when it isn't the number on the badge; the
+   database and OMDb each refresh their copy on their own day, so the two
+   can differ by a tenth. Clicking the tomato score opens Rotten Tomatoes and the MC
    score Metacritic (the title's page when OMDb knows it, else that site's
    search); the rest of the badge opens IMDb. Until the key works those
    boxes are greyed out.

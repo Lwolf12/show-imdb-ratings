@@ -1009,18 +1009,25 @@ async function omdbKeyConfirmed() {
 }
 
 // Extra scores from OMDb for one title, asked by its IMDb ID (exact; no
-// title matching): Rotten Tomatoes (critics' Tomatometer), Metacritic and
-// the awards headline. Only when the user ticked at least one of them, OMDb
-// lookups are on and the key is confirmed. Kept 30 days, misses too; one
-// request per title ever opened, not per card, so it fits a free key's
-// 1,000 a day. -> {extras: {rt: '92%', mc: 74, awards: 'Won 3 Oscars'} | null}
+// title matching): Rotten Tomatoes (critics' Tomatometer), Metacritic, the
+// awards headline, and OMDb's own copy of the IMDb rating (the page shows
+// it only when it isn't the badge's number). Only when the user ticked at
+// least one of them, OMDb lookups are on and the key is confirmed. Kept 30
+// days, misses too; one request per title ever opened, not per card, so it
+// fits a free key's 1,000 a day.
+// -> {extras: {rt: '92%', mc: 74, awards: 'Won 3 Oscars', imdb: 8.3} | null}
 async function lookupExtras(imdbID) {
-  // Nothing saved means every extra on (the same default as options.js).
+  // Nothing saved means the scores and awards on, the IMDb figure off (the
+  // same default as options.js).
   const { extraRatings = { rt: true, mc: true, awards: true, cards: true }, omdbFallback = true } = await omdbSettings(['extraRatings']);
-  if (!omdbFallback || !(extraRatings.rt || extraRatings.mc || extraRatings.awards)) return { extras: null };
+  if (!omdbFallback || !(extraRatings.rt || extraRatings.mc || extraRatings.awards || extraRatings.imdb)) return { extras: null };
   const key = 'x:' + imdbID;
   const stored = (await chrome.storage.local.get(key))[key];
-  if (stored && Date.now() - stored.ts < HIT_REFRESH_MS) return { extras: stored.extras };
+  // Answers kept before the IMDb figure was part of them (no v) lack it, and
+  // a title with only that figure was kept as a miss, so with the box ticked
+  // such an answer is asked again.
+  const usable = stored && (stored.v === 2 || !extraRatings.imdb);
+  if (usable && Date.now() - stored.ts < HIT_REFRESH_MS) return { extras: stored.extras };
   if (!(await omdbKeyConfirmed())) return { extras: stored ? stored.extras : null };
 
   if (inFlight.has(key)) return inFlight.get(key);
@@ -1029,7 +1036,7 @@ async function lookupExtras(imdbID) {
     .then(async (r) => {
       if (r.error) return { extras: stored ? stored.extras : null, error: r.error };
       const extras = r.data.Response === 'True' ? parseExtras(r.data) : null;
-      await chrome.storage.local.set({ [key]: { extras, ts: Date.now() } });
+      await chrome.storage.local.set({ [key]: { extras, ts: Date.now(), v: 2 } });
       return { extras };
     })
     .finally(() => inFlight.delete(key));
@@ -1046,8 +1053,9 @@ function parseExtras(data) {
   // Primetime Emmys."), not the "12 wins & 40 nominations total" tally.
   const first = ((data.Awards || '').split('. ')[0] || '').replace(/\.$/, '').trim();
   const awards = /\b(oscars?|emmys?|golden globes?|baftas?)\b/i.test(first) ? first : null;
-  const extras = { rt: /^\d+%$/.test(rt || '') ? rt : null, mc: Number.isFinite(mc) ? mc : null, awards };
-  if (!(extras.rt || extras.mc != null || extras.awards)) return null;
+  const imdb = parseFloat(data.imdbRating);
+  const extras = { rt: /^\d+%$/.test(rt || '') ? rt : null, mc: Number.isFinite(mc) ? mc : null, awards, imdb: Number.isFinite(imdb) ? imdb : null };
+  if (!(extras.rt || extras.mc != null || extras.awards || extras.imdb != null)) return null;
   // For the links: the Rotten Tomatoes page when OMDb knows it, and the
   // title to search the two sites with otherwise.
   if (/^https:\/\/(www\.)?rottentomatoes\.com\//.test(data.tomatoURL || '')) extras.rtUrl = data.tomatoURL;

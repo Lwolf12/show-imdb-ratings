@@ -329,6 +329,18 @@ html.imdbext-hide-na .imdbext-badge--card.imdbext-badge--none {
   white-space: nowrap;
 }
 
+/* OMDb's copy of the IMDb rating (settings: IMDb rating per OMDb), only
+   when it isn't the badge's number: "OMDb 8.3" in IMDb yellow. */
+.imdbext-omdb {
+  color: #f5c518;
+}
+
+.imdbext-omdb::before {
+  content: "OMDb\00a0";
+  color: #ddd;
+  font-weight: 600;
+}
+
 .imdbext-rt {
   color: #ddd;
 }

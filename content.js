@@ -20,7 +20,7 @@
   // same host may carry (Netflix's detail modal holds both).
   const OWN_BADGE = '.imdbext-badge:not(.imdbext-badge--episode)';
   let cardMode = 'always'; // card badges: 'always' | 'hover' | 'off'
-  let extraWant = {}; // OMDb extras the user ticked: {rt, mc, awards}
+  let extraWant = {}; // OMDb extras the user ticked: {rt, mc, awards, imdb, cards}
   const warned = new Set();
   const MESSAGES = {
     nokey: 'No ratings database yet and no working OMDb key; build the database from the settings (Update now).',
@@ -179,17 +179,18 @@
     }
   }
 
-  // Optional scores from OMDb after a detail chip's IMDb line: Rotten
-  // Tomatoes, Metacritic and an awards headline, whichever the user ticked
-  // (extraWant, from the settings) and OMDb has. Card badges get them only
-  // with "On cards too", and only the two short scores. The worker decides
-  // whether it may ask OMDb at all (key confirmed, lookups on) and
-  // remembers answers.
+  // Optional scores from OMDb after a detail chip's IMDb line: OMDb's copy
+  // of the IMDb rating when it isn't the badge's number, Rotten Tomatoes,
+  // Metacritic and an awards headline, whichever the user ticked (extraWant,
+  // from the settings) and OMDb has. Card badges get them only with "On
+  // cards too", and not the awards line. The worker decides whether it may
+  // ask OMDb at all (key confirmed, lookups on) and remembers answers.
   async function addExtras(badge, kind) {
     const imdbID = badge.dataset.imdbId;
     const onCard = kind === 'card';
     if (!imdbID || (kind !== 'detail' && !onCard)) return;
-    if (onCard ? !extraWant.cards || !(extraWant.rt || extraWant.mc) : !(extraWant.rt || extraWant.mc || extraWant.awards)) return;
+    const short = extraWant.rt || extraWant.mc || extraWant.imdb;
+    if (onCard ? !extraWant.cards || !short : !(short || extraWant.awards)) return;
     let r;
     try {
       r = await chrome.runtime.sendMessage({ type: 'extras', imdbID });
@@ -220,6 +221,16 @@
       wrap.appendChild(s);
     };
     const name = x.title || badge.dataset.title || '';
+    // OMDb's copy of the IMDb rating, only when it isn't the number the
+    // badge shows: the database and OMDb each refresh their copy on their
+    // own day, and a remembered answer waits for its refresh too.
+    const shown = badge.dataset.rating;
+    if (extraWant.imdb && x.imdb != null && shown && x.imdb.toFixed(1) !== shown) {
+      const from = badge.dataset.source === 'local' ? 'from the local database' : 'from an earlier OMDb answer';
+      add('imdbext-omdb', x.imdb.toFixed(1),
+        'IMDb rating ' + x.imdb.toFixed(1) + ' according to OMDb\nThe badge shows ' + shown + ' ' + from +
+        '; the two copies are refreshed on different days.');
+    }
     if (extraWant.rt && x.rt) {
       add('imdbext-rt' + (parseInt(x.rt, 10) >= 60 ? ' imdbext-rt--fresh' : ''), x.rt,
         'Rotten Tomatoes critics score (via OMDb)\nClick to open Rotten Tomatoes',
@@ -370,6 +381,8 @@
       badge.title =
         'No IMDb match for "' + title + '"' + (result.offered ? ' (OMDb offered "' + result.offered + '", not the same title)' : '');
       delete badge.dataset.imdbId;
+      delete badge.dataset.rating;
+      delete badge.dataset.source;
       if (kind === 'detail') {
         const info = document.createElement('span');
         info.className = 'imdbext-info';
@@ -390,6 +403,9 @@
     if (result.imdbID) badge.dataset.imdbId = result.imdbID;
     else delete badge.dataset.imdbId;
     badge.dataset.title = result.matchedTitle || title;
+    // For addExtras: the number on show and which path gave it.
+    badge.dataset.rating = result.rating.toFixed(1);
+    badge.dataset.source = result.source || '';
 
     if (kind === 'detail') {
       const info = document.createElement('span');
@@ -534,14 +550,15 @@
   // grey "n/a" card badges, badgeLabel 'star' (default) | 'imdb' picks the
   // tag before the score. Hover, n/a and the label are pure CSS (classes on
   // <html>, see badge.css); 'off' also stops card lookups, so it rescans.
-  // extraRatings {rt, mc, awards} (with OMDb lookups on) adds OMDb's extra
-  // scores to detail chips; changing it rescans so open chips follow.
+  // extraRatings {rt, mc, awards, imdb, cards} (with OMDb lookups on) adds
+  // OMDb's extra scores to detail chips; changing it rescans so open chips
+  // follow.
   const PREF_KEYS = ['cardBadges', 'hideNA', 'badgeLabel', 'extraRatings', 'omdbFallback'];
 
   function applyBadgePrefs({ cardBadges, hideNA, badgeLabel, extraRatings, omdbFallback }) {
     cardMode = cardBadges === 'hover' || cardBadges === 'off' ? cardBadges : 'always';
-    // Nothing saved yet means every extra on and "n/a" cards hidden (the
-    // same defaults as options.js).
+    // Nothing saved yet means the scores and awards on, the IMDb figure off
+    // and "n/a" cards hidden (the same defaults as options.js).
     extraWant = omdbFallback === false ? {} : { ...(extraRatings || { rt: true, mc: true, awards: true, cards: true }) };
     const cl = document.documentElement.classList;
     cl.toggle('imdbext-cards-hover', cardMode === 'hover');
