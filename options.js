@@ -71,6 +71,12 @@ let ratingsPassOk = false;
 let omdbOnlyMode = false;
 let dbPresent = false;
 let loadedLangs = []; // languages keyed in the database at the last refresh (refreshStats)
+let storedLangs = []; // the languages chosen in storage at the last refresh
+let extractOnHand = false; // the kept list exists, so changed ticks need no download
+// The ticks are a draft until the button under the list is clicked: the
+// ticked languages when they differ from storedLangs, else null.
+let draftLangs = null;
+const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
 function showBuild(build) {
@@ -168,12 +174,18 @@ async function refreshStats() {
   renderLanguages(u, building, listWasHidden);
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
   loadedLangs = l.akasAt ? l.langs || [] : [];
+  storedLangs = u.langs || [];
+  extractOnHand = !!l.akasAt;
   if (u.langsOn) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
-  $('otherLangsText').classList.toggle('bad', !!(u.langsOn && l.present && !l.akasAt && (u.langs || []).length && !building));
-  // Languages ticked but no extract yet: the one place the 520 MB is fetched.
-  $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && !l.akasAt && (u.langs || []).length);
+  $('otherLangsText').classList.toggle('bad', !!(u.langsOn && l.present && !l.akasAt && storedLangs.length && !building && draftLangs === null));
+  // The button applies the ticks: Get titles while the list was never
+  // fetched (the one place the 520 MB is read), Apply once it is on hand
+  // and only the keys change. Shown for a draft, or for languages chosen
+  // but never fetched.
+  $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && (draftLangs !== null || (!l.akasAt && storedLangs.length)));
+  $('downloadLangs').textContent = l.akasAt ? 'Apply (from the kept list, no download)' : 'Get titles (reads 520 MB from IMDb, keeps about 50 MB)';
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
@@ -249,7 +261,7 @@ function renderLanguages(u, building, reorder) {
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.value = code;
-      input.addEventListener('change', saveLanguages);
+      input.addEventListener('change', tickLanguages);
       label.appendChild(input);
       label.appendChild(document.createTextNode(' ' + name + ' '));
       const hint = document.createElement('span');
@@ -258,7 +270,7 @@ function renderLanguages(u, building, reorder) {
       box.appendChild(label);
     }
   }
-  const chosen = new Set(u.langs || []);
+  const chosen = new Set(draftLangs || u.langs || []);
   const browser = new Set(u.langsBrowser || []);
   const pages = new Set(u.langsPages || []);
   for (const label of box.querySelectorAll('label')) {
@@ -274,10 +286,13 @@ function renderLanguages(u, building, reorder) {
   }
 }
 
-async function saveLanguages() {
-  const titleLangs = [...$('langList').querySelectorAll('input:checked')].map((i) => i.value);
-  await chrome.storage.sync.set({ titleLangs });
-  setTimeout(refreshStats, 600);
+// A tick is a draft: nothing is written or built until the button under the
+// list is clicked, so several languages go in one pass, and unticking
+// before the click is the way to change one's mind.
+function tickLanguages() {
+  const ticked = [...$('langList').querySelectorAll('input:checked')].map((i) => i.value);
+  draftLangs = sameLangs(ticked, storedLangs) ? null : ticked;
+  refreshStats();
 }
 
 // Under the picker, one short line: where things stand. The explanation
@@ -286,6 +301,9 @@ function otherLanguagesText(u, l, building) {
   const chosen = u.langs || [];
   const have = l.langs || [];
   if (!u.langsOn) return '';
+  if (draftLangs !== null && l.present && !building) {
+    return 'Not applied yet: click ' + (l.akasAt ? 'Apply' : 'Get titles') + ' below to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
+  }
   if (!l.present) return 'The first build will include them.';
   if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles below has run.' : 'Tick the languages you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
@@ -384,6 +402,7 @@ $('buildRatings').addEventListener('click', async () => {
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
   const loaded = loadedLangs; // before the write: the worker clears them on it
+  draftLangs = null;
   const writes = { otherLanguages: on };
   if (on) {
     const { titleLangs } = await chrome.storage.sync.get('titleLangs');
@@ -412,11 +431,18 @@ $('forgetAka').addEventListener('click', async (e) => {
   refreshStats();
 });
 
+// Applies the draft. With the kept list on hand the worker keys the new
+// choice by itself on the write (background.js applyLanguageChoice);
+// without it, the build message fetches the 520 MB.
 $('downloadLangs').addEventListener('click', async () => {
   $('downloadLangs').disabled = true;
-  showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  if (draftLangs !== null) {
+    await chrome.storage.sync.set({ titleLangs: draftLangs });
+    draftLangs = null;
+  }
+  if (!extractOnHand) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
   $('downloadLangs').disabled = false;
-  refreshStats();
+  setTimeout(refreshStats, 500);
 });
 
 $('auto').addEventListener('change', async () => {
