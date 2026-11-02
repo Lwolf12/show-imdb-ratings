@@ -17,7 +17,7 @@
        column, so opening OMDb or Advanced only pushes down what is below it
        in the same column instead of reflowing the whole page. */
     @media (min-width: 760px) {
-      body { max-width: 860px; }
+      body { max-width: 920px; }   /* 422 px a column: Also show's three scores fit one row */
       .cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 36px; align-items: start; }
     }
     .choices { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
@@ -53,7 +53,10 @@
     .sample-imdb { font-size: 9px; font-weight: 800; color: #000; background: #f5c518; border-radius: 2px; padding: 0 3px; line-height: 1.5; }
     .credit { margin: auto 0 0; padding-top: 10px; color: #888; font-size: 12px; }   /* pinned to the bottom */
     #omdbBox { margin: 2px 0 0 23px; }
+    /* Three rows whatever the width: the three third-party scores, then
+       the two options that need a word of explanation on a row each. */
     .extras { column-gap: 12px; row-gap: 0; }
+    .extras .brk { flex-basis: 100%; height: 0; }
     .extras label.check { margin: 2px 0; }
     .extras.off label.check { color: #999; }
     .textbtn { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: #06c; text-decoration: underline; cursor: pointer; }
@@ -128,7 +131,9 @@
             <label class="check"><input id="xRt" class="extra" data-extra="rt" type="checkbox"> Rotten Tomatoes</label>
             <label class="check"><input id="xMc" class="extra" data-extra="mc" type="checkbox"> Metacritic</label>
             <label class="check"><input id="xAw" class="extra" data-extra="awards" type="checkbox"> Awards</label>
+            <span class="brk"></span>
             <label class="check"><input id="xImdb" class="extra" data-extra="imdb" type="checkbox"> IMDb rating per OMDb <span class="muted">(when it differs)</span></label>
+            <span class="brk"></span>
             <label class="check"><input id="xCards" class="extra" data-extra="cards" type="checkbox"> On cards too <span class="muted">(uses more lookups)</span></label>
             <span id="extrasNote" class="muted">(needs lookups on with a working key)</span>
             <span class="tip up" tabindex="0" data-tip="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (not the awards line). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. IMDb rating per OMDb adds OMDb's own copy of the IMDb rating when it isn't the number on the badge: the database and OMDb each refresh their copy on their own day, so the two can differ by a tenth. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic."
