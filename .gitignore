@@ -13,3 +13,6 @@ Thumbs.db
 # Store upload ZIPs (store/build-zip.ps1) and the locally built database
 dist/
 data/
+
+# Local notes read by Claude Code at session start; never published
+CLAUDE.local.md
