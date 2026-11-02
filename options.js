@@ -168,6 +168,7 @@ async function refreshStats() {
   renderLanguages(u, building, listWasHidden);
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
   loadedLangs = l.akasAt ? l.langs || [] : [];
+  if (u.langsOn) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
   $('otherLangsText').classList.toggle('bad', !!(u.langsOn && l.present && !l.akasAt && (u.langs || []).length && !building));
@@ -394,18 +395,17 @@ $('otherLangs').addEventListener('change', async () => {
   say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; their space is freed.');
   // Off with languages loaded: the ratings already matched in them stay
   // remembered (30 days, like any other), which looks as if the option
-  // were still on. Offer to forget them; keeping them is the default.
-  $('forgetRow').hidden = on || !loaded.length;
+  // were still on. One line offers to forget them; leaving it is the default.
+  $('forgetLine').hidden = on || !loaded.length;
   if (!on && loaded.length) $('forgetText').textContent = 'Ratings already matched in ' + languageNames(loaded) + ' stay remembered for up to 30 days.';
   setTimeout(refreshStats, 500);
 });
 
-$('keepAka').addEventListener('click', () => { $('forgetRow').hidden = true; });
-
 // Drops the remembered answers that came through the languages store
 // (db.js lookup marks them aka); English matches stay.
-$('forgetAka').addEventListener('click', async () => {
-  $('forgetRow').hidden = true;
+$('forgetAka').addEventListener('click', async (e) => {
+  e.preventDefault();
+  $('forgetLine').hidden = true;
   const keys = Object.entries(await ratingEntries()).filter(([, v]) => v && v.aka).map(([k]) => k);
   await chrome.storage.local.remove(keys);
   say('Forgot ' + keys.length + ' ratings matched in other languages; reload any streaming sites that are open.');
