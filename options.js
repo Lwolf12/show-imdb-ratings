@@ -70,6 +70,7 @@ let ratingsPassOk = false;
 // controls are greyed, since no database is built or consulted.
 let omdbOnlyMode = false;
 let dbPresent = false;
+let loadedLangs = []; // languages keyed in the database at the last refresh (refreshStats)
 let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
 function showBuild(build) {
@@ -166,6 +167,7 @@ async function refreshStats() {
   $('langBox').hidden = !u.langsOn || omdbOnlyMode;
   renderLanguages(u, building, listWasHidden);
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
+  loadedLangs = l.akasAt ? l.langs || [] : [];
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
   $('otherLangsText').classList.toggle('bad', !!(u.langsOn && l.present && !l.akasAt && (u.langs || []).length && !building));
@@ -380,6 +382,7 @@ $('buildRatings').addEventListener('click', async () => {
 // The first time it is turned on, the languages seen come pre-ticked.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
+  const loaded = loadedLangs; // before the write: the worker clears them on it
   const writes = { otherLanguages: on };
   if (on) {
     const { titleLangs } = await chrome.storage.sync.get('titleLangs');
@@ -389,7 +392,24 @@ $('otherLangs').addEventListener('change', async () => {
   }
   await chrome.storage.sync.set(writes); // one write, one change event in the worker
   say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; their space is freed.');
+  // Off with languages loaded: the ratings already matched in them stay
+  // remembered (30 days, like any other), which looks as if the option
+  // were still on. Offer to forget them; keeping them is the default.
+  $('forgetRow').hidden = on || !loaded.length;
+  if (!on && loaded.length) $('forgetText').textContent = 'Ratings already matched in ' + languageNames(loaded) + ' stay remembered for up to 30 days.';
   setTimeout(refreshStats, 500);
+});
+
+$('keepAka').addEventListener('click', () => { $('forgetRow').hidden = true; });
+
+// Drops the remembered answers that came through the languages store
+// (db.js lookup marks them aka); English matches stay.
+$('forgetAka').addEventListener('click', async () => {
+  $('forgetRow').hidden = true;
+  const keys = Object.entries(await ratingEntries()).filter(([, v]) => v && v.aka).map(([k]) => k);
+  await chrome.storage.local.remove(keys);
+  say('Forgot ' + keys.length + ' ratings matched in other languages; reload any streaming sites that are open.');
+  refreshStats();
 });
 
 $('downloadLangs').addEventListener('click', async () => {

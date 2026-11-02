@@ -217,7 +217,13 @@ const RatingsDB = (() => {
     const key = normalise(title);
     let rec = await result(db.transaction(m.store).objectStore(m.store).get(key));
     // Not an English title: maybe one in a language the akas store has.
-    if (!rec && akas && (m.langs || []).length) rec = await result(db.transaction(akasStore(m.store)).objectStore(akasStore(m.store)).get(key));
+    // Such an answer is marked (aka), so the settings page can forget the
+    // remembered ones when the languages are turned off.
+    let aka = false;
+    if (!rec && akas && (m.langs || []).length) {
+      rec = await result(db.transaction(akasStore(m.store)).objectStore(akasStore(m.store)).get(key));
+      aka = !!rec;
+    }
     if (!rec || !rec.e.length) return null;
     const want = kind === 'movie' ? 'm' : kind === 'series' ? 's' : null;
     const pool = want ? rec.e.filter((e) => e[1] === want) : rec.e;
@@ -235,6 +241,7 @@ const RatingsDB = (() => {
       matchedTitle: primaryTitle || title,
       source: 'local',
       built: cur ? ratingsDate(m) : m.built,
+      ...(aka ? { aka: true } : {}),
     };
   }
 
