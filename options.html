@@ -58,10 +58,10 @@
     .extras.off label.check { color: #999; }
     .textbtn { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: #06c; text-decoration: underline; cursor: pointer; }
     .textbtn:disabled { color: #999; text-decoration: none; cursor: default; }
-    /* The Test result takes no room until there is one, so Also show sits
-       right under the key; a result then pushes it down once. */
-    #testResult { font-weight: 600; margin: 0; word-break: break-word; }
-    #testResult:empty { display: none; }
+    /* One line is held for the Test result, and every result is written to
+       fit it (the fuller account is its tooltip), so Also show never moves. */
+    #testResult { font-weight: 600; font-size: 13px; min-height: 1.4em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .extras { margin-top: 2px; }
     #status { flex: 1; min-width: 200px; font-weight: 600; font-size: 13px; text-align: right; }
     .ok { color: #2a7; }
     .bad { color: #c33; }

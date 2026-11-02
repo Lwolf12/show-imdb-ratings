@@ -1118,29 +1118,30 @@ function sameTitle(a, b) {
 // asking to try now.
 async function testKey() {
   const { omdbKey } = await chrome.storage.sync.get('omdbKey');
-  if (!omdbKey) return { ok: false, detail: 'No key saved.' };
+  if (!omdbKey) return { ok: false, detail: 'no key saved.' };
   await chrome.storage.local.remove('limitPauseUntil');
   omdbKeyRejected = false;
 
+  // detail fits the panel's one result line; more is the tooltip behind it.
   const NAMES = {
-    nokey: 'OMDb says the key is invalid or not activated yet',
-    consent: 'Firefox has not allowed the extension to send title names to OMDb',
+    nokey: 'invalid or not activated yet',
+    consent: 'Firefox did not allow sending titles to OMDb',
     limit: 'daily limit reached',
     http: 'could not reach OMDb',
   };
   const title = await omdbRequest({ i: 'tt0111161' }); // The Shawshank Redemption
-  if (title.error) return { ok: false, detail: NAMES[title.error] || title.error };
-  if (title.data.Response !== 'True') return { ok: false, detail: title.data.Error || 'unexpected answer' };
+  if (title.error) return { ok: false, detail: (NAMES[title.error] || title.error) + '.' };
+  if (title.data.Response !== 'True') return { ok: false, detail: (title.data.Error || 'unexpected answer') + '.' };
 
   const season = await omdbRequest({ i: 'tt0903747', Season: '1' }); // Breaking Bad
   const rated = season.data && season.data.Response === 'True'
     ? (season.data.Episodes || []).filter((e) => Number.isFinite(parseFloat(e.imdbRating))).length
     : 0;
   const d = title.data;
+  const why = season.error ? NAMES[season.error] || season.error : (season.data && season.data.Error) || 'no ratings';
   return {
     ok: !!rated,
-    detail: d.Title + ' (' + d.Year + ') rated ' + d.imdbRating +
-      (rated ? '; episodes work too (Breaking Bad season 1: ' + rated + ' rated episodes).' : '; but the season lookup failed: ' +
-        (season.error ? NAMES[season.error] || season.error : (season.data && season.data.Error) || 'no ratings') + '.'),
+    detail: rated ? 'titles and episodes both answered.' : 'titles yes, seasons no (' + why + ').',
+    more: d.Title + ' (' + d.Year + ') rated ' + d.imdbRating + '; Breaking Bad season 1: ' + rated + ' rated episodes.',
   };
 }

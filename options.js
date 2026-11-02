@@ -619,6 +619,7 @@ async function loadOmdb() {
   $('useOmdb').parentElement.classList.toggle('off', !omdbKey);
   $('useOmdb').parentElement.title = omdbKey ? '' : 'Enter a key below and click Test first';
   $('testResult').textContent = '';
+  $('testResult').title = '';
 }
 
 // A key being typed: nothing below it applies until Test saves it. Any
@@ -662,7 +663,8 @@ $('test').addEventListener('click', async () => {
   const omdbKey = $('key').value.trim();
   if (omdbKey && !(await askOmdbConsent())) {
     out.className = 'bad';
-    out.textContent = NO_CONSENT;
+    out.textContent = 'OMDb stays off: Firefox did not allow sending titles.';
+    out.title = NO_CONSENT;
     return;
   }
   await chrome.storage.sync.set({ omdbKey, omdbFallback: !!omdbKey });
@@ -676,6 +678,7 @@ $('test').addEventListener('click', async () => {
   }
   out.className = '';
   out.textContent = 'Testing…';
+  out.title = '';
   let r;
   try {
     r = await chrome.runtime.sendMessage({ type: 'test' });
@@ -684,13 +687,16 @@ $('test').addEventListener('click', async () => {
   }
   if (!r) {
     out.className = 'bad';
-    out.textContent = STALE_WORKER;
+    out.textContent = 'Worker out of date: reload the extension, then reopen.';
+    out.title = STALE_WORKER;
     return;
   }
-  const text = (r.ok ? 'OK: ' : 'Failed: ') + r.detail;
+  // One line, so nothing below moves; the fuller account is its tooltip.
+  const text = (r.ok ? 'Key works: ' : 'Key failed: ') + r.detail;
   await loadOmdb();
   out.className = r.ok ? 'ok' : 'bad';
   out.textContent = text;
+  out.title = r.more ? text + '\n' + r.more : text;
   say(r.ok ? 'Key saved and working; OMDb lookups on.' : 'Key saved, but it did not work; see below.', r.ok ? 'ok' : 'bad');
   refreshStats();
 });
