@@ -162,9 +162,9 @@ async function refreshStats() {
   $('autoText').textContent = scheduleText(u.schedule);
   $('otherLangs').checked = !!u.langsOn;
   $('otherLangs').disabled = omdbOnlyMode;
+  const listWasHidden = $('langBox').hidden;
   $('langBox').hidden = !u.langsOn || omdbOnlyMode;
-  renderLanguages(u, building);
-  $('langSummary').textContent = (u.langs || []).length ? languageNames(u.langs) : 'none ticked';
+  renderLanguages(u, building, listWasHidden);
   $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
@@ -233,7 +233,10 @@ function localStatus(l, building, manual, disk) {
 // chosen ones ticked, with a hint on the browser's own language and on
 // languages seen on streaming pages. Built once; later calls only update
 // the ticks.
-function renderLanguages(u, building) {
+// The ticked languages come first, the rest alphabetically. The order is set
+// while the list is out of sight (page load, box unticked), so a language
+// ticked just now stays where it was until the list is next shown.
+function renderLanguages(u, building, reorder) {
   const box = $('langList');
   if (!box.children.length && (u.langsAll || []).length) {
     const rows = u.langsAll.map((code) => ({ code, name: languageNames([code]) || code }));
@@ -261,6 +264,11 @@ function renderLanguages(u, building) {
     input.disabled = !!building;
     label.querySelector('.hint').textContent = browser.has(input.value) ? '(your browser)' : pages.has(input.value) ? '(seen on a streaming page)' : '';
   }
+  if (reorder) {
+    const labels = [...box.querySelectorAll('label')];
+    labels.sort((a, b) => (chosen.has(b.querySelector('input').value) - chosen.has(a.querySelector('input').value)) || a.childNodes[1].textContent.localeCompare(b.childNodes[1].textContent));
+    for (const label of labels) box.appendChild(label);
+  }
 }
 
 async function saveLanguages() {
@@ -276,7 +284,7 @@ function otherLanguagesText(u, l, building) {
   const have = l.langs || [];
   if (!u.langsOn) return '';
   if (!l.present) return 'The first build will include them.';
-  if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles below has run.' : 'Open Languages above and tick the ones you use.';
+  if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles below has run.' : 'Tick the languages you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
   if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
@@ -372,7 +380,6 @@ $('buildRatings').addEventListener('click', async () => {
 // The first time it is turned on, the languages seen come pre-ticked.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
-  document.querySelector('.langpick').open = on; // ticked: show the list to pick from; unticked: collapse for next time
   const writes = { otherLanguages: on };
   if (on) {
     const { titleLangs } = await chrome.storage.sync.get('titleLangs');
