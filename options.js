@@ -291,6 +291,13 @@ function renderLanguages(u, building, reorder) {
 // before the click is the way to change one's mind.
 function tickLanguages() {
   const ticked = [...$('langList').querySelectorAll('input:checked')].map((i) => i.value);
+  if (!dbPresent) {
+    // No database, so no Apply: the first build (Update now) reads the
+    // choice from storage, and nothing can start before it.
+    draftLangs = null;
+    chrome.storage.sync.set({ titleLangs: ticked }).then(refreshStats);
+    return;
+  }
   draftLangs = sameLangs(ticked, storedLangs) ? null : ticked;
   refreshStats();
 }
@@ -396,9 +403,11 @@ $('buildRatings').addEventListener('click', async () => {
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
 });
 
-// The worker applies a change at once (storage.onChanged): off drops the
-// keys and the kept list; on keys the ticked languages from the kept list.
-// The first time it is turned on, the languages seen come pre-ticked.
+// Off: the worker drops the keys at once (storage.onChanged); the kept list
+// and the ticks stay. On: nothing is keyed yet. The languages stored from
+// last time (or, with none, the ones seen) come back as a draft, so the
+// same "Not applied yet" line and button appear as for a tick, and the
+// stored choice is emptied until Apply writes it again.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
   const loaded = loadedLangs; // before the write: the worker clears them on it
@@ -406,12 +415,15 @@ $('otherLangs').addEventListener('change', async () => {
   const writes = { otherLanguages: on };
   if (on) {
     const { titleLangs } = await chrome.storage.sync.get('titleLangs');
-    if (!Array.isArray(titleLangs)) {
-      writes.titleLangs = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
-    }
+    const stored = Array.isArray(titleLangs) ? titleLangs : [];
+    const seen = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
+    const draft = stored.length ? stored : seen;
+    draftLangs = draft.length && dbPresent ? draft : null; // no database: stored outright, the first build reads it
+    storedLangs = dbPresent ? [] : draft;
+    writes.titleLangs = dbPresent ? [] : draft;
   }
   await chrome.storage.sync.set(writes); // one write, one change event in the worker
-  say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; the kept list stays for turning it back on.');
+  say(on ? 'Tick the languages to match, then click the button under the list.' : 'Titles in other languages off; the kept list stays for turning it back on.');
   // Off with languages loaded: the ratings already matched in them stay
   // remembered (30 days, like any other), which looks as if the option
   // were still on. One line offers to forget them; leaving it is the default.

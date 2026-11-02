@@ -171,11 +171,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 // "Match titles in other languages" or its language list changed. Off:
-// the keys and the extract go. On: the chosen languages are keyed again
-// from the extract on hand, a local job of seconds, so it runs now, with
-// the automatic refresh off or the full rebuild set to manual too. With
-// no extract yet, nothing happens until the Download button (the build
-// message, kind 'akas'): the 520 MB is only ever the user's own click.
+// the keys go (the extract stays for next time). A new list of languages
+// (the settings page writes it on Apply; turning the option on writes an
+// empty one) is keyed from the extract on hand, a local job of seconds,
+// so it runs now, with the automatic refresh off or the full rebuild set
+// to manual too. With no extract yet, nothing happens until the Get
+// titles button (the build message, kind 'akas'): the 520 MB is only
+// ever the user's own click.
 // During a build the change waits; handleBuildMessage applies it when
 // the build ends.
 async function applyLanguageChoice() {
