@@ -459,6 +459,13 @@ async function handleBuildMessage(msg) {
     if (msg.kind === 'akas') {
       console.info('[imdbext] titles in ' + ((msg.info.langs || []).join(', ') || 'no other language') + ': ' + (msg.info.akas || 0).toLocaleString() + ' keys');
     }
+    if (msg.info && msg.info.akasError) {
+      // A full build whose last step, refreshing the old akas extract,
+      // failed: the titles and episodes are done and the languages still
+      // key from the old extract, so the build is done; the next rebuild
+      // fetches the file again.
+      console.warn('[imdbext] the list of titles in other languages was not refreshed: ' + msg.info.akasError);
+    }
     // A language tick or untick made while this build ran was held back
     // (applyLanguageChoice); it goes through now.
     applyLanguageChoice();
@@ -615,15 +622,18 @@ async function notePageLang(tag) {
 //   languages (kind 'akas', mb 0) the chosen languages differ from the
 //             keyed ones and the extract is on hand: keyed again from it
 //   download  (kind 'akas', mb 520) languages chosen but no extract yet:
-//             waits for the settings page's Download button, never runs
-//             by itself
+//             waits for the settings page's Get titles button, never runs
+//             by itself. Only the settings page sees this plan; the
+//             scheduler (scheduled: true) skips it and goes on with the
+//             ratings and rebuild schedule, which the wait must not stall.
 // A full plan's mb includes the akas file when the build will fetch it
-// (akas: true: languages chosen and the extract old or missing).
+// (akas: true: languages chosen and the extract on hand AKAS_DAYS old; a
+// missing one is Get titles' job, so no rebuild fetches it unasked).
 // With manual set, a full plan is only what Update now would do: format
 // and episodes still come back (the ratings pass cannot run on such a
 // database, so nothing runs by itself), the other reasons do not, and
 // the ratings pass keeps its schedule.
-async function refreshPlan(meta) {
+async function refreshPlan(meta, { scheduled = false } = {}) {
   if (!meta || (await omdbOnly())) return { kind: null };
   const now = Date.now();
   const s = await refreshIntervals();
@@ -644,8 +654,8 @@ async function refreshPlan(meta) {
     if (fullDue <= now) return full('age', fullDue);
   }
   if (!sameSet(langs, meta.langs || [])) {
-    const have = !!meta.akasAt;
-    return { kind: 'akas', reason: have || !langs.length ? 'languages' : 'download', due: now, mb: have || !langs.length ? 0 : DOWNLOAD_MB.akas, langs, ...s };
+    if (meta.akasAt || !langs.length) return { kind: 'akas', reason: 'languages', due: now, mb: 0, langs, ...s };
+    if (!scheduled) return { kind: 'akas', reason: 'download', due: now, mb: DOWNLOAD_MB.akas, langs, ...s };
   }
   if (!s.manual && fullDue <= ratingsDue) return full('age', fullDue);
   return { kind: 'ratings', reason: 'age', due: ratingsDue, mb: DOWNLOAD_MB.ratings, ...s };
@@ -660,13 +670,15 @@ async function maybeRefresh() {
   if (state.status === 'running') return;
   // Don't hammer IMDb if builds keep failing: wait a day after an error.
   if (state.status === 'error' && Date.now() - (state.at || 0) < DAY_MS) return;
-  const plan = await refreshPlan(await RatingsDB.getMeta());
+  const plan = await refreshPlan(await RatingsDB.getMeta(), { scheduled: true });
   if (!plan.kind || plan.due > Date.now()) return;
   if (plan.kind === 'akas') {
     // Keying the chosen languages from the extract is local work the
-    // user asked for by ticking them, so it needs no automatic refresh;
-    // fetching the file is the Download button's alone.
-    if (!plan.mb) await startBuild('auto', 'akas', plan.langs);
+    // user asked for by ticking them, so it needs no automatic refresh.
+    // (Fetching the file is the Get titles button's alone; a scheduled
+    // plan never says 'download', so the ratings pass below keeps its
+    // schedule while that button waits.)
+    await startBuild('auto', 'akas', plan.langs);
     return;
   }
   if (!autoRefresh) return;

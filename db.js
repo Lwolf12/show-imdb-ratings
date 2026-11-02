@@ -99,11 +99,13 @@ const RatingsDB = (() => {
   // than the other three together.
   const AKAS_DAYS = 90;
 
-  // Whether the extract is missing or older than AKAS_DAYS, so a build
-  // that wants any language must fetch the file. Shared by builder.js and
+  // Whether the extract on hand is older than AKAS_DAYS, so a full build
+  // that wants any language fetches the file again. A missing extract is
+  // not stale: the 520 MB is only ever the settings page's Get titles
+  // button, never a rebuild running by itself. Shared by builder.js and
   // background.js (refreshPlan), which says what the build downloads.
   function akasStale(meta) {
-    return !meta || !meta.akasAt || Date.now() - meta.akasAt > AKAS_DAYS * 24 * 60 * 60 * 1000;
+    return !!(meta && meta.akasAt) && Date.now() - meta.akasAt > AKAS_DAYS * 24 * 60 * 60 * 1000;
   }
 
   // Used for both building and lookup. Keep in one place.

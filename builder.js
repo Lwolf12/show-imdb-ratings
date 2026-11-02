@@ -216,7 +216,9 @@ const RatingsBuilder = (() => {
   // The full build. langs: the languages besides English the user chose
   // (background.js titleLanguages); their keys are made again from the
   // extract right after the titles go live, and the akas file is fetched
-  // again, last, once the extract is old (db.js akasStale) or missing.
+  // again, last, once the extract on hand is old (db.js akasStale). With
+  // no extract nothing is fetched: that is the Get titles button's job
+  // (addLanguages), so no rebuild downloads the 520 MB by itself.
   // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'keying'|'writing-akas', pct: 0..1, detail })
   // onUsable(info) fires once the titles are live, before the episodes stream.
   async function build({ minVotes = 25, langs = [], onProgress, onUsable } = {}) {
@@ -321,10 +323,20 @@ const RatingsBuilder = (() => {
     episodes.clear();
 
     // 6. A fresh akas extract, last: everything above works without it,
-    //    and most people need none.
-    if (fetchAkas) akas = await applyLanguages(langs, byId, progress, true);
+    //    and most people need none. A failure here is not the build's:
+    //    the titles and episodes are in, and the languages still key from
+    //    the old extract (step 3), so the build is done and the next
+    //    rebuild tries the file again. The result says so (akasError).
+    let akasError = null;
+    if (fetchAkas) {
+      try {
+        akas = await applyLanguages(langs, byId, progress, true);
+      } catch (e) {
+        akasError = String((e && e.message) || e);
+      }
+    }
     byId.clear();
-    return { ...info, episodes: episodeCount, ...(akas || {}) };
+    return { ...info, episodes: episodeCount, ...(akas || {}), ...(akasError ? { akasError } : {}) };
   }
 
   // The chosen languages for an existing database (the settings page's

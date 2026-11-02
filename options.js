@@ -101,7 +101,10 @@ function showBuild(build) {
         : build.kind === 'akas'
         ? ((build.info.langs || []).length ? 'Titles in ' + languageNames(build.info.langs) + ' matched' : 'Titles in other languages removed') + ' (reload any streaming sites that are already open).'
         : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
-          '(reload any that are already open).';
+          '(reload any that are already open).' +
+          // The rebuild's last step, a fresh list of titles in other
+          // languages, failed: the kept list still serves (builder.js step 6).
+          (build.info.akasError ? ' The list of titles in other languages could not be refreshed (' + build.info.akasError + '); the kept one stays in use.' : '');
       $('buildDone').hidden = false;
     }
     return;
