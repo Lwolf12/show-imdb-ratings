@@ -130,6 +130,42 @@
              · Requests today: <span id="today">…</span> / 1,000 <span id="limit"></span></p>
         </div>
       </section>
+
+      <section>
+        <details>
+          <summary>Advanced</summary>
+          <div class="row">Refresh ratings (reads 9 MB):
+            <select id="ratingsDays">
+              <option value="7">weekly</option>
+              <option value="14">every 2 weeks</option>
+              <option value="30">monthly</option>
+            </select></div>
+          <div class="row">Full rebuild (reads 280 MB):
+            <select id="fullDays">
+              <option value="30">monthly</option>
+              <option value="61">every 2 months</option>
+              <option value="91">every 3 months</option>
+              <option value="0">only when I click Update now</option>
+            </select>
+            <span class="tip" tabindex="0" data-tip="The full rebuild brings new titles; the ratings refresh only updates the scores of titles already stored. With a working OMDb key, which covers new titles meanwhile, a longer rebuild interval costs little. Whatever the interval, the full rebuild also runs once 10,000 newly rated titles are waiting; with Update now only, nothing that big ever downloads by itself. Both wait for the next check, every six hours, and skip metered connections."
+                  aria-label="The full rebuild brings new titles; the ratings refresh only updates the scores of titles already stored. With a working OMDb key, which covers new titles meanwhile, a longer rebuild interval costs little. Whatever the interval, the full rebuild also runs once 10,000 newly rated titles are waiting; with Update now only, nothing that big ever downloads by itself. Both wait for the next check, every six hours, and skip metered connections.">i</span></div>
+          <div class="row">
+            <button id="buildRatings" type="button">Update ratings only</button>
+            <span class="muted">(new titles need Update now)</span></div>
+          <div class="row">
+            <button id="clear" type="button">Clear remembered ratings</button>
+            <span class="muted">(<span id="stored">…</span>)</span>
+            <span class="tip up" tabindex="0" data-tip="Each title's rating is remembered once it has been looked up, so it shows instantly next time; it is re-checked after 30 days (3 days for titles with no match). Clear forgets them all, so titles look themselves up again, which fixes a wrong match."
+                  aria-label="Each title's rating is remembered once it has been looked up, so it shows instantly next time; it is re-checked after 30 days (3 days for titles with no match). Clear forgets them all, so titles look themselves up again, which fixes a wrong match.">i</span></div>
+          <div class="row">
+            <button id="resetSettings" type="button">Reset settings</button>
+            <span class="muted">(keeps the OMDb key and the database)</span></div>
+          <div class="row">
+            <button id="deleteDb" type="button">Delete database</button>
+            <span class="tip up" tabindex="0" data-tip="Removes the local ratings database and every remembered rating, as if just installed. Useful with OMDb only, or to start over. Nothing downloads again until you click Update now."
+                  aria-label="Removes the local ratings database and every remembered rating, as if just installed. Useful with OMDb only, or to start over. Nothing downloads again until you click Update now.">i</span></div>
+        </details>
+      </section>
     </div>
 
     <div class="col">
@@ -178,41 +214,6 @@
         </div>
       </section>
 
-      <section>
-        <details>
-          <summary>Advanced</summary>
-          <div class="row">Refresh ratings (reads 9 MB):
-            <select id="ratingsDays">
-              <option value="7">weekly</option>
-              <option value="14">every 2 weeks</option>
-              <option value="30">monthly</option>
-            </select></div>
-          <div class="row">Full rebuild (reads 280 MB):
-            <select id="fullDays">
-              <option value="30">monthly</option>
-              <option value="61">every 2 months</option>
-              <option value="91">every 3 months</option>
-              <option value="0">only when I click Update now</option>
-            </select>
-            <span class="tip left" tabindex="0" data-tip="The full rebuild brings new titles; the ratings refresh only updates the scores of titles already stored. With a working OMDb key, which covers new titles meanwhile, a longer rebuild interval costs little. Whatever the interval, the full rebuild also runs once 10,000 newly rated titles are waiting; with Update now only, nothing that big ever downloads by itself. Both wait for the next check, every six hours, and skip metered connections."
-                  aria-label="The full rebuild brings new titles; the ratings refresh only updates the scores of titles already stored. With a working OMDb key, which covers new titles meanwhile, a longer rebuild interval costs little. Whatever the interval, the full rebuild also runs once 10,000 newly rated titles are waiting; with Update now only, nothing that big ever downloads by itself. Both wait for the next check, every six hours, and skip metered connections.">i</span></div>
-          <div class="row">
-            <button id="buildRatings" type="button">Update ratings only</button>
-            <span class="muted">(new titles need Update now)</span></div>
-          <div class="row">
-            <button id="clear" type="button">Clear remembered ratings</button>
-            <span class="muted">(<span id="stored">…</span>)</span>
-            <span class="tip left up" tabindex="0" data-tip="Each title's rating is remembered once it has been looked up, so it shows instantly next time; it is re-checked after 30 days (3 days for titles with no match). Clear forgets them all, so titles look themselves up again, which fixes a wrong match."
-                  aria-label="Each title's rating is remembered once it has been looked up, so it shows instantly next time; it is re-checked after 30 days (3 days for titles with no match). Clear forgets them all, so titles look themselves up again, which fixes a wrong match.">i</span></div>
-          <div class="row">
-            <button id="resetSettings" type="button">Reset settings</button>
-            <span class="muted">(keeps the OMDb key and the database)</span></div>
-          <div class="row">
-            <button id="deleteDb" type="button">Delete database</button>
-            <span class="tip left up" tabindex="0" data-tip="Removes the local ratings database and every remembered rating, as if just installed. Useful with OMDb only, or to start over. Nothing downloads again until you click Update now."
-                  aria-label="Removes the local ratings database and every remembered rating, as if just installed. Useful with OMDb only, or to start over. Nothing downloads again until you click Update now.">i</span></div>
-        </details>
-      </section>
     </div>
   </div>
 
