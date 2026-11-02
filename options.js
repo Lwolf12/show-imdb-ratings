@@ -372,6 +372,7 @@ $('buildRatings').addEventListener('click', async () => {
 // The first time it is turned on, the languages seen come pre-ticked.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
+  document.querySelector('.langpick').open = on; // ticked: show the list to pick from; unticked: collapse for next time
   const writes = { otherLanguages: on };
   if (on) {
     const { titleLangs } = await chrome.storage.sync.get('titleLangs');
