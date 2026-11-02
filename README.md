@@ -94,16 +94,18 @@ names of the database's titles in every supported language, about 50 MB
 in the browser's database. The languages you ticked are then keyed from
 that as extra names for the same ratings, and ticking another language
 later takes seconds, with no download. The full rebuild fetches a fresh
-list once the kept one is three months old. An English browser on English
-pages has no use for any of this, which is why it is off; unticking the
-option frees the space. Languages written in the Latin alphabet are
-covered (Polish, German, French, Spanish, Portuguese, Italian, Dutch, the
-Nordic and most Central European languages, Turkish, Indonesian,
-Vietnamese); Cyrillic, Greek and Asian scripts are not yet. Netflix's own labels (a show's "5
+list once the kept one is three months old. An English browser on
+English pages has no use for any of this, which is why it is off.
+Unticking the option stops the matching but keeps the list, so turning
+it back on costs no download; Delete database removes it. Languages
+written in the Latin alphabet are covered (Polish, German, French,
+Spanish, Portuguese, Italian, Dutch, the Nordic and most Central
+European languages, Turkish, Indonesian, Vietnamese); Cyrillic, Greek
+and Asian scripts are not yet. Netflix's own labels (a show's "5
 Seasons", the season dropdown, "Show" or "Movie") are read in English,
 Polish, German, French, Spanish, Portuguese, Italian and Dutch; in other
-languages titles still match, but the hints that tell a 2026 series from a
-same-named 1955 film are lost.
+languages titles still match, but the hints that tell a 2026 series from
+a same-named 1955 film are lost.
 
 After that the refresh is sized to what changes. Once a week only the
 ratings file (about 9 MB) is re-read and every stored rating updated in

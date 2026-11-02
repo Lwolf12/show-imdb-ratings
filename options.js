@@ -411,7 +411,7 @@ $('otherLangs').addEventListener('change', async () => {
     }
   }
   await chrome.storage.sync.set(writes); // one write, one change event in the worker
-  say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; their space is freed.');
+  say(on ? 'Tick the languages to match, then click Get titles.' : 'Titles in other languages off; the kept list stays for turning it back on.');
   // Off with languages loaded: the ratings already matched in them stay
   // remembered (30 days, like any other), which looks as if the option
   // were still on. One line offers to forget them; leaving it is the default.

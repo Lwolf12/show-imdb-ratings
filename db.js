@@ -392,17 +392,18 @@ const RatingsDB = (() => {
     return blob || null;
   }
 
-  // "Match titles in other languages" switched off: the keys, the extract
-  // and their meta fields go, freeing the space at once.
+  // "Match titles in other languages" switched off: the keys go, so nothing
+  // matches; the kept extract stays (akasAt, akasSize untouched), so
+  // switching back on keys the languages again with no download. Only
+  // clear() removes the extract.
   async function clearAkas() {
     const db = await open();
-    const tx = db.transaction(['akas_a', 'akas_b', 'files'], 'readwrite');
+    const tx = db.transaction(['akas_a', 'akas_b'], 'readwrite');
     tx.objectStore('akas_a').clear();
     tx.objectStore('akas_b').clear();
-    tx.objectStore('files').delete('akas');
     await complete(tx);
     const m = await getMeta();
-    if (m) await putMeta({ ...m, langs: [], akas: 0, akasAt: 0, akasSize: 0 });
+    if (m) await putMeta({ ...m, langs: [], akas: 0 });
   }
 
   // Stage two: the episodes (Map of series imdbID -> { season: [[ep, rating,
