@@ -1,6 +1,6 @@
 **What's new in 1.2.2**
 
-- Titles in other languages now covers other scripts: Korean, Japanese, Chinese, Russian, Ukrainian, Bulgarian, Greek, Hebrew, Arabic, Thai and Hindi join the list under Match titles in other languages. Titles in those scripts are matched character for character, and a title's original name in its own script counts too, so a Korean Netflix profile gets ratings on the titles IMDb lists in Korean (most, not all: IMDb has no Korean name for Breaking Bad).
+- Titles in other languages now covers other scripts: Korean, Japanese, Chinese, Russian, Ukrainian, Bulgarian, Greek and Hindi join the list under Match titles in other languages. Titles in those scripts are matched character for character, as far as IMDb names titles in them: nearly every title in Japanese and Hindi, about 150,000 in Cyrillic, 71,000 in Chinese, 43,000 in Greek, and under 6,000 in Korean (Ozark and Stranger Things have a Korean name on IMDb; Breaking Bad is listed for Korea in English and stays "n/a").
 - If you set languages up before this version and tick one of the new ones, the settings show Get titles instead of Apply once: the list kept from before has no rows for these scripts, so it is read again (520 MB pass through, as the first time). Languages ticked before keep working meanwhile.
 - Nothing changes for anyone who does not use the option.
 

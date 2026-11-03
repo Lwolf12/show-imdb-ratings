@@ -39,10 +39,8 @@ test('scriptLanguages: kana settle Japanese, Han alone may be either, Cyrillic a
   assert.deepEqual([...R.scriptLanguages('英雄')].sort(), ['ja', 'zh']);
   assert.deepEqual([...R.scriptLanguages('Война и мир')].sort(), ['bg', 'ru', 'uk']);
   assert.deepEqual([...R.scriptLanguages('Το νησί')], ['el']);
-  assert.deepEqual([...R.scriptLanguages('הבית')], ['he']);
-  assert.deepEqual([...R.scriptLanguages('سلام')], ['ar']);
-  assert.deepEqual([...R.scriptLanguages('ฉลาดเกมส์โกง')], ['th']);
   assert.deepEqual([...R.scriptLanguages('दंगल')], ['hi']);
+  assert.deepEqual([...R.scriptLanguages('הבית')], [], 'Hebrew is not in the table');
   assert.deepEqual([...R.scriptLanguages('Stranger Things')], []);
 });
 
@@ -98,5 +96,5 @@ test('the aliases point at table entries and langCode-style tags fold', () => {
     assert.equal(R.LANGUAGES[from], undefined, from);
   }
   assert.equal(R.languageOf('cmn'), 'zh');
-  assert.equal(R.languageOf('iw'), 'he');
+  assert.equal(R.languageOf('in'), 'id');
 });

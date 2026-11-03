@@ -57,11 +57,14 @@ const RatingsDB = (() => {
   // with another language (BE, CH, CA) brings a few titles of the other
   // one along, which do no harm as keys. English needs nothing: the
   // primary and original titles are already keys. Languages in other
-  // scripts (Korean, Japanese, Chinese, Cyrillic, Greek, Hebrew, Arabic,
-  // Thai, Hindi; since 1.2.2) are keyed with normaliseAny, which keeps
-  // every script; their original titles, which the Latin key function
-  // loses, come from the extract too (extractRow). An extract made before
-  // a language was added lacks its rows (AKAS_NEEDS, akasCovers).
+  // scripts (Korean, Japanese, Chinese, Russian, Ukrainian, Bulgarian,
+  // Greek, Hindi; since 1.2.2) are keyed with normaliseAny, which keeps
+  // every script. How far each goes is IMDb's doing (title.akas,
+  // 2026-11): Japanese and Hindi names for nearly every title, Cyrillic
+  // for 150,000, Chinese 71,000, Greek 43,000, Korean 5,700; Hebrew,
+  // Arabic and Thai have a few hundred each and are left out. An extract
+  // made before a language was added lacks its rows (AKAS_NEEDS,
+  // akasCovers).
   const LANGUAGES = {
     pl: ['PL'],
     de: ['DE', 'AT', 'CH'],
@@ -92,8 +95,8 @@ const RatingsDB = (() => {
     // Other scripts. Chinese rows come as cmn (Mandarin), yue (Cantonese)
     // or zh and from three regions, simplified and traditional alike; one
     // entry takes them all (an unfolded form still matches when the page
-    // writes it the same way). Hindi and Arabic rows mostly name their
-    // language; their regions' unnamed rows are largely English titles.
+    // writes it the same way). Hindi rows name their language; region
+    // IN's unnamed rows are largely English titles.
     ko: ['KR'],
     ja: ['JP'],
     zh: ['CN', 'TW', 'HK'],
@@ -101,17 +104,14 @@ const RatingsDB = (() => {
     uk: ['UA'],
     bg: ['BG'],
     el: ['GR'],
-    he: ['IL'],
-    ar: ['EG', 'SA', 'AE'],
-    th: ['TH'],
     hi: [],
   };
   // Tags for the same language as the browser, a page or IMDb may write
   // them: Norwegian comes as nb (Bokmål, what Chrome and Firefox send) or
-  // nn as well as no; Chinese as cmn or yue in IMDb's data; Hebrew as iw
-  // and Indonesian as in in older browsers. Applied wherever a tag comes
+  // nn as well as no; Chinese as cmn or yue in IMDb's data; Indonesian
+  // as in in older browsers. Applied wherever a tag comes
   // in (background.js langCode, builder.js).
-  const LANGUAGE_ALIASES = { nb: 'no', nn: 'no', cmn: 'zh', yue: 'zh', iw: 'he', in: 'id' };
+  const LANGUAGE_ALIASES = { nb: 'no', nn: 'no', cmn: 'zh', yue: 'zh', in: 'id' };
   const languageOf = (tag) => LANGUAGE_ALIASES[tag] || tag;
 
   // The extract's format, and the one each language first appears in:
@@ -121,7 +121,7 @@ const RatingsDB = (() => {
   // on hand (Apply). 1: the Latin languages of 1.2.0; 2: the scripts
   // above and the original titles in them.
   const AKAS_FORMAT = 2;
-  const AKAS_NEEDS = { ko: 2, ja: 2, zh: 2, ru: 2, uk: 2, bg: 2, el: 2, he: 2, ar: 2, th: 2, hi: 2 };
+  const AKAS_NEEDS = { ko: 2, ja: 2, zh: 2, ru: 2, uk: 2, bg: 2, el: 2, hi: 2 };
 
   // Whether the extract on hand (meta.akasAt) has rows for these
   // languages. No extract: nothing to cover, true.
@@ -134,7 +134,9 @@ const RatingsDB = (() => {
   // The language(s) a title's script points at, for an original title the
   // extract keeps (its row names no language). Kana settle Japanese; Han
   // alone may be either Japanese or Chinese, and Cyrillic any of its
-  // languages, so those go to each. Latin-only titles: none.
+  // languages, so those go to each. Latin-only titles: none. (IMDb
+  // romanises its original titles, "Ojingeo Geim", so as of 2026-11 no
+  // row takes this path; kept for the day it writes them in script.)
   const SCRIPTS = [
     ['Hangul', ['ko']],
     ['Hiragana', ['ja']],
@@ -142,9 +144,6 @@ const RatingsDB = (() => {
     ['Han', ['zh', 'ja']],
     ['Cyrillic', ['ru', 'uk', 'bg']],
     ['Greek', ['el']],
-    ['Hebrew', ['he']],
-    ['Arabic', ['ar']],
-    ['Thai', ['th']],
     ['Devanagari', ['hi']],
   ].map(([script, langs]) => [new RegExp('\\p{Script=' + script + '}', 'u'), langs]);
 
