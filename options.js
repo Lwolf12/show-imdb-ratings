@@ -239,8 +239,9 @@ async function refreshStats() {
   const apply = onHand(draftLangs || storedLangs);
   $('downloadLangs').textContent = apply ? 'Apply' : 'Get titles';
   $('downloadLangs').title = apply ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
-  // Red while ticked languages wait for it: the line above says why, the button is what to click.
-  $('downloadLangs').classList.toggle('needed', !apply && (draftLangs || storedLangs).length > 0);
+  // Red whenever it is the click that is waited for: a draft not applied
+  // yet (Apply or Get titles), or ticked languages the list cannot key.
+  $('downloadLangs').classList.toggle('needed', draftLangs !== null || (!apply && storedLangs.length > 0));
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
