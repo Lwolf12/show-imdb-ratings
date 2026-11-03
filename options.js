@@ -260,8 +260,10 @@ async function refreshStats() {
     box.parentElement.classList.toggle('off', !armed);
     box.parentElement.title = savedKey ? '' : 'Enter a key below and click Test first';
   }
-  if (keyDirty()) loadExtras(false, '(click Test to save and check the key)');
-  else loadExtras(keyed);
+  // The note is short enough to share the last "Also show" row, so it
+  // moves nothing when it comes and goes.
+  const note = keyDirty() ? '(click Test first)' : !savedKey ? '(no working key)' : !box.checked ? '(tick Use OMDb)' : '(no working key)';
+  loadExtras(!keyDirty() && keyed, note);
 }
 
 // What the database holds and when it was built: the full build's date,
@@ -717,7 +719,7 @@ $('key').addEventListener('input', () => {
   keyEdited = true;
   $('useOmdb').disabled = true;
   $('useOmdb').parentElement.classList.add('off');
-  loadExtras(false, '(click Test to save and check the key)');
+  loadExtras(false, '(click Test first)');
 });
 $('key').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('test').click();
@@ -794,7 +796,7 @@ $('test').addEventListener('click', async () => {
 const EXTRA_BOXES = [...document.querySelectorAll('input.extra')];
 const EXTRAS_DEFAULT = { rt: true, mc: true, awards: true, cards: true };
 
-async function loadExtras(keyOk, note = '(needs Use OMDb ticked, with a working key)') {
+async function loadExtras(keyOk, note = '(no working key)') {
   const { extraRatings = EXTRAS_DEFAULT } = await chrome.storage.sync.get('extraRatings');
   for (const box of EXTRA_BOXES) {
     box.checked = !!extraRatings[box.dataset.extra];
