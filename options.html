@@ -48,7 +48,9 @@
        ticked: two columns, scrolling after five rows. */
     #langRow { margin: 2px 0; }
     #langRow button { padding: 3px 10px; font-size: 13px; }
-    #langRow button.needed { color: #fff; background: #c33; border-color: #a22; font-weight: 600; }   /* Get titles with languages waiting on it */
+    /* The button is the click being waited for (a draft, or languages the
+       kept list cannot key): red text and outline, like the line above it. */
+    #langRow button.needed { color: #c33; border: 1px solid #c33; font-weight: 600; }
     #langBox p { margin: 2px 0 4px; }
     .langs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 100px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; margin: 2px 0 2px 22px; font-size: 13px; }
     /* Each label is only as wide as its box and name, so the empty rest of
