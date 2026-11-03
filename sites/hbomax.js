@@ -1,7 +1,9 @@
-// Site adapter for HBO Max (play.hbomax.com). Defines window.IMDBEXT_SITE,
-// which content.js uses.
+// Site adapter for HBO Max (www.hbomax.com since November 2026, before
+// that play.hbomax.com; the manifest matches both). Defines
+// window.IMDBEXT_SITE, which content.js uses.
 //
-// HBO Max's 2026 web app (verified in Chrome): tiles are
+// HBO Max's 2026 web app (verified in Chrome, again 2026-11-03 on the new
+// host, same markup): tiles are
 // <a data-testid="<uuid>_tile" data-sonic-type="show|video|...">, 206x308
 // portrait posters, position:static inside a position:relative wrapper. The
 // title is only reliably available in the link's aria-label, which uses
@@ -64,6 +66,8 @@
     // Prefer the isolated group; still run the segment cut over it in case
     // an outer group wraps the whole label.
     const title = cutAtStop(firstIsolatedGroup(raw) || strip(raw))
+      // Top 10 rails: "Number 1: The Invite. 1 of 10".
+      .replace(/^number\s+\d+:\s*/i, '')
       // Episode tiles: "Watch Lanterns. Season 1, Episode 2: Trust Fall."
       .replace(/^watch\s+/i, '')
       .replace(/\.$/, '')

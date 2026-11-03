@@ -34,7 +34,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://play.hbomax.com/*"],
+      "matches": ["https://www.hbomax.com/*", "https://play.hbomax.com/*"],
       "js": ["sites/hbomax.js", "content.js"],
       "css": ["badge.css"],
       "run_at": "document_idle"
