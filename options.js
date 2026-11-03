@@ -558,6 +558,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes.buildState) {
     const s = changes.buildState.newValue;
     showBuild(s);
+    // The line at the top right reports the last click ("Click Update now
+    // to build…", "Tick the languages…"); a finished build makes any of
+    // that stale, and the green box says what to do now.
+    if (s && s.status === 'done') say('');
     if (s && ['done', 'cancelled', 'error'].includes(s.status)) refreshStats();
   }
 });
