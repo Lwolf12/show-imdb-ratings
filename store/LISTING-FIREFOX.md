@@ -77,7 +77,8 @@ The Chrome listing is in `LISTING.md`.
 > OPTIONAL: TITLES IN OTHER LANGUAGES
 > A streaming site in another language shows translated titles, which the
 > database knows only by their English and original names. Tick Match
-> titles in other languages in the settings, tick the languages you use,
+> titles in other languages in the settings, tick the languages you use
+> (from Polish to Korean, Japanese and Chinese),
 > and click Get titles: the extension reads IMDb's list of titles by
 > country once (520 MB, nothing saved as a file) and keeps the useful
 > part, about 50 MB, in the database. Ticking another language later

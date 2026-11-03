@@ -101,11 +101,17 @@ later takes seconds, with no download. The full rebuild fetches a fresh
 list once the kept one is three months old. An English browser on
 English pages has no use for any of this, which is why it is off.
 Unticking the option stops the matching but keeps the list, so turning
-it back on costs no download; Delete database removes it. Languages
-written in the Latin alphabet are covered (Polish, German, French,
+it back on costs no download; Delete database removes it. The
+languages written in the Latin alphabet (Polish, German, French,
 Spanish, Portuguese, Italian, Dutch, the Nordic and most Central
-European languages, Turkish, Indonesian, Vietnamese); Cyrillic, Greek
-and Asian scripts are not yet. Netflix's own labels (a show's "5
+European languages, Turkish, Indonesian, Vietnamese) are covered, and
+since 1.2.2 so are Korean, Japanese, Chinese, Russian, Ukrainian,
+Bulgarian, Greek, Hebrew, Arabic, Thai and Hindi: titles in those
+scripts are matched character for character after case and
+compatibility folding, and a title's original name in its own script
+counts too. Someone who set languages up before 1.2.2 and ticks one of
+these sees Get titles instead of Apply once, since the kept list from
+before has no rows for them. Netflix's own labels (a show's "5
 Seasons", the season dropdown, "Show" or "Movie") are read in English,
 Polish, German, French, Spanish, Portuguese, Italian and Dutch; in other
 languages titles still match, but the hints that tell a 2026 series from
