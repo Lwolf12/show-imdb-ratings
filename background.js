@@ -412,7 +412,17 @@ async function recoverInterruptedBuild() {
 // existing database) or 'akas' (titles in more languages into it); see
 // builder.js. langs: the languages to add (kind 'akas') or to have (full);
 // the ones wanted (titleLanguages) when not given.
-async function startBuild(trigger, kind = 'full', langs = null) {
+// One at a time: the alarm and a click on Update now can ask in the same
+// moment, and both would find the state idle before either wrote it.
+let buildStarting = Promise.resolve();
+
+function startBuild(trigger, kind = 'full', langs = null) {
+  const run = buildStarting.then(() => startBuildNow(trigger, kind, langs));
+  buildStarting = run.catch(() => {});
+  return run;
+}
+
+async function startBuildNow(trigger, kind, langs) {
   const state = await getBuildState();
   if (state.status === 'running') return state;
   const next = { status: 'running', trigger, kind, phase: 'starting', pct: 0, startedAt: Date.now() };
