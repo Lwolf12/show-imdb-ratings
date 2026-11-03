@@ -18,7 +18,15 @@
 // section[data-ci="latest-episodes"], one article.grid-view-item each, with
 // <abbr class="season-inline" title="Season 1">S1</abbr> and title="Episode
 // 1"; the rating joins the "41M · Nov 13, 2022" line in .info-wrapper.
-// A movie opens straight into the player, so movies are rated on tiles only.
+// A movie's page (/movies/video/<id>/, 2026-11-03; it used to open straight
+// into the player): .hero__grid with the title in "h1 .movieLogo img[alt]"
+// and, next to the grid, .movie__meta-container holding the
+// .movie__sub-metadata line "COMEDY 2022 TV-MA 48M" (the year in
+// .movie__air-year), after which the chip goes.
+//
+// A show card's title can carry an episode or clip name after the show's
+// ("South Park - South American Biker Gangs", a /shows/south-park link):
+// the leading part that matches the link's slug is the title (showPart).
 //
 // Home page banner: .hero__grid slides with the title in "h1 img[alt]"
 // ("Tulsa King "), no year, and right after the h1 a call-out ("NEW EPISODE
@@ -76,6 +84,22 @@
   }
 
   const onShowPage = () => /^\/shows\/[^/]+\/?$/.test(location.pathname);
+  const onMoviePage = () => /^\/movies\/video\//.test(location.pathname);
+
+  // Of a show link's name, the leading " - " part that matches the link's
+  // slug (/shows/south-park): the show's title without an episode or clip
+  // name after it. null when no part matches (UFC fight cards, renamed
+  // shows).
+  function showPart(el, name) {
+    const slug = (new URL(el.href).pathname.match(/^\/shows\/([^/]+)/) || [])[1] || '';
+    const want = slug.replace(/_/g, '-');
+    const parts = name.split(' - ');
+    for (let n = parts.length; n >= 1; n--) {
+      const candidate = clean(parts.slice(0, n).join(' - '));
+      if (slugOf(candidate) === want) return candidate;
+    }
+    return null;
+  }
 
   // The call-out right after the banner's logo heading.
   const bannerCall = (el) => el.querySelector(':scope > h1')?.nextElementSibling || null;
@@ -106,7 +130,11 @@
           // Tall "Now Featuring" cards carry a genre line; sports ones
           // (UFC, college football) aren't titles IMDb rates.
           if (/^sports$/i.test(clean(el.querySelector('.prominent-metadata')?.textContent))) return null;
-          return clean(el.getAttribute('title')) || null;
+          const name = clean(el.getAttribute('title'));
+          if (!name) return null;
+          // A show named with an episode after it: the show's part, or the
+          // whole name when no part matches the slug (as before).
+          return linkType(el) === 'series' ? showPart(el, name) || name : name;
         },
         typeOf: linkType,
         host(el) {
@@ -116,25 +144,16 @@
       {
         // "You May Also Like" on a show page: the same tiles without a title
         // attribute. The only name is the image's alt, which for a show adds
-        // a caption ("Marshals - Piya Wiconi"), so the leading part that
-        // matches the link's slug (/shows/marshals) is the title; no match
-        // (UFC fight cards, renamed shows) means no badge. A movie's alt is
-        // its title ("The Running Man (2025)").
+        // a caption ("Marshals - Piya Wiconi"), so the show's part (showPart)
+        // is the title; no match means no badge. A movie's alt is its title
+        // ("The Running Man (2025)").
         kind: 'card',
         selector: 'a.link:not([title])[href*="/shows/"], a.link:not([title])[href*="/movies/video/"]',
         titleOf(el) {
           const type = linkType(el);
           const alt = clean(el.querySelector('.thumb-wrapper img[alt]')?.alt);
           if (!type || !alt) return null;
-          if (type === 'movie') return alt;
-          const slug = (new URL(el.href).pathname.match(/^\/shows\/([^/]+)/) || [])[1] || '';
-          const want = slug.replace(/_/g, '-');
-          const parts = alt.split(' - ');
-          for (let n = parts.length; n >= 1; n--) {
-            const candidate = clean(parts.slice(0, n).join(' - '));
-            if (slugOf(candidate) === want) return candidate;
-          }
-          return null;
+          return type === 'movie' ? alt : showPart(el, alt);
         },
         typeOf: linkType,
         host(el) {
@@ -162,9 +181,33 @@
         },
       },
       {
+        // A movie's own page; the chip follows the genre / year / rating /
+        // length line beside the grid.
+        kind: 'detail',
+        selector: '.hero__grid:has(> h1 .movieLogo img[alt])',
+        titleOf(el) {
+          return onMoviePage() ? clean(el.querySelector('.movieLogo img[alt]')?.alt) || null : null;
+        },
+        typeOf() {
+          return 'movie';
+        },
+        yearOf(el) {
+          const y = clean(el.parentElement?.querySelector('.movie__air-year')?.textContent);
+          return /^(19|20)\d\d$/.test(y) ? y : null;
+        },
+        host(el) {
+          return el.parentElement?.querySelector('.movie__meta-container') || el;
+        },
+        place(host, badge) {
+          const after = host.querySelector(':scope > .movie__sub-metadata');
+          if (after) after.after(badge);
+          else host.appendChild(badge);
+        },
+      },
+      {
         // Home page banner slides.
         kind: 'detail',
-        selector: '.hero__grid:not(:has(.showBadging)):has(> h1)',
+        selector: '.hero__grid:not(:has(.showBadging)):not(:has(.movieLogo)):has(> h1)',
         titleOf(el) {
           if (!bannerType(el)) return null;
           return clean(el.querySelector('img[alt]')?.alt) || null;
