@@ -84,8 +84,9 @@ let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats
 // What the status line says about a build, in place of the database line
 // (refreshStats, and showBuild on every progress tick): its progress while
 // it runs, so that with the bar in the Update now row a build moves nothing
-// on the page; the failure afterwards; a cancel for a few minutes. null:
-// the line is the database's. Two lines at most at the window's width.
+// on the page; the failure afterwards. null: the line is the database's
+// (a cancel is noted beside Update now instead, showBuild). Two lines at
+// most at the window's width.
 function buildLine(build) {
   if (!build) return null;
   if (build.status === 'running') {
@@ -103,14 +104,15 @@ function buildLine(build) {
     // failed one waits for the next click, not the schedule.
     return { text: 'Failed: ' + build.message + (build.kind === 'akas' ? ' (click Get titles to try again)' : ' (will retry automatically in a day)'), bad: true };
   }
-  if (build.status === 'cancelled' && Date.now() - (build.at || 0) < DONE_RECENT_MS) {
-    // Stopped by Cancel: nothing changed, unless a full build had already
-    // made its titles live (build.saved), which the database line then
-    // reports as episodes pending.
-    return { text: build.saved === 'titles' ? 'Cancelled after the titles were saved; episode ratings arrive with the next full rebuild.' : 'Cancelled; nothing was changed.', bad: false };
-  }
   return null;
 }
+
+// A build cancelled while this page was open says so next to Update now
+// (the status line keeps its own text, which says what shows meanwhile);
+// a page opened later starts clean. Nothing changed, unless a full build
+// had already made its titles live (build.saved), which the status line
+// then reports as episodes pending.
+const PAGE_OPENED = Date.now();
 
 function showBuild(build) {
   const btn = $('build');
@@ -121,6 +123,9 @@ function showBuild(build) {
   $('buildRatings').title = ratingsPassOk ? 'Re-reads IMDb’s ratings file and updates every stored rating' : 'Needs a finished full build first (Update now)';
   $('buildDone').hidden = true;
   $('buildBarRow').hidden = !running;
+  const cancelledHere = !!build && build.status === 'cancelled' && (build.at || 0) >= PAGE_OPENED;
+  $('buildAfter').hidden = !cancelledHere;
+  if (cancelledHere) $('buildAfter').textContent = build.saved === 'titles' ? 'Cancelled after the titles were saved.' : 'Cancelled; nothing was changed.';
   if (running) {
     $('cancelBuild').disabled = !!build.cancelling;
     $('buildBar').value = build.pct || 0;
@@ -128,8 +133,8 @@ function showBuild(build) {
     $('localStatus').classList.remove('bad');
     return;
   }
-  // The failed or cancelled text is refreshStats' (buildLine), which
-  // follows every change of state.
+  // The failed text is refreshStats' (buildLine), which follows every
+  // change of state.
   if (build && build.status === 'done' && Date.now() - (build.at || 0) < DONE_RECENT_MS) {
     $('doneText').textContent = build.kind === 'ratings'
       ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
