@@ -733,6 +733,9 @@ async function maybeRefresh() {
 //   "Greater [OV]"              -> without a trailing [note]
 //   "Red Eye (UK)"              -> without a trailing (note)
 //   "Clip: Full Custom Garage"  -> without "Clip:"
+//   "South Park The Streaming Wars Part 1" -> without a trailing "Part 1":
+//                                  IMDb names a first part plainly, and
+//                                  only the sequel "Part 2"
 // Only packaging is removed. Matching on the part before a colon was tried
 // and dropped: it mostly found a different title ("Dunkirk: The Real Story"
 // is not the 1958 film), and a new spinoff not yet in IMDb's data ("Star
@@ -752,6 +755,7 @@ function titleVariants(title, kind) {
   }
   t = t
     .replace(/\s*[-–:,]?\s*season[\s-]*\d+[a-z]?\s*$/i, '')
+    .replace(/\s*[-–:,]?\s*part\s+(1|one|i)\s*$/i, '')
     .replace(/\s*\[[^\]]*\]\s*$/, '')
     .replace(/\s*\([^()]{1,25}\)\s*$/, '') // "Red Eye (UK)", "The Office (US)", "(Dubbed)"
     .replace(/\s+(UK|US)$/, '') // "Ghosts UK"
