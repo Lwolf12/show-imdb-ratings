@@ -51,18 +51,24 @@ const RatingsBuilder = (() => {
   const EPISODE_MIN_VOTES = 10;
 
   // Cancel (the settings page's button, via build-worker.js): a download in
-  // flight is aborted and the run ends with an error marked cancelled, and
-  // between steps check() does the same. Saves are never cut short: a
-  // half-written save would leave the database inconsistent (writeTitles
-  // empties the shared ids table first), and each takes seconds where a
-  // download takes minutes. So a cancel while downloading changes nothing,
-  // and one that lands after writeTitles leaves the titles live with the
-  // episodes pending (saved: 'titles'), the state the status line already
-  // knows. After the episodes are saved the build is complete, so a late
-  // cancel only skips the optional akas refresh.
+  // flight is aborted and the run ends with an error marked cancelled;
+  // between steps check() does the same, and tick() between the batches
+  // of a save. What a cancel leaves is always a consistent database:
+  // - downloading, keying, or saving titles into the spare store: nothing
+  //   live has changed (saved: null; the spare store is emptied again);
+  // - after the switch to the new titles, which db.js writeTitles makes
+  //   atomic and takes seconds: the titles are live with the episodes
+  //   pending, however far their save got (saved: 'titles'), the state
+  //   the status line already knows;
+  // - in the ratings pass: the rows updated so far keep their new rating
+  //   and the pass runs again on schedule (saved: 'ratings');
+  // - after the episodes are saved the build is complete, so a late
+  //   cancel only skips the optional akas refresh.
+  // Only writing the akas store runs through (applyLanguages): it is
+  // emptied first, so stopping it would lose the languages on hand.
   let cancelled = false;
   let aborter = null;
-  let saved = null; // what a cancelled full build has already made live
+  let saved = null; // what a cancelled run has already made live
 
   function begin() {
     cancelled = false;
@@ -81,6 +87,16 @@ const RatingsBuilder = (() => {
     if (cancelled) throw stopped();
   }
 
+  // Progress for a save (db.js, onProgress(done, total) after each batch),
+  // which a cancel ends between batches; never on the last report, when
+  // the save is through. mark: what the save has made live once it has
+  // begun (the ratings pass).
+  const tick = (progress, phase, mark) => (done, total) => {
+    if (mark && done > 0) saved = mark;
+    progress(phase, total ? done / total : 1);
+    if (done < total) check();
+  };
+
   // Yields decompressed lines; reports compressed bytes read for progress.
   // Aborted by cancel(): the fetch (or the read in progress) then fails,
   // and the failure is reported as the cancel it is.
@@ -90,7 +106,7 @@ const RatingsBuilder = (() => {
     try {
       const res = await fetch(url, { signal: aborter.signal });
       if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
-      yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes, true);
+      yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes);
     } catch (e) {
       if (cancelled) throw stopped();
       throw e;
@@ -106,11 +122,10 @@ const RatingsBuilder = (() => {
   const BREATH_BYTES = 2 << 20;
   const breathe = () => new Promise((r) => setTimeout(r, 0));
 
-  // The same over any stream of gzip'd text (a Blob's, say). cancellable:
-  // a download, which cancel() ends at the next read (the abort above ends
-  // it too, but not every stream fails on it); the extract's keying runs
-  // through, as a save does.
-  async function* linesFrom(body, total, onBytes, cancellable = false) {
+  // The same over any stream of gzip'd text (a Blob's, say), which
+  // cancel() ends at the next read (the abort above ends a download too,
+  // but not every stream fails on it).
+  async function* linesFrom(body, total, onBytes) {
     let read = 0;
     let breathed = 0;
     const counter = new TransformStream({
@@ -133,7 +148,7 @@ const RatingsBuilder = (() => {
         breathed = read;
         await breathe();
       }
-      if (cancellable && cancelled) throw stopped();
+      if (cancelled) throw stopped();
       buf += value;
       let start = 0;
       let nl;
@@ -324,8 +339,8 @@ const RatingsBuilder = (() => {
     }
 
     // 3. Titles go live now: badges can start while the episodes download.
-    //    The last chance to cancel with nothing changed; from here the save
-    //    runs to the end (see cancel above).
+    //    A cancel before the switch (see cancel above) changes nothing
+    //    live; the spare store it was filling is emptied again.
     check();
     progress('writing', 0);
     const day = new Date().toISOString().slice(0, 10);
@@ -338,7 +353,12 @@ const RatingsBuilder = (() => {
       titles: kept,
       format: RatingsDB.FORMAT,
     };
-    await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1));
+    try {
+      await RatingsDB.writeTitles(index, ids, info, tick(progress, 'writing'));
+    } catch (e) {
+      if (e && e.cancelled) await RatingsDB.clearSpare().catch(() => {});
+      throw e;
+    }
     saved = 'titles';
     // The akas rows name titles by ID; the entries stay (the same arrays,
     // no copies) while the index's keys go.
@@ -383,7 +403,7 @@ const RatingsBuilder = (() => {
     // 5. Episodes into the live database.
     check();
     progress('writing-episodes', 0);
-    await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1), leftover);
+    await RatingsDB.writeEpisodes(episodes, episodeCount, tick(progress, 'writing-episodes'), leftover);
     episodes.clear();
 
     // 6. A fresh akas extract, last: everything above works without it,
@@ -432,7 +452,7 @@ const RatingsBuilder = (() => {
     const ratings = await readRatings(minVotes, progress);
     check();
     progress('updating', 0);
-    const info = await RatingsDB.updateRatings(ratings, minVotes, (done, total) => progress('updating', total ? done / total : 1));
+    const info = await RatingsDB.updateRatings(ratings, minVotes, tick(progress, 'updating', 'ratings'));
     ratings.clear();
     return info;
   }

@@ -291,9 +291,13 @@ const RatingsDB = (() => {
   }
 
   // Stage one of a full build: the title index (Map of normalised title ->
-  // entries) and the ids table (Map of imdbID -> [rating, votes]) go into
-  // the stores that are not live, then become live, with the episode store
-  // of the new pair empty until writeEpisodes fills it. onProgress(done, total).
+  // entries) goes into the title store that is not live, in batches; then
+  // the ids table (Map of imdbID -> [rating, votes]) and the switch to the
+  // new pair land in one transaction, so lookups see the old database until
+  // it commits and the new one after, nothing in between. The new pair's
+  // episode store is empty until writeEpisodes fills it. A cancel during
+  // the batches (onProgress throwing, builder.js) changes nothing live;
+  // clearSpare drops what the batches wrote. onProgress(done, total).
   // The new pair's akas store starts empty (the builder keys the chosen
   // languages again from the extract right after); the extract itself,
   // in files, is not part of the pair and stays, as do its meta fields.
@@ -304,20 +308,30 @@ const RatingsDB = (() => {
     const epTarget = episodeStore(target);
     const akTarget = akasStore(target);
 
-    let tx = db.transaction([target, epTarget, akTarget, 'ids'], 'readwrite');
+    let tx = db.transaction([target, epTarget, akTarget], 'readwrite');
     tx.objectStore(target).clear();
     tx.objectStore(epTarget).clear();
     tx.objectStore(akTarget).clear();
-    tx.objectStore('ids').clear();
     await complete(tx);
 
     const keys = [...index.keys()];
     const idKeys = [...ids.keys()];
     const total = keys.length + idKeys.length;
     await writeBatches(db, target, keys, (s, k) => s.put({ k, e: index.get(k) }), onProgress, 0, total);
-    await writeBatches(db, 'ids', idKeys, (s, k) => s.put(ids.get(k), k), onProgress, keys.length, total);
 
-    await putMeta({
+    // The ids and the switch, atomically. The puts go in chunks, each
+    // awaited before the next is issued, which keeps the transaction open
+    // (a request is always pending) without queuing them all at once.
+    tx = db.transaction(['ids', 'meta'], 'readwrite');
+    const idStore = tx.objectStore('ids');
+    idStore.clear();
+    const CHUNK = 5000;
+    for (let i = 0; i < idKeys.length; i += CHUNK) {
+      let last = null;
+      for (const k of idKeys.slice(i, i + CHUNK)) last = idStore.put(ids.get(k), k);
+      if (last) await result(last);
+    }
+    tx.objectStore('meta').put({
       ...info,
       store: target,
       keys: keys.length,
@@ -329,7 +343,9 @@ const RatingsDB = (() => {
       akas: 0,
       akasAt: (old && old.akasAt) || 0,
       akasSize: (old && old.akasSize) || 0,
-    });
+    }, 'info');
+    await complete(tx);
+    if (onProgress) onProgress(total, total);
 
     if (old && old.store !== target) {
       tx = db.transaction([old.store, episodeStore(old.store), akasStore(old.store)], 'readwrite');
@@ -338,6 +354,20 @@ const RatingsDB = (() => {
       tx.objectStore(akasStore(old.store)).clear();
       await complete(tx);
     }
+  }
+
+  // The pair that is not live, emptied: what a cancelled writeTitles left
+  // in it (the next build would clear it anyway, but that may be a month
+  // off and this is up to a few hundred MB).
+  async function clearSpare() {
+    const db = await open();
+    const m = await getMeta();
+    const spare = m && m.store === 'titles_a' ? 'titles_b' : 'titles_a';
+    const tx = db.transaction([spare, episodeStore(spare), akasStore(spare)], 'readwrite');
+    tx.objectStore(spare).clear();
+    tx.objectStore(episodeStore(spare)).clear();
+    tx.objectStore(akasStore(spare)).clear();
+    await complete(tx);
   }
 
   // Every entry of the live title store by imdbID, for an akas pass on its
@@ -510,5 +540,5 @@ const RatingsDB = (() => {
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, AKAS_DAYS, akasStale, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
+  return { FORMAT, LANGUAGES, AKAS_DAYS, akasStale, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
 })();

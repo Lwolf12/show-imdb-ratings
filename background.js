@@ -702,20 +702,22 @@ async function maybeRefresh() {
   const { autoRefresh = true } = await chrome.storage.sync.get('autoRefresh');
   const state = await getBuildState();
   if (state.status === 'running') return;
-  // Don't hammer IMDb if builds keep failing: wait a day after an error,
-  // and after a build the user cancelled, which said "not now".
-  if ((state.status === 'error' || state.status === 'cancelled') && Date.now() - (state.at || 0) < DAY_MS) return;
   const plan = await refreshPlan(await RatingsDB.getMeta(), { scheduled: true });
   if (!plan.kind || plan.due > Date.now()) return;
   if (plan.kind === 'akas') {
     // Keying the chosen languages from the extract is local work the
-    // user asked for by ticking them, so it needs no automatic refresh.
-    // (Fetching the file is the Get titles button's alone; a scheduled
-    // plan never says 'download', so the ratings pass below keeps its
-    // schedule while that button waits.)
+    // user asked for by ticking them, so it needs no automatic refresh,
+    // and none of the wait below: a cancelled or failed run that left
+    // them unkeyed is put right at the next check. (Fetching the file is
+    // the Get titles button's alone; a scheduled plan never says
+    // 'download', so the ratings pass below keeps its schedule while
+    // that button waits.)
     await startBuild('auto', 'akas', plan.langs);
     return;
   }
+  // Don't hammer IMDb if builds keep failing: wait a day after an error,
+  // and after a build the user cancelled, which said "not now".
+  if ((state.status === 'error' || state.status === 'cancelled') && Date.now() - (state.at || 0) < DAY_MS) return;
   if (!autoRefresh) return;
   if (plan.kind === 'full' && plan.manual) return; // Update now's job
   if (looksMetered()) return; // try again at the next check

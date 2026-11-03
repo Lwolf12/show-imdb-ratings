@@ -21,8 +21,10 @@ const PHASES = {
   keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
-// The phases Cancel waits out: a save is never cut short (builder.js cancel).
-const SAVING = new Set(['writing', 'writing-episodes', 'updating', 'keying', 'writing-akas']);
+// The phase Cancel waits out: the akas store is emptied before it is
+// written, so that save runs through (builder.js cancel); every other
+// phase stops where it is.
+const SAVING = new Set(['writing-akas']);
 
 // "Polish", "Polish and German", "Polish, German and French".
 function languageNames(langs) {
@@ -109,10 +111,15 @@ function buildLine(build) {
 
 // A build cancelled while this page was open says so next to Update now
 // (the status line keeps its own text, which says what shows meanwhile);
-// a page opened later starts clean. Nothing changed, unless a full build
-// had already made its titles live (build.saved), which the status line
-// then reports as episodes pending.
+// a page opened later starts clean. Nothing changed, unless the run had
+// already made something live (build.saved, builder.js cancel): a full
+// build its titles, which the status line then reports as episodes
+// pending, or a ratings pass some of its ratings.
 const PAGE_OPENED = Date.now();
+const CANCELLED = {
+  titles: 'Cancelled after the titles were saved.',
+  ratings: 'Cancelled; the ratings updated so far stay.',
+};
 
 function showBuild(build) {
   const btn = $('build');
@@ -125,7 +132,7 @@ function showBuild(build) {
   $('buildBarRow').hidden = !running;
   const cancelledHere = !!build && build.status === 'cancelled' && (build.at || 0) >= PAGE_OPENED;
   $('buildAfter').hidden = !cancelledHere;
-  if (cancelledHere) $('buildAfter').textContent = build.saved === 'titles' ? 'Cancelled after the titles were saved.' : 'Cancelled; nothing was changed.';
+  if (cancelledHere) $('buildAfter').textContent = CANCELLED[build.saved] || 'Cancelled; nothing was changed.';
   if (running) {
     $('cancelBuild').disabled = !!build.cancelling;
     $('buildBar').value = build.pct || 0;
