@@ -185,14 +185,14 @@ const RatingsBuilder = (() => {
 
   // The useful part of title.akas.tsv.gz (~520 MB, the biggest of the
   // dumps), as a gzip'd Blob of "imdbID\ttitle\tregion\tlanguage" lines:
-  // the rows of titles the database has (byId), in any language or region
-  // db.js LANGUAGES knows. Only what IMDb shows as the title there (types
-  // imdbDisplay, or none): working, festival and DVD titles, and rows with
-  // an attribute ("literal title", "fake working title") are left out,
-  // since a streaming site shows none of those. The original title is a
-  // key already. About 4 million rows, 50 MB compressed.
+  // the rows of titles the database has (byId) that db.js extractRow
+  // keeps: any language or region LANGUAGES knows, plus original titles
+  // in another script (their row says no language; the script decides).
+  // Working, festival and DVD titles and rows with an attribute are left
+  // out there, since a streaming site shows none of those. Several
+  // million rows, tens of MB compressed.
   async function downloadAkas(byId, progress) {
-    const langs = new Set(Object.keys(RatingsDB.LANGUAGES).concat(Object.keys(RatingsDB.LANGUAGE_ALIASES)));
+    const langs = new Set(Object.keys(RatingsDB.LANGUAGES));
     const regions = new Set();
     for (const list of Object.values(RatingsDB.LANGUAGES)) for (const r of list) regions.add(r);
     const gzip = new CompressionStream('gzip');
@@ -219,13 +219,11 @@ const RatingsBuilder = (() => {
         if (!byId.has(line.slice(0, t1))) continue;
         // titleId, ordering, title, region, language, types, attributes, isOriginalTitle
         const f = line.split('\t');
-        if (f[7] === '1') continue;
-        // A row's language places it when it has one; its region otherwise.
-        if (f[4] !== '\\N' ? !langs.has(f[4]) : !regions.has(f[3])) continue;
-        if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') continue;
-        if (f[6] !== '\\N') continue;
-        buf += f[0] + '\t' + f[2] + '\t' + f[3] + '\t' + f[4] + '\n';
-        count++;
+        if (f.length < 8) continue;
+        for (const row of RatingsDB.extractRow(f, langs, regions)) {
+          buf += row.join('\t') + '\n';
+          count++;
+        }
         if (buf.length > 1 << 20) {
           await writer.write(encoder.encode(buf));
           buf = '';
@@ -257,13 +255,13 @@ const RatingsBuilder = (() => {
     for await (const line of linesFrom(blob.stream(), blob.size, (r, t) => progress('keying', t ? r / t : 0, count))) {
       // imdbID, title, region, language. A row that names its language
       // is that language's (Catalan in region ES, English in CA); only a
-      // row without one goes by its region.
+      // row without one goes by its region (db.js keyRowWanted).
       const f = line.split('\t');
       if (f.length < 4) continue;
-      if (f[3] !== '\\N' ? !want.has(RatingsDB.languageOf(f[3])) : !regions.has(f[2])) continue;
+      if (!RatingsDB.keyRowWanted(f[2], f[3], want, regions)) continue;
       const entry = byId.get(f[0]);
       if (!entry) continue;
-      const key = RatingsDB.normalise(f[1]);
+      const key = RatingsDB.normaliseAny(f[1]);
       if (!key) continue;
       const list = extra.get(key);
       if (!list) extra.set(key, [entry]);
@@ -280,6 +278,9 @@ const RatingsBuilder = (() => {
   // is old (or when told to). Returns { akas, langs } from writeAkas.
   async function applyLanguages(langs, byId, progress, download) {
     let blob = download ? null : await RatingsDB.getFile();
+    // An extract from before one of these languages was added has no
+    // rows for it: the file is read again (db.js akasCovers).
+    if (blob && !RatingsDB.akasCovers(await RatingsDB.getMeta(), langs)) blob = null;
     if (!blob) {
       blob = await downloadAkas(byId, progress);
       await RatingsDB.putFile(blob);
@@ -303,7 +304,7 @@ const RatingsBuilder = (() => {
     begin();
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
     const meta = await RatingsDB.getMeta();
-    const fetchAkas = langs.length > 0 && (!meta || RatingsDB.akasStale(meta));
+    const fetchAkas = langs.length > 0 && (!meta || RatingsDB.akasStale(meta) || !RatingsDB.akasCovers(meta, langs));
 
     // 1. Ratings.
     const ratings = await readRatings(minVotes, progress);

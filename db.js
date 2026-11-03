@@ -55,10 +55,13 @@ const RatingsDB = (() => {
   // English ones in CA); the regions only place the rows that name none,
   // which is most of them (builder.js keyFromExtract). So a region shared
   // with another language (BE, CH, CA) brings a few titles of the other
-  // one along, which do no harm as keys. Only languages written in the
-  // Latin alphabet: normalise keeps a-z and digits, so Cyrillic, Greek or
-  // Japanese titles would come out as empty keys. English needs nothing:
-  // the primary and original titles are already keys.
+  // one along, which do no harm as keys. English needs nothing: the
+  // primary and original titles are already keys. Languages in other
+  // scripts (Korean, Japanese, Chinese, Cyrillic, Greek, Hebrew, Arabic,
+  // Thai, Hindi; since 1.2.2) are keyed with normaliseAny, which keeps
+  // every script; their original titles, which the Latin key function
+  // loses, come from the extract too (extractRow). An extract made before
+  // a language was added lacks its rows (AKAS_NEEDS, akasCovers).
   const LANGUAGES = {
     pl: ['PL'],
     de: ['DE', 'AT', 'CH'],
@@ -86,13 +89,106 @@ const RatingsDB = (() => {
     ms: ['MY'],
     vi: ['VN'],
     ca: [], // only rows that say Catalan: region ES is Spanish
+    // Other scripts. Chinese rows come as cmn (Mandarin), yue (Cantonese)
+    // or zh and from three regions, simplified and traditional alike; one
+    // entry takes them all (an unfolded form still matches when the page
+    // writes it the same way). Hindi and Arabic rows mostly name their
+    // language; their regions' unnamed rows are largely English titles.
+    ko: ['KR'],
+    ja: ['JP'],
+    zh: ['CN', 'TW', 'HK'],
+    ru: ['RU'],
+    uk: ['UA'],
+    bg: ['BG'],
+    el: ['GR'],
+    he: ['IL'],
+    ar: ['EG', 'SA', 'AE'],
+    th: ['TH'],
+    hi: [],
   };
   // Tags for the same language as the browser, a page or IMDb may write
   // them: Norwegian comes as nb (Bokmål, what Chrome and Firefox send) or
-  // nn as well as no. Applied wherever a tag comes in (background.js
-  // langCode, builder.js).
-  const LANGUAGE_ALIASES = { nb: 'no', nn: 'no' };
+  // nn as well as no; Chinese as cmn or yue in IMDb's data; Hebrew as iw
+  // and Indonesian as in in older browsers. Applied wherever a tag comes
+  // in (background.js langCode, builder.js).
+  const LANGUAGE_ALIASES = { nb: 'no', nn: 'no', cmn: 'zh', yue: 'zh', iw: 'he', in: 'id' };
   const languageOf = (tag) => LANGUAGE_ALIASES[tag] || tag;
+
+  // The extract's format, and the one each language first appears in:
+  // the pass keeps only the table's languages, so an extract made before
+  // a language was added has no rows for it, and a tick of that language
+  // reads the file again (Get titles) instead of keying from the extract
+  // on hand (Apply). 1: the Latin languages of 1.2.0; 2: the scripts
+  // above and the original titles in them.
+  const AKAS_FORMAT = 2;
+  const AKAS_NEEDS = { ko: 2, ja: 2, zh: 2, ru: 2, uk: 2, bg: 2, el: 2, he: 2, ar: 2, th: 2, hi: 2 };
+
+  // Whether the extract on hand (meta.akasAt) has rows for these
+  // languages. No extract: nothing to cover, true.
+  function akasCovers(meta, langs) {
+    if (!meta || !meta.akasAt) return true;
+    const format = meta.akasFormat || 1;
+    return (langs || []).every((l) => (AKAS_NEEDS[l] || 1) <= format);
+  }
+
+  // The language(s) a title's script points at, for an original title the
+  // extract keeps (its row names no language). Kana settle Japanese; Han
+  // alone may be either Japanese or Chinese, and Cyrillic any of its
+  // languages, so those go to each. Latin-only titles: none.
+  const SCRIPTS = [
+    ['Hangul', ['ko']],
+    ['Hiragana', ['ja']],
+    ['Katakana', ['ja']],
+    ['Han', ['zh', 'ja']],
+    ['Cyrillic', ['ru', 'uk', 'bg']],
+    ['Greek', ['el']],
+    ['Hebrew', ['he']],
+    ['Arabic', ['ar']],
+    ['Thai', ['th']],
+    ['Devanagari', ['hi']],
+  ].map(([script, langs]) => [new RegExp('\\p{Script=' + script + '}', 'u'), langs]);
+
+  function scriptLanguages(title) {
+    const t = title || '';
+    const out = new Set();
+    let kana = false;
+    for (const [re, langs] of SCRIPTS) {
+      if (!re.test(t)) continue;
+      if (langs[0] === 'ja' && langs.length === 1) kana = true;
+      for (const l of langs) out.add(l);
+    }
+    if (kana) out.delete('zh'); // Han with kana is Japanese
+    return [...out];
+  }
+
+  // The rows of one title.akas line the extract keeps, as [imdbID, title,
+  // region, language] arrays (none, one, or one per language an original
+  // title's script points at). f: the line's fields
+  //   titleId, ordering, title, region, language, types, attributes, isOriginalTitle
+  // Working, festival and DVD titles, and rows with an attribute ("literal
+  // title", "fake working title"), are left out: a streaming site shows
+  // none of those. An original title is a key already, except in another
+  // script, where the Latin key function lost it: that one is kept under
+  // its script's language(s). The rest are kept when they name a language
+  // the table knows, or none and a region it knows.
+  function extractRow(f, langs, regions) {
+    if (f[7] === '1') {
+      const title = f[2];
+      if (!/\p{L}/u.test(title) || !OTHER_SCRIPT.test(title)) return [];
+      return scriptLanguages(title).map((l) => [f[0], title, '\\N', l]);
+    }
+    if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') return [];
+    if (f[6] !== '\\N') return [];
+    const language = f[4] === '\\N' ? '' : languageOf(f[4]);
+    if (language ? !langs.has(language) : !regions.has(f[3])) return [];
+    return [[f[0], f[2], f[3], f[4]]];
+  }
+
+  // Whether an extract row (region, language) belongs to the chosen
+  // languages: by its language when it names one, else by its region.
+  function keyRowWanted(region, language, want, regions) {
+    return language !== '\\N' ? want.has(languageOf(language)) : regions.has(region);
+  }
 
   // What the stored keys were built with. A database of an older format is
   // rebuilt once after an update (background.js maybeRefresh).
@@ -132,6 +228,33 @@ const RatingsDB = (() => {
       .replace(/[^a-z0-9]+/g, ' ')
       .trim()
       .replace(/\b[a-z](?: [a-z]\b)+/g, (run) => run.replace(/ /g, ''));
+  }
+
+  // The key function of the languages store (akas), used for its keys and
+  // for the lookup's second try. A title with no letters outside the Latin
+  // script gets the same key as normalise, so the keys of the languages
+  // of 1.2.0 are unchanged. One with a letter of another script keeps
+  // every letter and digit of every script and nothing else (CJK titles
+  // space inconsistently), case folded, compatibility forms unified
+  // (half-width katakana, full-width digits), and the accents of Latin
+  // letters, Hebrew points and Arabic harakat dropped the way normalise
+  // drops accents. Other scripts keep their marks: decomposed, й is и
+  // with a breve and が is か with a voicing mark, and those are
+  // different letters.
+  const OTHER_SCRIPT = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u;
+  const LATIN_ACCENTS = /(\p{Script=Latin})[\u0300-\u036f]+/gu;
+  const POINTS = /[\u0591-\u05c7\u064b-\u065f\u0670]/g;
+
+  function normaliseAny(title) {
+    const t = title || '';
+    if (!OTHER_SCRIPT.test(t)) return normalise(t);
+    return t
+      .normalize('NFKD')
+      .replace(LATIN_ACCENTS, '$1')
+      .replace(POINTS, '')
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, '');
   }
 
   function open() {
@@ -199,6 +322,7 @@ const RatingsDB = (() => {
           langs: m.langs || [],
           akasAt: m.akasAt || 0,
           akasSize: m.akasSize || 0,
+          akasFormat: m.akasAt ? m.akasFormat || 1 : 0,
           akas: m.akas || 0,
         }
       : { present: false };
@@ -236,7 +360,7 @@ const RatingsDB = (() => {
     let rec = await result(tx.objectStore(m.store).get(key));
     let aka = false;
     if (!rec && withAkas) {
-      rec = await result(tx.objectStore(akasStore(m.store)).get(key));
+      rec = await result(tx.objectStore(akasStore(m.store)).get(normaliseAny(title)));
       aka = !!rec;
     }
     if (!rec || !rec.e.length) return null;
@@ -436,7 +560,7 @@ const RatingsDB = (() => {
     tx.objectStore('files').put(blob, 'akas');
     await complete(tx);
     const m = await getMeta();
-    if (m) await putMeta({ ...m, akasAt: Date.now(), akasSize: blob.size });
+    if (m) await putMeta({ ...m, akasAt: Date.now(), akasSize: blob.size, akasFormat: AKAS_FORMAT });
   }
 
   async function getFile() {
@@ -563,5 +687,5 @@ const RatingsDB = (() => {
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, akasStale, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
+  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
 })();
