@@ -22,8 +22,13 @@
 //
 // Home page banner: .hero__grid slides with the title in "h1 img[alt]"
 // ("Tulsa King "), no year, and right after the h1 a call-out ("NEW EPISODE
-// NOW STREAMING", "NEW MOVIE ...") that gives the type. Slides whose call-out names neither
-// (sports events like "UFC 333") are skipped.
+// NOW STREAMING", "NEW MOVIE ...", "NEW SPECIAL ...") that gives the type.
+// Slides whose call-out names neither (sports events like "UFC 333") are
+// skipped. Beside the banner, its poster strip (2026-11-03): the slider's
+// pagination, span.swiper-pagination-bullet[data-pos] with a poster and
+// no name, where data-pos is the index of the slide it stands for; the
+// slide gives the title and type. Bullets beyond the strip are hidden
+// until the slider turns to them.
 
 (() => {
   const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
@@ -77,9 +82,16 @@
 
   function bannerType(el) {
     const call = clean(bannerCall(el)?.textContent);
-    if (/\b(season|episode|series)\b/i.test(call)) return 'series';
-    if (/\bmovie\b/i.test(call)) return 'movie';
+    if (/\b(seasons?|episodes?|series)\b/i.test(call)) return 'series'; // "ALL EPISODES NOW STREAMING" too
+    if (/\b(movie|special)\b/i.test(call)) return 'movie'; // a TV special is a film to IMDb (builder.js TYPE)
     return null;
+  }
+
+  // The banner slide (.hero__grid) a poster-strip bullet stands for.
+  function bulletSlide(bullet) {
+    const n = Number(bullet.dataset.pos);
+    const slides = document.querySelectorAll('#hero-content-slider li.hero__slide:not(.swiper-slide-duplicate)');
+    return Number.isInteger(n) && slides[n] ? slides[n].querySelector('.hero__grid') : null;
   }
 
   window.IMDBEXT_SITE = {
@@ -165,6 +177,22 @@
           const after = bannerCall(host);
           if (after) after.after(badge);
           else host.appendChild(badge);
+        },
+      },
+      {
+        // The banner's poster strip: each bullet is rated as its slide.
+        kind: 'card',
+        selector: '#hero-content .swiper-pagination-bullet[data-pos]',
+        titleOf(el) {
+          const grid = bulletSlide(el);
+          return grid && bannerType(grid) ? clean(grid.querySelector('img[alt]')?.alt) || null : null;
+        },
+        typeOf(el) {
+          const grid = bulletSlide(el);
+          return grid ? bannerType(grid) : null;
+        },
+        host(el) {
+          return el;
         },
       },
       {
