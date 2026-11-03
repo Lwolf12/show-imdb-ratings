@@ -60,7 +60,8 @@ The Chrome listing is in `LISTING.md`.
 > you browse are sent to OMDb (Firefox asks you first).
 >
 > Nothing downloads until you click Update now in the settings, which open
-> in a small window right after installing. Later, the extension's toolbar
+> in a small window right after installing. A build can be cancelled at
+> any point and leaves nothing half done. Later, the extension's toolbar
 > button opens them. Every service is on from the start; any of them can
 > be switched off in the settings if you'd rather not see ratings there.
 >
@@ -70,7 +71,17 @@ The Chrome listing is in `LISTING.md`.
 > settings. Firefox then asks you to allow sending title names to that
 > service, and only titles the local database does not have are sent.
 > With a key, previews and title pages can also show Rotten Tomatoes and
-> Metacritic scores and awards.
+> Metacritic scores and awards. One box, Use OMDb, switches all of that
+> off again and keeps the key.
+>
+> OPTIONAL: TITLES IN OTHER LANGUAGES
+> A streaming site in another language shows translated titles, which the
+> database knows only by their English and original names. Tick Match
+> titles in other languages in the settings, tick the languages you use,
+> and click Get titles: the extension reads IMDb's list of titles by
+> country once (520 MB, nothing saved as a file) and keeps the useful
+> part, about 50 MB, in the database. Ticking another language later
+> takes seconds. Not needed with an English browser on English pages.
 >
 > PRIVACY
 > No accounts, no analytics, no server. The extension reads only the title

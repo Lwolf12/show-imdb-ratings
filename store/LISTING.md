@@ -43,6 +43,7 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > Nothing downloads until you click
 > Update now in the settings, which open in a small window right after installing.
+> A build can be cancelled at any point and leaves nothing half done.
 > Later, the extension's icon (a poster with a gold star) in Chrome's
 > puzzle-piece menu opens them (pin it to
 > keep it in the toolbar). Every service is on from the start; any of them
@@ -54,6 +55,16 @@ with `store/build-zip.ps1` and lands in `dist/`.
 > settings. Only then are title names sent to that service, and only for
 > titles the local database does not have. With a key, previews and title
 > pages can also show Rotten Tomatoes and Metacritic scores and awards.
+> One box, Use OMDb, switches all of that off again and keeps the key.
+>
+> OPTIONAL: TITLES IN OTHER LANGUAGES
+> A streaming site in another language shows translated titles, which the
+> database knows only by their English and original names. Tick Match
+> titles in other languages in the settings, tick the languages you use,
+> and click Get titles: the extension reads IMDb's list of titles by
+> country once (520 MB, nothing saved as a file) and keeps the useful
+> part, about 50 MB, in the database. Ticking another language later
+> takes seconds. Not needed with an English browser on English pages.
 >
 > PRIVACY
 > No accounts, no analytics, no server. The extension reads only the title
