@@ -182,10 +182,17 @@ async function refreshStats() {
   $('sourceLocal').checked = !omdbOnlyMode;
   $('sourceOmdb').checked = omdbOnlyMode;
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
+  // No database yet: with OMDb lookups on and a key that works, every
+  // title goes to OMDb meanwhile (background.js lookup); otherwise nothing
+  // shows, which the line says in red, as it does for OMDb only without a
+  // key. Two lines either way, like the other states.
+  const noDb = !omdbOnlyMode && !l.present;
   $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
-    : !l.present ? 'Not built yet. Click Update now; it takes a few minutes, or choose OMDb only above to go without a database.'
+    : noDb ? (keyed
+      ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or choose OMDb only above.'
+      : 'No ratings yet: click Update now to build the database (a few minutes), or enter an OMDb key below and choose OMDb only.')
     : localStatus(l, building, !!(u.schedule && u.schedule.manual), await diskUsage());
-  $('localStatus').classList.toggle('bad', omdbOnlyMode && !keyed);
+  $('localStatus').classList.toggle('bad', (omdbOnlyMode || noDb) && !keyed);
   $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
