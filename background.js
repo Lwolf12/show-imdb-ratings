@@ -602,7 +602,7 @@ async function refreshIntervals() {
 // is forgotten.
 const PAGE_LANG_KEEP_MS = 180 * DAY_MS;
 
-const langCode = (tag) => String(tag || '').toLowerCase().split(/[-_]/)[0];
+const langCode = (tag) => RatingsDB.languageOf(String(tag || '').toLowerCase().split(/[-_]/)[0]);
 
 function browserLanguages() {
   const out = [];
@@ -642,7 +642,8 @@ async function otherLanguagesOn() {
 async function titleLanguages() {
   if (!(await otherLanguagesOn())) return [];
   const { titleLangs = [] } = await chrome.storage.sync.get('titleLangs');
-  return (Array.isArray(titleLangs) ? titleLangs : []).filter((l) => RatingsDB.LANGUAGES[l]);
+  // nb ticked under an earlier version counts as no.
+  return [...new Set((Array.isArray(titleLangs) ? titleLangs : []).map(RatingsDB.languageOf))].filter((l) => RatingsDB.LANGUAGES[l]);
 }
 
 // A streaming page's language, from a lookup, written once a day per

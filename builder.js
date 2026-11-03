@@ -192,7 +192,7 @@ const RatingsBuilder = (() => {
   // since a streaming site shows none of those. The original title is a
   // key already. About 4 million rows, 50 MB compressed.
   async function downloadAkas(byId, progress) {
-    const langs = new Set(Object.keys(RatingsDB.LANGUAGES));
+    const langs = new Set(Object.keys(RatingsDB.LANGUAGES).concat(Object.keys(RatingsDB.LANGUAGE_ALIASES)));
     const regions = new Set();
     for (const list of Object.values(RatingsDB.LANGUAGES)) for (const r of list) regions.add(r);
     const gzip = new CompressionStream('gzip');
@@ -220,7 +220,8 @@ const RatingsBuilder = (() => {
         // titleId, ordering, title, region, language, types, attributes, isOriginalTitle
         const f = line.split('\t');
         if (f[7] === '1') continue;
-        if (!langs.has(f[4]) && !regions.has(f[3])) continue;
+        // A row's language places it when it has one; its region otherwise.
+        if (f[4] !== '\\N' ? !langs.has(f[4]) : !regions.has(f[3])) continue;
         if (f[5] !== '\\N' && f[5] !== 'imdbDisplay') continue;
         if (f[6] !== '\\N') continue;
         buf += f[0] + '\t' + f[2] + '\t' + f[3] + '\t' + f[4] + '\n';
@@ -254,10 +255,12 @@ const RatingsBuilder = (() => {
     const extra = new Map();
     let count = 0;
     for await (const line of linesFrom(blob.stream(), blob.size, (r, t) => progress('keying', t ? r / t : 0, count))) {
-      // imdbID, title, region, language
+      // imdbID, title, region, language. A row that names its language
+      // is that language's (Catalan in region ES, English in CA); only a
+      // row without one goes by its region.
       const f = line.split('\t');
       if (f.length < 4) continue;
-      if (!want.has(f[3]) && !regions.has(f[2])) continue;
+      if (f[3] !== '\\N' ? !want.has(RatingsDB.languageOf(f[3])) : !regions.has(f[2])) continue;
       const entry = byId.get(f[0]);
       if (!entry) continue;
       const key = RatingsDB.normalise(f[1]);

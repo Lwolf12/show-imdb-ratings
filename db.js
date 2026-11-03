@@ -50,11 +50,15 @@ const RatingsDB = (() => {
   let conn = null;
 
   // Languages whose titles can be added from IMDb's title.akas file, with
-  // the regions whose rows carry them (most rows name a region, not a
-  // language). Only languages written in the Latin alphabet: normalise
-  // keeps a-z and digits, so Cyrillic, Greek or Japanese titles would come
-  // out as empty keys. English needs nothing: the primary and original
-  // titles are already keys.
+  // the regions whose rows carry them. A row that names its language is
+  // that language's whatever its region (Catalan titles sit in region ES,
+  // English ones in CA); the regions only place the rows that name none,
+  // which is most of them (builder.js keyFromExtract). So a region shared
+  // with another language (BE, CH, CA) brings a few titles of the other
+  // one along, which do no harm as keys. Only languages written in the
+  // Latin alphabet: normalise keeps a-z and digits, so Cyrillic, Greek or
+  // Japanese titles would come out as empty keys. English needs nothing:
+  // the primary and original titles are already keys.
   const LANGUAGES = {
     pl: ['PL'],
     de: ['DE', 'AT', 'CH'],
@@ -65,7 +69,6 @@ const RatingsDB = (() => {
     nl: ['NL', 'BE'],
     sv: ['SE'],
     da: ['DK'],
-    nb: ['NO'],
     no: ['NO'],
     fi: ['FI'],
     cs: ['CZ'],
@@ -82,8 +85,14 @@ const RatingsDB = (() => {
     id: ['ID'],
     ms: ['MY'],
     vi: ['VN'],
-    ca: ['ES'],
+    ca: [], // only rows that say Catalan: region ES is Spanish
   };
+  // Tags for the same language as the browser, a page or IMDb may write
+  // them: Norwegian comes as nb (Bokmål, what Chrome and Firefox send) or
+  // nn as well as no. Applied wherever a tag comes in (background.js
+  // langCode, builder.js).
+  const LANGUAGE_ALIASES = { nb: 'no', nn: 'no' };
+  const languageOf = (tag) => LANGUAGE_ALIASES[tag] || tag;
 
   // What the stored keys were built with. A database of an older format is
   // rebuilt once after an update (background.js maybeRefresh).
@@ -551,5 +560,5 @@ const RatingsDB = (() => {
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, AKAS_DAYS, akasStale, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
+  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, akasStale, normalise, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
 })();
