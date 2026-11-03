@@ -111,7 +111,7 @@ featuring): skip for the first submission.
 
 | Permission | Justification |
 | --- | --- |
-| `storage` | Keeps the user's settings (automatic refresh on/off, OMDb fallback on/off, optional OMDb API key) and the ratings already looked up, so each title is fetched once. |
+| `storage` | Keeps the user's settings (automatic refresh on/off, OMDb on/off, optional OMDb API key) and the ratings already looked up, so each title is fetched once. |
 | `unlimitedStorage` | The ratings database built from IMDb's data (about 420,000 titles) is stored in IndexedDB and exceeds the default extension quota. |
 | `alarms` | A periodic alarm checks the local database's age and, if the user left automatic refresh on, re-reads the ratings file weekly and rebuilds the whole database about monthly. |
 | `offscreen` | Building the database (downloading and parsing IMDb's dumps) takes minutes and runs in a Web Worker, which the service worker cannot host; an offscreen document hosts the worker. |

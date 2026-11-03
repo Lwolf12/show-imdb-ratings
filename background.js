@@ -142,7 +142,8 @@ async function updateBadge() {
 // setup notice knows OMDb can't answer. omdbRequest checks the consent
 // again itself, so no caller can send anything without it.
 async function omdbSettings(more = []) {
-  const s = await chrome.storage.sync.get(['omdbFallback', 'omdbKey', ...more]);
+  const s = await chrome.storage.sync.get(['omdbFallback', 'omdbKey', 'ratingsSource', ...more]);
+  if (s.ratingsSource === 'omdb') s.omdbFallback = true; // OMDb only has no other source (the page keeps the box on)
   if (s.omdbFallback !== false && !(await omdbConsent())) s.omdbFallback = false;
   return s;
 }

@@ -19,8 +19,9 @@ IndexedDB, and is removed when you uninstall the extension:
   was found (or that nothing was found), with a timestamp, so it does not
   have to be looked up again.
 - **Settings**: where ratings come from (the local database or OMDb only),
-  how often the database refreshes, whether the OMDb fallback and extra
-  scores are on, and, if you entered one, your OMDb API key. Settings are
+  how often the database refreshes, whether OMDb is in use (the Use OMDb
+  box) and which extra scores are on, and, if you entered one, your OMDb
+  API key. Settings are
   kept in the browser's synced extension storage, so if Chrome sync (or
   Firefox Sync with add-ons included) is on they follow your profile to
   your other devices through your Google or Mozilla account, as with any
@@ -36,8 +37,8 @@ IndexedDB, and is removed when you uninstall the extension:
   carries (your IP address). With "OMDb only" chosen, nothing is downloaded
   from IMDb.
 - **To OMDb (omdbapi.com)**: only if you enter an API key, and then in one
-  of two ways. With the local database (the default) and the OMDb fallback
-  on, titles the local database does not have are looked up at OMDb. With
+  of two ways. With the local database (the default) and Use OMDb ticked,
+  titles the local database does not have are looked up at OMDb. With
   "OMDb only" chosen, every title is looked up at OMDb, since there is no
   local database. In either case the extension sends that title's name
   (and, where the site provides it, its year and whether it is a movie or
@@ -48,7 +49,7 @@ IndexedDB, and is removed when you uninstall the extension:
   preview, banner or title page you look at (and, with "On cards too", each
   title card you scroll past), the extension sends that title's IMDb ID
   with your key, once a month at most. OMDb's own privacy policy applies to
-  those requests. Without a key, or with the fallback off while using the
+  those requests. Without a key, or with Use OMDb unticked while using the
   local database, nothing is ever sent to OMDb. In Firefox, turning OMDb on
   also asks you, through Firefox's own prompt, to allow the extension to
   send website content (these title names); until you allow it, nothing is

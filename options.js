@@ -182,7 +182,7 @@ async function refreshStats() {
   omdbConnected = keyed;
   $('sourceLocal').checked = !omdbOnlyMode;
   $('sourceOmdb').checked = omdbOnlyMode;
-  $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
+  $('useOmdbText').textContent = omdbOnlyMode ? '(every rating comes from here)' : '(titles the database lacks, and the scores below)';
   // The status line: a build that runs, failed or was just cancelled
   // (buildLine) comes first. No database yet: with OMDb lookups on and a
   // key that works, every title goes to OMDb meanwhile (background.js
@@ -232,13 +232,26 @@ async function refreshStats() {
   $('stored').textContent = u.stored.toLocaleString();
   $('today').textContent = u.today.toLocaleString();
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
-  // A key being edited keeps everything below it greyed (see keyDirty),
-  // whatever a build or a lookup changed meanwhile.
-  if (keyDirty()) {
-    $('useOmdb').disabled = true;
-    $('useOmdb').parentElement.classList.add('off');
-    loadExtras(false, '(click Test to save and check the key)');
-  } else loadExtras(keyed);
+  // The Use OMDb box, the switch for all OMDb traffic. Under OMDb only it
+  // is on and stays on: that mode has no other source (background.js
+  // omdbSettings counts it on as well). Under Local database it is greyed
+  // without a saved key, or while one is being typed (keyDirty), as are
+  // the extras below, whatever a build or a lookup changed meanwhile.
+  const box = $('useOmdb');
+  if (omdbOnlyMode) {
+    if ((await chrome.storage.sync.get('omdbFallback')).omdbFallback === false) await chrome.storage.sync.set({ omdbFallback: true });
+    box.checked = true;
+    box.disabled = true;
+    box.parentElement.classList.remove('off');
+    box.parentElement.title = 'OMDb only needs it; choose Local database to switch OMDb off';
+  } else {
+    const armed = !!savedKey && !keyDirty();
+    box.disabled = !armed;
+    box.parentElement.classList.toggle('off', !armed);
+    box.parentElement.title = savedKey ? '' : 'Enter a key below and click Test first';
+  }
+  if (keyDirty()) loadExtras(false, '(click Test to save and check the key)');
+  else loadExtras(keyed);
 }
 
 // What the database holds and when it was built: the full build's date,
@@ -761,7 +774,7 @@ $('test').addEventListener('click', async () => {
 const EXTRA_BOXES = [...document.querySelectorAll('input.extra')];
 const EXTRAS_DEFAULT = { rt: true, mc: true, awards: true, cards: true };
 
-async function loadExtras(keyOk, note = '(needs lookups on with a working key)') {
+async function loadExtras(keyOk, note = '(needs Use OMDb ticked, with a working key)') {
   const { extraRatings = EXTRAS_DEFAULT } = await chrome.storage.sync.get('extraRatings');
   for (const box of EXTRA_BOXES) {
     box.checked = !!extraRatings[box.dataset.extra];
@@ -836,24 +849,34 @@ $('deleteDb').addEventListener('click', async () => {
 });
 
 // Where ratings come from (sync ratingsSource, background.js omdbOnly).
-// OMDb only can be chosen before there is a working key: the cursor then
-// goes to the key field, and the status line says nothing shows until
-// Test passes. A database that exists is kept, unused, so switching back
-// costs no download; Delete database under Advanced frees its space.
-// Without one, switching back shows Update now, and nothing downloads
-// until it is clicked.
+// OMDb only switches OMDb on (the Use OMDb box, which stays on under it:
+// refreshStats), after Firefox's consent prompt; a refusal leaves Local
+// database chosen. It can be chosen before there is a working key: the
+// cursor then goes to the key field, and the status line says nothing
+// shows until Test passes. A database that exists is kept, unused, so
+// switching back costs no download; Delete database under Advanced frees
+// its space. Without one, switching back shows Update now, and nothing
+// downloads until it is clicked.
 for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
   box.addEventListener('change', async () => {
     if (!box.checked) return;
-    await chrome.storage.sync.set({ ratingsSource: box.value });
     if (box.value === 'omdb') {
+      if (!(await askOmdbConsent())) {
+        $('sourceLocal').checked = true;
+        say(NO_CONSENT, 'bad');
+        return;
+      }
+      await chrome.storage.sync.set({ ratingsSource: 'omdb', omdbFallback: true });
       if (omdbConnected && !keyDirty()) say('OMDb only; reload open streaming tabs.');
       else {
         say('OMDb only: enter a key below and click Test.', 'bad');
         $('key').focus();
         $('key').select();
       }
-    } else say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (reads about 280 MB from IMDb).');
+    } else {
+      await chrome.storage.sync.set({ ratingsSource: 'local' });
+      say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (reads about 280 MB from IMDb).');
+    }
     refreshStats();
   });
 }
@@ -883,5 +906,4 @@ $('resetSettings').addEventListener('click', async () => {
 $('version').textContent = 'Version ' + chrome.runtime.getManifest().version;
 loadSites();
 loadBadges();
-loadOmdb();
-refreshStats();
+loadOmdb().then(refreshStats); // the box's state from storage first, then refreshStats' lock under OMDb only

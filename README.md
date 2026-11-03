@@ -146,7 +146,8 @@ data is IMDb's, and their licence covers your own copy, not redistribution.
 
 Lookups go: stored answers, then the local database, then OMDb for titles
 the database doesn't have (brand-new releases, titles under 25 votes), if a
-key is set. The OMDb fallback can be switched off on the settings panel.
+key is set. The **Use OMDb** box on the settings panel switches all OMDb
+traffic off, the extra scores included; under OMDb only it stays on.
 An OMDb answer that names an IMDb ID is kept for good: from then on the
 title's rating comes from the local database by that ID (the weekly ratings
 file includes titles the database has no name for yet), falling back to

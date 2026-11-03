@@ -31,7 +31,7 @@
     input[type=text] { flex: 1; min-width: 0; padding: 6px 8px; font: inherit; border: 1px solid #aaa; border-radius: 4px; }
     select { font: inherit; padding: 4px 6px; }
     label.check { display: flex; gap: 7px; align-items: center; margin: 6px 0; }
-    label.check.off { color: #999; }
+    label.check.off, label.check.off .muted { color: #999; }
     label.check.nowrap { white-space: nowrap; }
     progress { width: 100%; height: 12px; margin-top: 4px; display: block; }
     /* While a build runs, the bar with Cancel at its end fills the rest of
@@ -133,7 +133,7 @@
         <h2>OMDb lookups
           <span class="tip" tabindex="0" data-tip="Covers brand-new releases and titles with few votes that the database doesn't have. OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. For ratings, only titles the database lacks are sent to OMDb. With any Also show box ticked, the IMDb ID of each title shown is sent too, at most once a month per title."
                 aria-label="Covers brand-new releases and titles with few votes that the database doesn't have. OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. For ratings, only titles the database lacks are sent to OMDb. With any Also show box ticked, the IMDb ID of each title shown is sent too, at most once a month per title.">i</span></h2>
-        <label class="check"><input id="useOmdb" type="checkbox"> <span id="useOmdbText">Also look up titles the database doesn't have</span></label>
+        <label class="check"><input id="useOmdb" type="checkbox"> Use OMDb <span id="useOmdbText" class="muted">(titles the database lacks, and the scores below)</span></label>
         <div id="omdbBox">
           <div class="row"><input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="OMDb API key, then click Test">
             <button id="test" type="button">Test</button></div>
