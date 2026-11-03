@@ -90,7 +90,7 @@ const RatingsBuilder = (() => {
     try {
       const res = await fetch(url, { signal: aborter.signal });
       if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
-      yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes);
+      yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes, true);
     } catch (e) {
       if (cancelled) throw stopped();
       throw e;
@@ -99,9 +99,20 @@ const RatingsBuilder = (() => {
     }
   }
 
-  // The same over any stream of gzip'd text (a Blob's, say).
-  async function* linesFrom(body, total, onBytes) {
+  // A download that keeps ahead of the reader has data queued for every
+  // read, so the reads resolve one after another without the worker ever
+  // idling, and the cancel message (build-worker.js) waits in its queue
+  // until the file is through. A timer every few MB lets the queue run.
+  const BREATH_BYTES = 2 << 20;
+  const breathe = () => new Promise((r) => setTimeout(r, 0));
+
+  // The same over any stream of gzip'd text (a Blob's, say). cancellable:
+  // a download, which cancel() ends at the next read (the abort above ends
+  // it too, but not every stream fails on it); the extract's keying runs
+  // through, as a save does.
+  async function* linesFrom(body, total, onBytes, cancellable = false) {
     let read = 0;
+    let breathed = 0;
     const counter = new TransformStream({
       transform(chunk, ctrl) {
         read += chunk.byteLength;
@@ -118,6 +129,11 @@ const RatingsBuilder = (() => {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
+      if (read - breathed >= BREATH_BYTES) {
+        breathed = read;
+        await breathe();
+      }
+      if (cancellable && cancelled) throw stopped();
       buf += value;
       let start = 0;
       let nl;
