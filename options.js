@@ -221,7 +221,9 @@ async function refreshStats() {
   if (u.langsOn) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
-  $('otherLangsText').classList.toggle('bad', !!(u.langsOn && l.present && !l.akasAt && storedLangs.length && !building && draftLangs === null));
+  // Red while ticked languages cannot match yet: no database, or no list
+  // of titles on hand (Get titles).
+  $('otherLangsText').classList.toggle('bad', !!(u.langsOn && !omdbOnlyMode && !l.akasAt && storedLangs.length && !building && draftLangs === null));
   // The button applies the ticks: Get titles while the list was never
   // fetched (the one place the 520 MB is read), Apply once it is on hand
   // and only the keys change. Shown for a draft, or for languages chosen
@@ -351,6 +353,8 @@ function tickLanguages() {
     // choice from storage, and nothing can start before it.
     draftLangs = null;
     chrome.storage.sync.set({ titleLangs: ticked }).then(refreshStats);
+    if (ticked.length) say('Titles in ' + languageNames(ticked) + ' match once Update now has built the database (reads 520 MB more).', 'bad');
+    else say('No language ticked.');
     return;
   }
   draftLangs = sameLangs(ticked, storedLangs) ? null : ticked;
@@ -366,7 +370,9 @@ function otherLanguagesText(u, l, building) {
   if (draftLangs !== null && l.present && !building) {
     return 'Not applied yet: click ' + (l.akasAt ? 'Apply' : 'Get titles') + ' below to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
   }
-  if (!l.present) return chosen.length ? 'The first build will include them (reads 520 MB more).' : 'Tick the languages you use; the first build will include them.';
+  // No database yet: the ticked languages do nothing until Update now has
+  // built it (in red, like the Get titles case below).
+  if (!l.present) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match once Update now has built the database (reads 520 MB more).' : 'Tick the languages you use; the first build will include them.';
   if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles below has run.' : 'Tick the languages you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
@@ -494,7 +500,9 @@ $('otherLangs').addEventListener('change', async () => {
     writes.titleLangs = dbPresent ? [] : draft;
   }
   await chrome.storage.sync.set(writes); // one write, one change event in the worker
-  say(on ? 'Tick the languages to match, then click the button under the list.' : 'Titles in other languages off; the kept list stays for turning it back on.');
+  say(!on ? 'Titles in other languages off; the kept list stays for turning it back on.'
+    : dbPresent ? 'Tick the languages to match, then click the button under the list.'
+    : 'Tick the languages to match; Update now then builds the database with them.');
   // Off with languages loaded: the ratings already matched in them stay
   // remembered (30 days, like any other), which looks as if the option
   // were still on. One line offers to forget them; leaving it is the default.
