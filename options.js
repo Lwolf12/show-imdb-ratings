@@ -398,7 +398,9 @@ function nextRefresh(u) {
     episodes: 'the episode list never finished',
     format: 'it was built by an older version',
   }[n.reason];
-  const withAkas = n.akas ? ', with a fresh list of titles in other languages' : '';
+  // The MB figure counts the languages list; the words for it fit the two
+  // lines only without a reason, which matters more (the figure stays).
+  const withAkas = n.akas && !why ? ', with a fresh list of titles in other languages' : '';
   if (n.manual) return 'Waiting for Update now: full rebuild (reads ' + n.mb + ' MB' + withAkas + ')' + (why ? ', because ' + why : '') + '.';
   return 'Next: full rebuild (reads ' + n.mb + ' MB' + withAkas + '), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
 }
