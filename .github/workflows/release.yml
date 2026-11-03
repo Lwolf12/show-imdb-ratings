@@ -42,7 +42,7 @@ jobs:
         run: |
           git archive --format=zip --prefix=show-imdb-ratings/ \
             -o "show-imdb-ratings-v${{ steps.meta.outputs.ver }}.zip" HEAD -- . \
-            ':!store' ':!.github' ':!.gitignore' ':!RELEASING.md'
+            ':!store' ':!tests' ':!.github' ':!.gitignore' ':!RELEASING.md'
 
       - name: Create the release with the ZIP attached
         env:

@@ -17,7 +17,7 @@ $src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $ver = (Get-Content (Join-Path $src 'manifest.json') -Raw | ConvertFrom-Json).version
 New-Item -ItemType Directory -Force (Join-Path $src 'dist') | Out-Null
 
-$skipDirs = @('data', 'dist', 'store')
+$skipDirs = @('data', 'dist', 'store', 'tests')
 # Docs (every top-level .md: README, PRIVACY, RELEASING, working notes)
 # and packaging output stay out of the package.
 $skipExt = @('.zip', '.crx', '.pem', '.xpi', '.md')
