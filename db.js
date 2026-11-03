@@ -357,7 +357,11 @@ const RatingsDB = (() => {
     // languages are turned off.
     const withAkas = akas && (m.langs || []).length > 0;
     const tx = db.transaction(withAkas ? [m.store, akasStore(m.store)] : [m.store]);
-    let rec = await result(tx.objectStore(m.store).get(key));
+    // A title with letters of another script is only ever in the languages
+    // store: its Latin key would be the odd letter the Latin key function
+    // leaves ("배스 X 마키나" is not the film "X").
+    const other = OTHER_SCRIPT.test(title || '');
+    let rec = other ? null : await result(tx.objectStore(m.store).get(key));
     let aka = false;
     if (!rec && withAkas) {
       rec = await result(tx.objectStore(akasStore(m.store)).get(normaliseAny(title)));
