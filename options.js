@@ -171,6 +171,10 @@ async function refreshStats() {
   }
   const l = u.local || {};
   builtAt = l.present ? l.builtAt || 0 : 0;
+  // Whether the kept list can key these languages: it must exist and date
+  // from after each was added (background.js langsNeed, db.js AKAS_NEEDS),
+  // else Get titles reads the file again.
+  onHand = (langs) => !!l.akasAt && (langs || []).every((x) => ((u.langsNeed || {})[x] || 1) <= (l.akasFormat || 1));
   const building = u.build && u.build.status === 'running';
   const keyed = !!(u.schedule && u.schedule.keyed); // OMDb lookups on, key confirmed
   omdbOnlyMode = !!u.omdbOnly;
@@ -221,10 +225,6 @@ async function refreshStats() {
   loadedLangs = l.akasAt ? l.langs || [] : [];
   storedLangs = u.langs || [];
   extractOnHand = !!l.akasAt;
-  // Whether the kept list can key these languages: it must exist and date
-  // from after each was added (background.js langsNeed, db.js AKAS_NEEDS),
-  // else Get titles reads the file again.
-  onHand = (langs) => !!l.akasAt && (langs || []).every((x) => ((u.langsNeed || {})[x] || 1) <= (l.akasFormat || 1));
   if (u.langsOn) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
