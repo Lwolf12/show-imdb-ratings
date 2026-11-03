@@ -117,6 +117,11 @@ chrome.runtime.onInstalled.addListener((details) => {
       for (const ms of [1500, 4000]) setTimeout(raiseSettings, ms);
     });
   } else {
+    // An update: noted for the settings page, which shows a one-time line
+    // for versions that need a word (options.js UPDATE_NOTES).
+    if (details.reason === 'update') {
+      chrome.storage.local.set({ updateNote: { from: details.previousVersion || '', to: chrome.runtime.getManifest().version } });
+    }
     maybeRefresh();
   }
 });

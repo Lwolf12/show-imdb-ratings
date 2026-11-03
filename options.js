@@ -925,7 +925,24 @@ $('resetSettings').addEventListener('click', async () => {
 
 // ------------------------------------------------------------------ go
 
+// After an update (background.js onInstalled), a line at the top right the
+// first time the page opens, for versions with something the user may have
+// wondered about; shown once, then forgotten.
+const UPDATE_NOTES = {
+  '1.2.0': FIREFOX
+    ? 'Updated to 1.2.0. HBO Max moved to www.hbomax.com; if HBO Max is unticked under Sites, tick it to allow the new address.'
+    : 'Updated to 1.2.0. HBO Max moved to www.hbomax.com, which is why Chrome asked about that site.',
+};
+
+async function showUpdateNote() {
+  const { updateNote } = await chrome.storage.local.get('updateNote');
+  if (!updateNote) return;
+  await chrome.storage.local.remove('updateNote');
+  const text = UPDATE_NOTES[updateNote.to];
+  if (text && updateNote.from !== updateNote.to) say(text);
+}
+
 $('version').textContent = 'Version ' + chrome.runtime.getManifest().version;
 loadSites();
 loadBadges();
-loadOmdb().then(refreshStats); // the box's state from storage first, then refreshStats' lock under OMDb only
+loadOmdb().then(refreshStats).then(showUpdateNote); // the box's state from storage first, then refreshStats' lock under OMDb only
