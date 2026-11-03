@@ -77,6 +77,7 @@ let dbPresent = false;
 let loadedLangs = []; // languages keyed in the database at the last refresh (refreshStats)
 let storedLangs = []; // the languages chosen in storage at the last refresh
 let extractOnHand = false; // the kept list exists, so changed ticks need no download
+let onHand = () => false; // ...and covers these languages (refreshStats)
 // The ticks are a draft until the button under the list is clicked: the
 // ticked languages when they differ from storedLangs, else null.
 let draftLangs = null;
@@ -220,19 +221,24 @@ async function refreshStats() {
   loadedLangs = l.akasAt ? l.langs || [] : [];
   storedLangs = u.langs || [];
   extractOnHand = !!l.akasAt;
+  // Whether the kept list can key these languages: it must exist and date
+  // from after each was added (background.js langsNeed, db.js AKAS_NEEDS),
+  // else Get titles reads the file again.
+  onHand = (langs) => !!l.akasAt && (langs || []).every((x) => ((u.langsNeed || {})[x] || 1) <= (l.akasFormat || 1));
   if (u.langsOn) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
   // Languages ticked but the list never fetched: said in red, since the
   // option looks on while nothing matches yet.
   // Red while ticked languages cannot match yet: no database, or no list
   // of titles on hand (Get titles).
-  $('otherLangsText').classList.toggle('bad', failedAkas || !!(u.langsOn && !omdbOnlyMode && !l.akasAt && storedLangs.length && !building && draftLangs === null));
+  $('otherLangsText').classList.toggle('bad', failedAkas || !!(u.langsOn && !omdbOnlyMode && !onHand(storedLangs) && storedLangs.length && !building && draftLangs === null));
   // The button applies the ticks: Get titles while the list was never
   // fetched (the one place the 520 MB is read), Apply once it is on hand
   // and only the keys change. Shown for a draft, or for languages chosen
   // but never fetched.
-  $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && (draftLangs !== null || (!l.akasAt && storedLangs.length)));
-  $('downloadLangs').textContent = l.akasAt ? 'Apply' : 'Get titles';
-  $('downloadLangs').title = l.akasAt ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
+  $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && (draftLangs !== null || (!onHand(storedLangs) && storedLangs.length)));
+  const apply = onHand(draftLangs || storedLangs);
+  $('downloadLangs').textContent = apply ? 'Apply' : 'Get titles';
+  $('downloadLangs').title = apply ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
@@ -384,12 +390,12 @@ function otherLanguagesText(u, l, building) {
   const have = l.langs || [];
   if (!u.langsOn) return '';
   if (draftLangs !== null && l.present && !building) {
-    return 'Not applied yet: click ' + (l.akasAt ? 'Apply' : 'Get titles') + ' to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
+    return 'Not applied yet: click ' + (onHand(draftLangs) ? 'Apply' : 'Get titles') + ' to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
   }
   // No database yet: the ticked languages do nothing until Update now has
   // built it (in red, like the Get titles case below).
   if (!l.present) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match once Update now has built the database (reads 520 MB more).' : 'Tick the languages you use; the first build will include them.';
-  if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles has run (reads 520 MB, keeps about 50 MB).' : 'Tick the languages you use.';
+  if (!onHand(chosen)) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles has run (reads 520 MB, keeps about 50 MB).' : 'Tick the languages you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
   if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;

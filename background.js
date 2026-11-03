@@ -196,7 +196,9 @@ async function applyLanguageChoice() {
   }
   const langs = await titleLanguages();
   if (sameSet(langs, meta.langs || [])) return;
-  if (!langs.length || (await RatingsDB.getFile())) await startBuild('manual', 'akas', langs);
+  // From the extract on hand, in seconds; one that lacks a language just
+  // added (akasCovers) is Get titles' job, the user's own click.
+  if (!langs.length || (RatingsDB.akasCovers(meta, langs) && (await RatingsDB.getFile()))) await startBuild('manual', 'akas', langs);
 }
 
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
@@ -700,7 +702,7 @@ async function refreshPlan(meta, { scheduled = false } = {}) {
   const now = Date.now();
   const s = await refreshIntervals();
   const langs = await titleLanguages();
-  const akas = langs.length > 0 && RatingsDB.akasStale(meta);
+  const akas = langs.length > 0 && (RatingsDB.akasStale(meta) || !RatingsDB.akasCovers(meta, langs));
   // fullMb and akas ride on every plan: what Update now would download
   // today, and whether that includes a fresh titles list.
   const fullMb = DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0);
@@ -716,7 +718,7 @@ async function refreshPlan(meta, { scheduled = false } = {}) {
     if (fullDue <= now) return full('age', fullDue);
   }
   if (!sameSet(langs, meta.langs || [])) {
-    if (meta.akasAt || !langs.length) return { kind: 'akas', reason: 'languages', due: now, mb: 0, langs, ...s };
+    if ((meta.akasAt && RatingsDB.akasCovers(meta, langs)) || !langs.length) return { kind: 'akas', reason: 'languages', due: now, mb: 0, langs, ...s };
     if (!scheduled) return { kind: 'akas', reason: 'download', due: now, mb: DOWNLOAD_MB.akas, langs, ...s };
   }
   if (!s.manual && fullDue <= ratingsDue) return full('age', fullDue);
@@ -866,6 +868,7 @@ async function usage() {
     langs: await titleLanguages(),
     langsOn: await otherLanguagesOn(),
     langsAll: Object.keys(RatingsDB.LANGUAGES),
+    langsNeed: RatingsDB.AKAS_NEEDS, // which languages an older extract lacks (options.js onHand)
     langsBrowser: browserLanguages(),
     langsPages: await pageLanguages(),
   };
