@@ -278,15 +278,26 @@ async function refreshStats() {
 // What the extension's storage takes on disk, from the browser (the
 // database and the remembered ratings together), as "312 MB"; '' when
 // the browser won't say. The panel's other MB figures are reads from
-// IMDb over the network, which this line keeps apart.
+// IMDb over the network, which this line keeps apart. The estimate walks
+// the storage, so it is kept for a while: refreshStats runs on every
+// click, and the figure only moves when a build ends (diskChanged).
+const DISK_KEEP_MS = 60 * 1000;
+let diskAt = 0;
+let diskText = '';
+
 async function diskUsage() {
+  if (Date.now() - diskAt < DISK_KEEP_MS) return diskText;
   try {
     const e = await navigator.storage.estimate();
-    return e && e.usage ? Math.round(e.usage / 1048576) + ' MB' : '';
+    diskText = e && e.usage ? Math.round(e.usage / 1048576) + ' MB' : '';
   } catch (err) {
-    return '';
+    diskText = '';
   }
+  diskAt = Date.now();
+  return diskText;
 }
+
+const diskChanged = () => { diskAt = 0; };
 
 function localStatus(l, building, manual, disk) {
   let s = l.titles.toLocaleString() + ' titles' + (l.episodes ? ' and ' + l.episodes.toLocaleString() + ' episodes' : '') +
@@ -567,7 +578,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // to build…", "Tick the languages…"); a finished build makes any of
     // that stale, and the green box says what to do now.
     if (s && s.status === 'done') say('');
-    if (s && ['done', 'cancelled', 'error'].includes(s.status)) refreshStats();
+    if (s && ['done', 'cancelled', 'error'].includes(s.status)) {
+      diskChanged();
+      refreshStats();
+    }
   }
 });
 
