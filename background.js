@@ -188,12 +188,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // the build ends.
 async function applyLanguageChoice() {
   if ((await getBuildState()).status === 'running') return;
+  const meta = await RatingsDB.getMeta();
+  if (!meta) return; // nothing to key or clear (OMDb only, or no build yet)
   if (!(await otherLanguagesOn())) {
-    await RatingsDB.clearAkas();
+    if ((meta.langs || []).length) await RatingsDB.clearAkas();
     return;
   }
-  const meta = await RatingsDB.getMeta();
-  if (!meta) return;
   const langs = await titleLanguages();
   if (sameSet(langs, meta.langs || [])) return;
   if (!langs.length || (await RatingsDB.getFile())) await startBuild('manual', 'akas', langs);
