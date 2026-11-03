@@ -345,14 +345,18 @@ function otherLanguagesText(u, l, building) {
 // The status line with OMDb only chosen. keyed: OMDb can answer (lookups
 // on, key confirmed); otherwise nothing can, and the line says what to fix.
 // A database on the device is kept for switching back, and said so.
+// Two lines at the window's width, like localStatus (and the line is held
+// at two, options.html), so switching the source moves nothing below it.
+// OMDb's daily limit and Delete database are explained where they live,
+// the tooltip above and Advanced.
 function omdbOnlyStatus(l, keyed) {
-  let s = keyed
-    ? 'Not used: ratings come from OMDb (1,000 lookups a day, each remembered for 30 days).'
-    : 'Not connected to OMDb yet, so no ratings show. Enter a key under OMDb lookups below and click Test, or choose Local database' + (l.present ? '.' : ' and click Update now.');
-  if (l.present) {
-    s += ' The database (' + l.titles.toLocaleString() + ' titles, built ' + l.built + ') is kept for switching back; Delete database under Advanced frees its space.';
+  const titles = l.present ? l.titles.toLocaleString() + ' titles' : '';
+  if (!keyed) {
+    return 'No ratings yet: enter an OMDb key below and click Test, or choose Local database' +
+      (l.present ? ' (' + titles + ' kept).' : ' and click Update now.');
   }
-  return s;
+  return 'Not used: ratings come from OMDb' +
+    (l.present ? '. The database (' + titles + ', built ' + l.built + ') is kept for switching back.' : ' (1,000 lookups a day, each remembered for 30 days).');
 }
 
 // The next automatic refresh (background.js refreshPlan): which kind, what
