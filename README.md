@@ -106,7 +106,7 @@ languages written in the Latin alphabet (Polish, German, French,
 Spanish, Portuguese, Italian, Dutch, the Nordic and most Central
 European languages, Turkish, Indonesian, Vietnamese) are covered, and
 since 1.2.2 so are Korean, Japanese, Chinese, Russian, Ukrainian,
-Bulgarian, Greek and Hindi: titles in those scripts are matched
+Bulgarian, Greek, Hebrew, Arabic and Hindi: titles in those scripts are matched
 character for character after case and compatibility folding. How far
 each goes is set by IMDb's data, which names nearly every title in
 Japanese and Hindi, about 150,000 in Cyrillic, 71,000 in Chinese,
@@ -117,8 +117,8 @@ way: a card named in another script also gets its English name from
 Netflix's public page of the title, read once, signed out, as episode
 cards already do to find their show, and that name is looked up first.
 Other sites have no such page, so there a Korean profile gets what
-IMDb names in Korean. Hebrew, Arabic and Thai have a few hundred names
-each and are left out. Someone who set languages up before 1.2.2 and ticks one of
+IMDb names in Korean. Arabic (2,400 names) and Hebrew (500) are listed
+for those other sites' sake; Thai, with 500, is left out. Someone who set languages up before 1.2.2 and ticks one of
 these sees Get titles instead of Apply once, since the kept list from
 before has no rows for them. Netflix's own labels (a show's "5
 Seasons", the season dropdown, "Show" or "Movie") are read in English,
