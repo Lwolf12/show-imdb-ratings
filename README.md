@@ -109,7 +109,10 @@ since 1.2.2 so are Korean, Japanese, Chinese, Russian, Ukrainian,
 Bulgarian, Greek, Hebrew, Arabic, Thai and Hindi: titles in those
 scripts are matched character for character after case and
 compatibility folding, and a title's original name in its own script
-counts too. Someone who set languages up before 1.2.2 and ticks one of
+counts too, where IMDb lists the title in that script at all: its
+Japanese names are thorough, its Korean ones patchier (Ozark and The
+Sinner have one, Breaking Bad does not). Someone who set languages up
+before 1.2.2 and ticks one of
 these sees Get titles instead of Apply once, since the kept list from
 before has no rows for them. Netflix's own labels (a show's "5
 Seasons", the season dropdown, "Show" or "Movie") are read in English,
