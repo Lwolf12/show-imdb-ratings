@@ -58,8 +58,11 @@ IndexedDB, and is removed when you uninstall the extension:
   from the First Episode") don't say which show they belong to. For each
   such card, once, the extension asks Netflix for that episode's public
   page, signed out (without your Netflix cookies), and reads the show's ID
-  and name from it. That is the same page anyone can open; it tells Netflix
-  nothing beyond what browsing Netflix already does.
+  and name from it. On a profile in a language written in another script
+  (Korean, say), it asks the same public page once for each title whose
+  name on the card is in that script, to read the title's English name,
+  which IMDb is far more likely to know. That is the same page anyone can
+  open; it tells Netflix nothing beyond what browsing Netflix already does.
 
 Nothing else is sent anywhere. The extension does not send your browsing
 activity, your watch history, the pages you visit or anything you type to

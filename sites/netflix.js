@@ -71,17 +71,28 @@ function isEpisodeView(modal) {
 // -> show id), so each episode costs one request ever. Show cards
 // (href "/browse?jbv=<show id>", aria-label = name) and show detail modals
 // fill in names on the way, so a known show needs no page read at all.
+//
+// The same public page gives a title's English name. A profile in another
+// language names its cards in that language (브레이킹 배드), and IMDb's
+// data knows few titles by such names (db.js LANGUAGES), so a card whose
+// name is in another script also reads the public page once, signed out,
+// and its English name is tried first (englishFirst; storage.local
+// nfEnglish: id -> name, '' when the page itself came back in another
+// language, as it does outside the US). Until it is known the card's own
+// name is looked up; the rescan after the read tries the English one.
 
 const nf = {
-  shows: {}, // Netflix show id -> name
+  shows: {}, // Netflix show id -> name, as the cards and modals name it
   episodes: {}, // Netflix episode id -> show id
-  pending: new Set(),
-  failed: {}, // episode id -> time of the last failed attempt
-  queue: [],
+  english: {}, // Netflix id -> English name from its public page ('' when it gave none)
+  pending: new Set(), // 'ep:<id>' or 'en:<id>' reads under way
+  failed: {}, // id -> time of the last failed attempt
+  queue: [], // [{ id, kind: 'episode' | 'english' }]
   active: 0,
   lastEpisodeCard: null, // { id, label } of the episode card last hovered
 };
 const RETRY_FAILED_MS = 10 * 60 * 1000;
+const OTHER_SCRIPT = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u;
 
 function jbvOf(s) {
   return ((s || '').match(/[?&]jbv=(\d+)/) || [])[1] || null;
@@ -103,10 +114,11 @@ function nfSave() {
   nfSaveTimer = setTimeout(async () => {
     nfSaveTimer = null;
     try {
-      const cur = await chrome.storage.local.get(['nfShows', 'nfEpisodes']);
+      const cur = await chrome.storage.local.get(['nfShows', 'nfEpisodes', 'nfEnglish']);
       await chrome.storage.local.set({
         nfShows: { ...(cur.nfShows || {}), ...nf.shows },
         nfEpisodes: { ...(cur.nfEpisodes || {}), ...nf.episodes },
+        nfEnglish: { ...(cur.nfEnglish || {}), ...nf.english },
       });
     } catch (e) {
       /* extension reloaded; the next page load starts over */
@@ -126,67 +138,113 @@ function rememberShow(id, name) {
 function showOfEpisode(episodeId) {
   if (!episodeId) return null;
   const showId = nf.episodes[episodeId];
-  if (showId && nf.shows[showId]) return nf.shows[showId];
-  if (!nf.pending.has(episodeId) && !(Date.now() - (nf.failed[episodeId] || 0) < RETRY_FAILED_MS)) {
-    nf.pending.add(episodeId);
-    nf.queue.push(episodeId);
-    nfPump();
-  }
+  if (showId && nf.shows[showId]) return englishFirst(showId, nf.shows[showId]);
+  queueRead(episodeId, 'episode');
   return null;
+}
+
+// A name in another script, with the title's English name (its public
+// page, read once) put first for the lookup: [english, name]. The name
+// alone while the page is unread, or when it gave no English name.
+function englishFirst(id, name) {
+  if (!id || !name || !OTHER_SCRIPT.test(name)) return name;
+  const english = nf.english[id];
+  if (english) return [english, name];
+  if (english === undefined) queueRead(id, 'english');
+  return name;
+}
+
+function queueRead(id, kind) {
+  const key = (kind === 'english' ? 'en:' : 'ep:') + id;
+  if (nf.pending.has(key) || Date.now() - (nf.failed[id] || 0) < RETRY_FAILED_MS) return;
+  nf.pending.add(key);
+  nf.queue.push({ id, kind });
+  nfPump();
 }
 
 function nfPump() {
   while (nf.active < 2 && nf.queue.length) {
-    const id = nf.queue.shift();
+    const { id, kind } = nf.queue.shift();
     nf.active++;
-    resolveEpisode(id).finally(() => {
+    (kind === 'english' ? resolveEnglish(id) : resolveEpisode(id)).finally(() => {
       nf.active--;
-      nf.pending.delete(id);
+      nf.pending.delete((kind === 'english' ? 'en:' : 'ep:') + id);
       nfPump();
     });
   }
 }
 
-async function resolveEpisode(episodeId) {
+// Netflix's public page of a title, signed out: { showId, name }, the id
+// it lands on (an episode's page redirects to its show's) and the name in
+// its <h1>, about 600 KB in, so the page is read only up to there. Throws
+// when there is no such page.
+async function readTitlePage(id) {
   const ctrl = new AbortController();
   try {
     // A full URL: Firefox resolves a content script's relative URLs against
     // the extension, not the page.
-    const res = await fetch(location.origin + '/title/' + episodeId, { credentials: 'omit', signal: ctrl.signal });
+    const res = await fetch(location.origin + '/title/' + id, { credentials: 'omit', signal: ctrl.signal });
     const showId = (res.url.match(/\/title\/(\d+)/) || [])[1];
-    if (!res.ok || !showId) throw new Error('no show page');
-    nf.episodes[episodeId] = showId;
-    if (!nf.shows[showId]) {
-      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-      let buf = '';
-      for (let read = 0; read < 3e6; ) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        read += value.length;
-        buf += value;
-        const m = buf.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-        if (m) {
-          const name = new DOMParser().parseFromString(m[1], 'text/html').body.textContent.trim();
-          if (name) nf.shows[showId] = name;
-          break;
-        }
-        buf = buf.slice(-8192); // an <h1> split across chunks still matches next time
+    if (!res.ok || !showId) throw new Error('no title page');
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+    let name = null;
+    for (let read = 0; read < 3e6; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.length;
+      buf += value;
+      const m = buf.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+      if (m) {
+        name = new DOMParser().parseFromString(m[1], 'text/html').body.textContent.trim() || null;
+        break;
       }
+      buf = buf.slice(-8192); // an <h1> split across chunks still matches next time
     }
-    if (!nf.shows[showId]) throw new Error('no name');
-    nfSave();
-    nfRescan();
-  } catch (e) {
-    nf.failed[episodeId] = Date.now();
+    return { showId, name };
   } finally {
     ctrl.abort(); // stop downloading the rest of the page
   }
 }
 
-chrome.storage.local.get(['nfShows', 'nfEpisodes']).then(
-  ({ nfShows, nfEpisodes }) => {
+// What the public page named a title: its English name, or '' when the
+// page itself came in another script (Netflix serves it in the country's
+// language), so it is not asked again.
+function noteEnglish(id, name) {
+  nf.english[id] = name && !OTHER_SCRIPT.test(name) ? name : '';
+}
+
+async function resolveEpisode(episodeId) {
+  try {
+    const { showId, name } = await readTitlePage(episodeId);
+    nf.episodes[episodeId] = showId;
+    if (name) noteEnglish(showId, name);
+    if (!nf.shows[showId] && name) nf.shows[showId] = name;
+    if (!nf.shows[showId]) throw new Error('no name');
+    nfSave();
+    nfRescan();
+  } catch (e) {
+    nf.failed[episodeId] = Date.now();
+  }
+}
+
+async function resolveEnglish(id) {
+  try {
+    const { showId, name } = await readTitlePage(id);
+    noteEnglish(id, name);
+    if (showId !== id) noteEnglish(showId, name);
+    nfSave();
+    nfRescan();
+  } catch (e) {
+    nf.failed[id] = Date.now();
+  }
+}
+
+chrome.storage.local.get(['nfShows', 'nfEpisodes', 'nfEnglish']).then(
+  ({ nfShows, nfEpisodes, nfEnglish }) => {
     nf.shows = { ...(nfShows || {}), ...nf.shows };
     nf.episodes = { ...(nfEpisodes || {}), ...nf.episodes };
+    nf.english = { ...(nfEnglish || {}), ...nf.english };
     nfRescan();
   },
   () => {}
@@ -223,8 +281,9 @@ function modalTitle(el) {
     const card = nf.lastEpisodeCard;
     return card && card.label.toLowerCase() === title.toLowerCase() ? showOfEpisode(card.id) : null;
   }
-  if (title && el.classList.contains('detail-modal')) rememberShow(modalId(), title);
-  return title;
+  const id = modalId() || jbvOf(el.querySelector('a[href*="jbv="]')?.getAttribute('href'));
+  if (title && el.classList.contains('detail-modal')) rememberShow(id, title);
+  return englishFirst(id, title);
 }
 
 window.IMDBEXT_SITE = {
@@ -242,8 +301,9 @@ window.IMDBEXT_SITE = {
       ].join(', '),
       titleOf(el) {
         const name = (el.getAttribute('aria-label') || '').trim() || null;
-        rememberShow(jbvOf(el.getAttribute('href')), name);
-        return name;
+        const id = jbvOf(el.getAttribute('href'));
+        rememberShow(id, name);
+        return englishFirst(id, name);
       },
       host(el) {
         return el;
@@ -263,7 +323,8 @@ window.IMDBEXT_SITE = {
       selector: '[data-uia="title-card-container"]',
       titleOf(el) {
         if (el.closest('[data-list-context="windowedComingSoon"]')) return null;
-        return (el.querySelector('a.slider-refocus')?.getAttribute('aria-label') || '').trim() || null;
+        const a = el.querySelector('a.slider-refocus');
+        return englishFirst(jbvOf(a?.getAttribute('href')), (a?.getAttribute('aria-label') || '').trim() || null);
       },
       host(el) {
         return el.querySelector('.boxart-container');
@@ -280,7 +341,8 @@ window.IMDBEXT_SITE = {
       kind: 'card',
       selector: '.moreLikeThis--container [data-uia="titleCard--container"]',
       titleOf(el) {
-        return (el.getAttribute('aria-label') || '').trim() || null;
+        const a = el.closest('a[href*="jbv="]') || el.querySelector('a[href*="jbv="]');
+        return englishFirst(jbvOf(a?.getAttribute('href')), (el.getAttribute('aria-label') || '').trim() || null);
       },
       typeOf(el) {
         const length = el.querySelector('.duration')?.textContent || '';

@@ -112,9 +112,13 @@ each goes is set by IMDb's data, which names nearly every title in
 Japanese and Hindi, about 150,000 in Cyrillic, 71,000 in Chinese,
 43,000 in Greek and under 6,000 in Korean (Ozark, Stranger Things and
 Squid Game have a Korean name; Breaking Bad and Better Call Saul are
-listed for Korea in English, so a Korean Netflix profile sees "n/a" on
-them). Hebrew, Arabic and Thai have a few hundred names each and are
-left out. Someone who set languages up before 1.2.2 and ticks one of
+listed for Korea in English). On Netflix that gap is closed another
+way: a card named in another script also gets its English name from
+Netflix's public page of the title, read once, signed out, as episode
+cards already do to find their show, and that name is looked up first.
+Other sites have no such page, so there a Korean profile gets what
+IMDb names in Korean. Hebrew, Arabic and Thai have a few hundred names
+each and are left out. Someone who set languages up before 1.2.2 and ticks one of
 these sees Get titles instead of Apply once, since the kept list from
 before has no rows for them. Netflix's own labels (a show's "5
 Seasons", the season dropdown, "Show" or "Movie") are read in English,
