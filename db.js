@@ -227,13 +227,16 @@ const RatingsDB = (() => {
     if (!m) return null;
     const db = await open();
     const key = normalise(title);
-    let rec = await result(db.transaction(m.store).objectStore(m.store).get(key));
-    // Not an English title: maybe one in a language the akas store has.
-    // Such an answer is marked (aka), so the settings page can forget the
-    // remembered ones when the languages are turned off.
+    // Not an English title: maybe one in a language the akas store has,
+    // read in the same transaction on a miss. Such an answer is marked
+    // (aka), so the settings page can forget the remembered ones when the
+    // languages are turned off.
+    const withAkas = akas && (m.langs || []).length > 0;
+    const tx = db.transaction(withAkas ? [m.store, akasStore(m.store)] : [m.store]);
+    let rec = await result(tx.objectStore(m.store).get(key));
     let aka = false;
-    if (!rec && akas && (m.langs || []).length) {
-      rec = await result(db.transaction(akasStore(m.store)).objectStore(akasStore(m.store)).get(key));
+    if (!rec && withAkas) {
+      rec = await result(tx.objectStore(akasStore(m.store)).get(key));
       aka = !!rec;
     }
     if (!rec || !rec.e.length) return null;
