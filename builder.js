@@ -289,15 +289,18 @@ const RatingsBuilder = (() => {
   // The full build. langs: the languages besides English the user chose
   // (background.js titleLanguages); their keys are made again from the
   // extract right after the titles go live, and the akas file is fetched
-  // again, last, once the extract on hand is old (db.js akasStale). With
-  // no extract nothing is fetched: that is the Get titles button's job
+  // again, last, once the extract on hand is old (db.js akasStale), and
+  // on the first build, always the user's own click, when languages are
+  // ticked already (the panel promises it). A later rebuild with no
+  // extract fetches nothing: that is the Get titles button's job
   // (addLanguages), so no rebuild downloads the 520 MB by itself.
   // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'keying'|'writing-akas', pct: 0..1, detail })
   // onUsable(info) fires once the titles are live, before the episodes stream.
   async function build({ minVotes = 25, langs = [], onProgress, onUsable } = {}) {
     begin();
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
-    const fetchAkas = langs.length > 0 && RatingsDB.akasStale(await RatingsDB.getMeta());
+    const meta = await RatingsDB.getMeta();
+    const fetchAkas = langs.length > 0 && (!meta || RatingsDB.akasStale(meta));
 
     // 1. Ratings.
     const ratings = await readRatings(minVotes, progress);

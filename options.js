@@ -366,7 +366,7 @@ function otherLanguagesText(u, l, building) {
   if (draftLangs !== null && l.present && !building) {
     return 'Not applied yet: click ' + (l.akasAt ? 'Apply' : 'Get titles') + ' below to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
   }
-  if (!l.present) return 'The first build will include them.';
+  if (!l.present) return chosen.length ? 'The first build will include them (reads 520 MB more).' : 'Tick the languages you use; the first build will include them.';
   if (!l.akasAt) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles below has run.' : 'Tick the languages you use.';
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;

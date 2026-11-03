@@ -102,8 +102,9 @@ const RatingsDB = (() => {
   // Whether the extract on hand is older than AKAS_DAYS, so a full build
   // that wants any language fetches the file again. A missing extract is
   // not stale: the 520 MB is only ever the settings page's Get titles
-  // button, never a rebuild running by itself. Shared by builder.js and
-  // background.js (refreshPlan), which says what the build downloads.
+  // button, or the first build with languages ticked (builder.js), never
+  // a rebuild running by itself. Shared by builder.js and background.js
+  // (refreshPlan), which says what the build downloads.
   function akasStale(meta) {
     return !!(meta && meta.akasAt) && Date.now() - meta.akasAt > AKAS_DAYS * 24 * 60 * 60 * 1000;
   }
