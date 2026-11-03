@@ -21,10 +21,10 @@ const PHASES = {
   keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
-// The phase Cancel waits out: the akas store is emptied before it is
+// The one phase Cancel waits out: the akas store is emptied before it is
 // written, so that save runs through (builder.js cancel); every other
 // phase stops where it is.
-const SAVING = new Set(['writing-akas']);
+const SAVING_PHASE = 'writing-akas';
 
 // "Polish", "Polish and German", "Polish, German and French".
 function languageNames(langs) {
@@ -83,30 +83,22 @@ let draftLangs = null;
 const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
-// What the status line says about a build, in place of the database line
-// (refreshStats, and showBuild on every progress tick): its progress while
-// it runs, so that with the bar in the Update now row a build moves nothing
-// on the page; the failure afterwards. null: the line is the database's
-// (a cancel is noted beside Update now instead, showBuild). Two lines at
-// most at the window's width.
+// What the status line says while a build runs, in place of the database
+// line (refreshStats, and showBuild on every progress tick): its progress,
+// so that with the bar in the Update now row a build moves nothing on the
+// page. null: the line is the database's (a failure is reported where its
+// retry lives, refreshStats; a cancel beside Update now, showBuild). Two
+// lines at most at the window's width.
 function buildLine(build) {
-  if (!build) return null;
-  if (build.status === 'running') {
-    const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
-    const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
-    // A full build's titles go live before the episodes download.
-    const usable = build.usable ? 'Ratings now show (reload open streaming tabs). ' : '';
-    // Cancel pressed: a download stops at once, a save (builder.js cancel)
-    // runs to its end first.
-    const cancelling = !build.cancelling ? '' : SAVING.has(build.phase) ? 'Cancelling after this save: ' : 'Cancelling: ';
-    return { text: cancelling + usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail, bad: false };
-  }
-  if (build.status === 'error') {
-    // The titles list is only ever fetched on the Get titles button, so a
-    // failed one waits for the next click, not the schedule.
-    return { text: 'Failed: ' + build.message + (build.kind === 'akas' ? ' (click Get titles to try again)' : ' (will retry automatically in a day)'), bad: true };
-  }
-  return null;
+  if (!build || build.status !== 'running') return null;
+  const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
+  const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
+  // A full build's titles go live before the episodes download.
+  const usable = build.usable ? 'Ratings now show (reload open streaming tabs). ' : '';
+  // Cancel pressed: a download stops at once, a save (builder.js cancel)
+  // runs to its end first.
+  const cancelling = !build.cancelling ? '' : build.phase === SAVING_PHASE ? 'Cancelling after this save: ' : 'Cancelling: ';
+  return cancelling + usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
 }
 
 // A build cancelled while this page was open says so next to Update now
@@ -136,12 +128,12 @@ function showBuild(build) {
   if (running) {
     $('cancelBuild').disabled = !!build.cancelling;
     $('buildBar').value = build.pct || 0;
-    $('localStatus').textContent = buildLine(build).text;
+    $('localStatus').textContent = buildLine(build);
     $('localStatus').classList.remove('bad');
     return;
   }
-  // The failed text is refreshStats' (buildLine), which follows every
-  // change of state.
+  // A failure is refreshStats' to report, which follows every change of
+  // state.
   if (build && build.status === 'done' && Date.now() - (build.at || 0) < DONE_RECENT_MS) {
     $('doneText').textContent = build.kind === 'ratings'
       ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
@@ -198,14 +190,24 @@ async function refreshStats() {
   // other states.
   const noDb = !omdbOnlyMode && !l.present;
   const line = buildLine(u.build);
-  $('localStatus').textContent = line ? line.text
+  $('localStatus').textContent = line ? line
     : omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : noDb ? (keyed
       ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or choose OMDb only above.'
       : 'No ratings yet: click Update now to build the database (a few minutes), or enter an OMDb key below and choose OMDb only.')
     : localStatus(l, building, !!(u.schedule && u.schedule.manual), await diskUsage());
-  $('localStatus').classList.toggle('bad', line ? line.bad : (omdbOnlyMode || noDb) && !keyed);
-  $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
+  $('localStatus').classList.toggle('bad', !line && (omdbOnlyMode || noDb) && !keyed);
+  // A failed build is reported where its retry lives, in red: the full
+  // and ratings passes in the next-refresh line (their schedule), the
+  // languages pass in the languages line (Get titles). The status line
+  // keeps the database's own summary.
+  const failed = u.build && u.build.status === 'error' && !omdbOnlyMode ? u.build : null;
+  const failedBuild = !!(failed && failed.kind !== 'akas');
+  const failedAkas = !!(failed && failed.kind === 'akas' && u.langsOn);
+  $('nextRefresh').textContent = failedBuild
+    ? 'Last build failed: ' + failed.message + '.' + (l.present && u.autoRefresh !== false ? ' Retried automatically in a day.' : '')
+    : l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
+  $('nextRefresh').classList.toggle('bad', failedBuild);
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
   $('autoText').textContent = scheduleText(u.schedule);
@@ -214,7 +216,7 @@ async function refreshStats() {
   const listWasHidden = $('langBox').hidden;
   $('langBox').hidden = !u.langsOn || omdbOnlyMode;
   renderLanguages(u, building, listWasHidden);
-  $('otherLangsText').textContent = omdbOnlyMode ? '' : otherLanguagesText(u, l, building);
+  $('otherLangsText').textContent = omdbOnlyMode ? '' : failedAkas ? 'Get titles failed: ' + failed.message + '. Click Get titles to try again.' : otherLanguagesText(u, l, building);
   loadedLangs = l.akasAt ? l.langs || [] : [];
   storedLangs = u.langs || [];
   extractOnHand = !!l.akasAt;
@@ -223,7 +225,7 @@ async function refreshStats() {
   // option looks on while nothing matches yet.
   // Red while ticked languages cannot match yet: no database, or no list
   // of titles on hand (Get titles).
-  $('otherLangsText').classList.toggle('bad', !!(u.langsOn && !omdbOnlyMode && !l.akasAt && storedLangs.length && !building && draftLangs === null));
+  $('otherLangsText').classList.toggle('bad', failedAkas || !!(u.langsOn && !omdbOnlyMode && !l.akasAt && storedLangs.length && !building && draftLangs === null));
   // The button applies the ticks: Get titles while the list was never
   // fetched (the one place the 520 MB is read), Apply once it is on hand
   // and only the keys change. Shown for a draft, or for languages chosen
@@ -243,13 +245,13 @@ async function refreshStats() {
   $('today').textContent = u.today.toLocaleString();
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
   // The Use OMDb box, the switch for all OMDb traffic. Under OMDb only it
-  // is on and stays on: that mode has no other source (background.js
-  // omdbSettings counts it on as well). Under Local database it is greyed
+  // is on and stays on: that mode has no other source (the source handler
+  // stores it so, loadOmdb catches an older choice, and background.js
+  // omdbSettings counts it on regardless). Under Local database it is greyed
   // without a saved key, or while one is being typed (keyDirty), as are
   // the extras below, whatever a build or a lookup changed meanwhile.
   const box = $('useOmdb');
   if (omdbOnlyMode) {
-    if ((await chrome.storage.sync.get('omdbFallback')).omdbFallback === false) await chrome.storage.sync.set({ omdbFallback: true });
     box.checked = true;
     box.disabled = true;
     box.parentElement.classList.remove('off');
@@ -695,11 +697,16 @@ let savedKey = '';
 let keyEdited = false; // the field was typed in since the last load or Test
 
 async function loadOmdb() {
-  const { omdbKey = '', omdbFallback = true } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback']);
+  const { omdbKey = '', omdbFallback = true, ratingsSource } = await chrome.storage.sync.get(['omdbKey', 'omdbFallback', 'ratingsSource']);
+  // OMDb only has no other source, so Use OMDb is on under it. The source
+  // handler stores that on the switch; a choice stored before 1.2.0, when
+  // the box could stay off, is put right here, once per load.
+  const useOmdb = omdbFallback || ratingsSource === 'omdb';
+  if (useOmdb && !omdbFallback) await chrome.storage.sync.set({ omdbFallback: true });
   savedKey = omdbKey;
   keyEdited = false;
   $('key').value = omdbKey;
-  const on = !!omdbKey && omdbFallback && (await omdbConsent());
+  const on = !!omdbKey && useOmdb && (await omdbConsent());
   $('useOmdb').checked = on;
   $('useOmdb').disabled = !omdbKey;
   $('useOmdb').parentElement.classList.toggle('off', !omdbKey);
@@ -937,12 +944,19 @@ const UPDATE_NOTES = {
 async function showUpdateNote() {
   const { updateNote } = await chrome.storage.local.get('updateNote');
   if (!updateNote) return;
-  await chrome.storage.local.remove('updateNote');
   const text = UPDATE_NOTES[updateNote.to];
-  if (text && updateNote.from !== updateNote.to) say(text);
+  if (!text || updateNote.from === updateNote.to) {
+    await chrome.storage.local.remove('updateNote');
+    return;
+  }
+  // An error on the line (a site not allowed, a stale worker) matters
+  // more; the note waits for the next open rather than cover it.
+  if ($('status').className === 'bad') return;
+  say(text);
+  await chrome.storage.local.remove('updateNote');
 }
 
 $('version').textContent = 'Version ' + chrome.runtime.getManifest().version;
-loadSites();
-loadBadges();
-loadOmdb().then(refreshStats).then(showUpdateNote); // the box's state from storage first, then refreshStats' lock under OMDb only
+// The box's state from storage first, then refreshStats' lock under OMDb
+// only; the update note last, once every loader has had its say.
+Promise.all([loadSites(), loadBadges(), loadOmdb().then(refreshStats)]).then(showUpdateNote);

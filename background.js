@@ -439,21 +439,33 @@ async function startBuild(trigger, kind = 'full', langs = null) {
 // The settings page's Cancel button. The worker stops at its next chance
 // (builder.js cancel: a download at once, a save once it is through) and
 // reports 'cancelled', handled below; until then the state says cancelling
-// so the page can show it. Returns the build state.
+// so the page can show it. The build page may still be coming up
+// (startBuild), so the message is tried for a few seconds; the page keeps
+// a cancel that beats the build message (offscreen.js). With nobody
+// listening after that, the page is gone: the build was interrupted
+// (recoverInterruptedBuild's case, mid-run), which the state says instead
+// of staying "cancelling" with both buttons dead. Returns the build state.
 async function cancelBuild() {
   const state = await getBuildState();
   if (state.status !== 'running' || state.cancelling) return state;
   const next = { ...state, cancelling: true };
   await setBuildState(next);
   const cancel = { target: 'offscreen', type: 'cancel' };
-  try {
-    await chrome.runtime.sendMessage(cancel);
-  } catch (e) {
-    // The build page may still be coming up (startBuild); once more after a moment.
-    await new Promise((r) => setTimeout(r, 500));
-    await chrome.runtime.sendMessage(cancel).catch(() => {});
+  for (let i = 0; i < 8; i++) {
+    try {
+      await chrome.runtime.sendMessage(cancel);
+      return next;
+    } catch (e) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
   }
-  return next;
+  const gone = !(await hasBuildPage());
+  const after = gone
+    ? { status: 'error', kind: state.kind, message: 'the build was interrupted; click Update now to start it again', at: Date.now() }
+    : { ...state, cancelling: false }; // the page is there but deaf: the button comes back
+  await setBuildState(after);
+  if (gone) await closeOffscreen();
+  return after;
 }
 
 // Messages from the build are handled one at a time, in arrival order. A
@@ -760,10 +772,10 @@ function titleVariants(title, kind) {
   }
   t = t
     .replace(/\s*[-–:,]?\s*season[\s-]*\d+[a-z]?\s*$/i, '')
-    .replace(/\s*[-–:,]?\s*part\s+(1|one|i)\s*$/i, '')
     .replace(/\s*\[[^\]]*\]\s*$/, '')
     .replace(/\s*\([^()]{1,25}\)\s*$/, '') // "Red Eye (UK)", "The Office (US)", "(Dubbed)"
     .replace(/\s+(UK|US)$/, '') // "Ghosts UK"
+    .replace(/\s*[-–:,]?\s*part\s+(1|one|i)\s*$/i, '') // after the notes, so "X Part 1 (Dubbed)" loses both
     .replace(/^clip:\s*/i, '')
     // Sites credit a name in the title that IMDb leaves out: "Tyler
     // Perry's Boo! A Madea Halloween" is "Boo! A Madea Halloween",

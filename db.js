@@ -331,6 +331,16 @@ const RatingsDB = (() => {
       let last = null;
       for (const k of idKeys.slice(i, i + CHUNK)) last = idStore.put(ids.get(k), k);
       if (last) await result(last);
+      // Progress, but nothing may stop the switch halfway: a cancel the
+      // caller raises from here (builder.js tick) is dropped, and the
+      // caller sees its flag again right after the switch.
+      if (onProgress) {
+        try {
+          onProgress(keys.length + Math.min(i + CHUNK, idKeys.length), total);
+        } catch (e) {
+          /* dropped, see above */
+        }
+      }
     }
     tx.objectStore('meta').put({
       ...info,

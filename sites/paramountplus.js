@@ -104,7 +104,14 @@
   // The call-out right after the banner's logo heading.
   const bannerCall = (el) => el.querySelector(':scope > h1')?.nextElementSibling || null;
 
+  // The slide's own link says what it is (/shows/ or /movies/video/); the
+  // call-out's words only when no link does, since a show's special
+  // ("HOLIDAY SPECIAL NOW STREAMING") would otherwise read as a film.
   function bannerType(el) {
+    for (const a of el.closest('li.hero__slide')?.querySelectorAll('a[href]') || []) {
+      const t = linkType(a);
+      if (t) return t;
+    }
     const call = clean(bannerCall(el)?.textContent);
     if (/\b(seasons?|episodes?|series)\b/i.test(call)) return 'series'; // "ALL EPISODES NOW STREAMING" too
     if (/\b(movie|special)\b/i.test(call)) return 'movie'; // a TV special is a film to IMDb (builder.js TYPE)

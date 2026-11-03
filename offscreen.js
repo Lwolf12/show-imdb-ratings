@@ -6,6 +6,7 @@
 
 let worker = null;
 let heartbeat = null;
+let cancelPending = false; // a cancel that arrived before the build did
 
 // Every message the background receives keeps it awake (Firefox unloads an
 // event page after about 30 idle seconds). Progress already arrives several
@@ -33,8 +34,15 @@ chrome.runtime.onMessage.addListener((msg) => {
     };
     heartbeat = setInterval(() => chrome.runtime.sendMessage({ target: 'background', type: 'heartbeat' }).catch(() => {}), HEARTBEAT_MS);
     worker.postMessage({ type: 'start', kind: msg.kind, minVotes: msg.minVotes, langs: msg.langs || [] });
+    if (cancelPending) worker.postMessage({ type: 'cancel' });
+    cancelPending = false;
   }
   // The settings page's Cancel button: the worker stops at its next chance
-  // and reports 'cancelled' (build-worker.js), which ends it as above.
-  if (msg.type === 'cancel') worker?.postMessage({ type: 'cancel' });
+  // and reports 'cancelled' (build-worker.js), which ends it as above. A
+  // cancel that beats the build message (a click in the first second) is
+  // kept for it.
+  if (msg.type === 'cancel') {
+    if (worker) worker.postMessage({ type: 'cancel' });
+    else cancelPending = true;
+  }
 });
