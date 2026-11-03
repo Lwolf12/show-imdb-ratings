@@ -337,7 +337,9 @@ function omdbOnlyStatus(l, keyed) {
 
 // The next automatic refresh (background.js refreshPlan): which kind, what
 // it downloads and when, and how new titles arrive for people without an
-// OMDb key.
+// OMDb key. The paragraph holds two lines (options.html), and the ratings
+// text leaves the sizes and intervals to the box's own label above it so
+// that it fits them whatever the weekday.
 function nextRefresh(u) {
   const n = u.next || {};
   if (u.autoRefresh === false) {
@@ -346,8 +348,8 @@ function nextRefresh(u) {
   }
   if (!n.kind) return '';
   if (n.kind === 'ratings') {
-    return 'Next: ratings only (reads ' + n.mb + ' MB), ' + due(n.due) + '. New titles arrive with the full rebuild (' +
-      EVERY[n.fullDays] + (n.keyed ? '; OMDb covers them meanwhile).' : '); an OMDb key covers them sooner.');
+    return 'Next: ratings only, ' + due(n.due) + '. New titles arrive with the full rebuild; ' +
+      (n.keyed ? 'OMDb covers them meanwhile.' : 'an OMDb key would cover them sooner.');
   }
   // The language ticks changed: keyed again from the kept list (local,
   // seconds), or waiting for the Download button when there is none.

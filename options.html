@@ -64,6 +64,9 @@
     /* One line is held for the Test result, and every result is written to
        fit it (the fuller account is its tooltip), so Also show never moves. */
     #testResult { font-weight: 600; font-size: 13px; min-height: 1.4em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Two lines held: the off text and every on text fit them at the window's
+       width, so ticking Refresh automatically does not move the section below. */
+    #nextRefresh { min-height: 2.9em; }
     .extras { margin-top: 2px; }
     #status { flex: 1; min-width: 200px; font-weight: 600; font-size: 13px; text-align: right; }
     .ok { color: #2a7; }
