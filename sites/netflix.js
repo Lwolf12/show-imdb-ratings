@@ -215,7 +215,11 @@ function modalTitle(el) {
   // textContent runs words together ('…matchS1:E1').
   const ep = el.textContent.match(/S\d+:\p{Lu}\d+\s*["“]?/u);
   const after = ep ? el.textContent.slice(ep.index + ep[0].length).trim().toLowerCase() : '';
-  if (title && ep && after.startsWith(title.toLowerCase())) {
+  // The box art must name the whole episode, not the start of a longer
+  // name: a show called "Dark" with a watched episode "Darkness Falls"
+  // is the show's own preview.
+  const t = title ? title.toLowerCase() : '';
+  if (title && ep && after.startsWith(t) && !/[\p{L}\p{N}]/u.test(after.charAt(t.length))) {
     const card = nf.lastEpisodeCard;
     return card && card.label.toLowerCase() === title.toLowerCase() ? showOfEpisode(card.id) : null;
   }
