@@ -7,11 +7,14 @@
     /* Room for the scrollbar is always kept, so a status line that grows
        past the window does not narrow the columns and rewrap the rows. */
     html { scrollbar-gutter: stable; }
-    body { font: 14px/1.45 system-ui, sans-serif; margin: 0 auto; padding: 16px 20px 14px; max-width: 560px; color: #222;
+    /* Vertical spacing is tight on purpose: the window is 740 px tall at
+       most and shorter on small screens, and both columns must end above
+       its edge (Advanced, Get titles) in the usual states. */
+    body { font: 14px/1.45 system-ui, sans-serif; margin: 0 auto; padding: 12px 20px 10px; max-width: 560px; color: #222;
            min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; }
-    header { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; margin: 0 0 12px; }
+    header { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; margin: 0 0 8px; }
     h1 { font-size: 16px; margin: 0; }
-    section { margin: 0 0 12px; padding: 0 0 10px; border-bottom: 1px solid #e3e3e3; }
+    section { margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid #e3e3e3; }
     .col > section:last-child { border-bottom: 0; }
     /* Two fixed columns in the settings window. Each section stays in its
        column, so opening OMDb or Advanced only pushes down what is below it
@@ -23,7 +26,7 @@
     .choices { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
     .choices label.check { margin: 4px 0; }
     .choices.three { grid-template-columns: repeat(3, auto); justify-content: start; }
-    h2 { display: flex; align-items: center; font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.4px; color: #666; }
+    h2 { display: flex; align-items: center; font-size: 13px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.4px; color: #666; }
     p { margin: 6px 0; }
     .muted { color: #666; font-size: 13px; }
     .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
@@ -43,7 +46,10 @@
     #cancelBuild { padding: 3px 10px; font-size: 13px; }
     /* The language list, shown while "Match titles in other languages" is
        ticked: two columns, scrolling after five rows. */
-    .langs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 118px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; margin: 4px 0 2px 22px; font-size: 13px; }
+    #langRow { margin: 2px 0; }
+    #langRow button { padding: 3px 10px; font-size: 13px; }
+    #langBox p { margin: 2px 0 4px; }
+    .langs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 100px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; margin: 2px 0 2px 22px; font-size: 13px; }
     .langs label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
     .langs .hint { color: #777; font-size: 11px; }
     /* The "built N minutes ago" note Update now shows for a few seconds
@@ -61,9 +67,9 @@
     #omdbBox { margin: 2px 0 0 23px; }
     /* Three rows whatever the width: the three third-party scores, then
        the two options that need a word of explanation on a row each. */
-    .extras { column-gap: 12px; row-gap: 0; }
+    .extras { column-gap: 10px; row-gap: 0; }
     .extras .brk { flex-basis: 100%; height: 0; }
-    .extras label.check { margin: 2px 0; }
+    .extras label.check { margin: 2px 0; font-size: 13px; } /* the three scores on one row even on a wider font */
     .extras.off label.check { color: #999; }
     .textbtn { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: #06c; text-decoration: underline; cursor: pointer; }
     .textbtn:disabled { color: #999; text-decoration: none; cursor: default; }
@@ -230,11 +236,12 @@
         <h2>Titles in other languages
           <span class="tip left" tabindex="0" data-tip="Streaming sites show titles in your profile's language (Netflix in Polish calls Better Call Saul 'Zadzwoń do Saula'), but the database knows only the English and original names, so translated titles get no rating. Tick this, tick the languages you use, and click Get titles: the extension streams IMDb's list of titles by country once (520 MB pass through, nothing is saved as a file) and keeps only the useful part, about 50 MB in the database, so other languages can be ticked later without reading it again. The full rebuild reads a fresh list after three months. Not needed with an English browser on English pages. Languages written in the Latin alphabet only. Unticking stops the matching but keeps the list, so it can be turned back on without reading it again; Delete database removes it."
                 aria-label="Streaming sites show titles in your profile's language (Netflix in Polish calls Better Call Saul 'Zadzwoń do Saula'), but the database knows only the English and original names, so translated titles get no rating. Tick this, tick the languages you use, and click Get titles: the extension streams IMDb's list of titles by country once (520 MB pass through, nothing is saved as a file) and keeps only the useful part, about 50 MB in the database, so other languages can be ticked later without reading it again. The full rebuild reads a fresh list after three months. Not needed with an English browser on English pages. Languages written in the Latin alphabet only. Unticking stops the matching but keeps the list, so it can be turned back on without reading it again; Delete database removes it.">i</span></h2>
-        <label class="check"><input id="otherLangs" type="checkbox"> Match titles in other languages</label>
+        <!-- The button sits by the box, not under the list: the list is the
+             last thing in its column, and a short window cuts it off. -->
+        <div id="langRow" class="row"><label class="check"><input id="otherLangs" type="checkbox"> Match titles in other languages</label><button id="downloadLangs" type="button" hidden>Get titles</button></div>
         <div id="langBox" hidden>
-          <div id="langList" class="langs"></div>
           <p id="otherLangsText" class="muted"></p>
-          <div class="row"><button id="downloadLangs" type="button" hidden>Get titles (reads 520 MB from IMDb, keeps about 50 MB)</button></div>
+          <div id="langList" class="langs"></div>
         </div>
         <p id="forgetLine" class="muted" hidden><span id="forgetText"></span> <a href="#" id="forgetAka">Forget them now</a>.</p>
       </section>
