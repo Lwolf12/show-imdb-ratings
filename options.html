@@ -34,6 +34,10 @@
     label.check.off { color: #999; }
     label.check.nowrap { white-space: nowrap; }
     progress { width: 100%; height: 12px; margin-top: 4px; display: block; }
+    /* The bar with Cancel at its end; a cancelled build shows text only. */
+    #buildBarRow { margin: 4px 0 0; flex-wrap: nowrap; }
+    #buildBarRow progress { flex: 1; width: auto; margin: 0; }
+    #cancelBuild { padding: 3px 10px; font-size: 13px; }
     #buildText { color: #555; font-size: 13px; margin-top: 4px; }
     /* The language list, shown while "Match titles in other languages" is
        ticked: two columns, scrolling after five rows. */
@@ -110,7 +114,7 @@
         <p id="localStatus">…</p>
         <div id="buildRow" class="row"><button id="build" type="button">Update now</button><span id="buildNote" class="note" hidden></span></div>
         <div id="buildProgress" hidden>
-          <progress id="buildBar" max="1" value="0"></progress>
+          <div id="buildBarRow" class="row"><progress id="buildBar" max="1" value="0"></progress><button id="cancelBuild" type="button">Cancel</button></div>
           <div id="buildText"></div>
         </div>
         <div id="buildDone" class="done" hidden>

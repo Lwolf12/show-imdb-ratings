@@ -123,9 +123,11 @@ the 9 MB but not the 280. The panel shows the
 title count, the dates of the last full build and ratings update, the next
 refresh with its size and due date, and progress; **Update now** is always
 a full rebuild, and **Update ratings only** under Advanced runs the 9 MB
-ratings pass by hand. The automatic refresh can be switched off there, which is
-the thing to do on a metered connection. A failed build (offline, say) is
-retried a day later. An update that changes how the database is stored
+ratings pass by hand. **Cancel**, next to the progress bar, stops a build: while
+it is downloading nothing has changed yet; once the titles are saved they stay,
+with the episodes left to the next full rebuild. The automatic refresh can be
+switched off there, which is the thing to do on a metered connection. A failed
+build (offline, say) is retried a day later, and so is one that was cancelled. An update that changes how the database is stored
 (`FORMAT` in `db.js`) also rebuilds it once, whatever its age; with the
 automatic refresh off, the panel asks for Update now instead.
 

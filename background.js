@@ -308,6 +308,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     else startBuild('manual', msg.kind === 'ratings' ? 'ratings' : 'full').then(sendResponse);
     return true;
   }
+  if (msg.type === 'cancel-build') {
+    cancelBuild().then(sendResponse);
+    return true;
+  }
   if (msg.type === 'setup') {
     setupStatus().then(sendResponse);
     return true;
@@ -426,6 +430,26 @@ async function startBuild(trigger, kind = 'full', langs = null) {
   return next;
 }
 
+// The settings page's Cancel button. The worker stops at its next chance
+// (builder.js cancel: a download at once, a save once it is through) and
+// reports 'cancelled', handled below; until then the state says cancelling
+// so the page can show it. Returns the build state.
+async function cancelBuild() {
+  const state = await getBuildState();
+  if (state.status !== 'running' || state.cancelling) return state;
+  const next = { ...state, cancelling: true };
+  await setBuildState(next);
+  const cancel = { target: 'offscreen', type: 'cancel' };
+  try {
+    await chrome.runtime.sendMessage(cancel);
+  } catch (e) {
+    // The build page may still be coming up (startBuild); once more after a moment.
+    await new Promise((r) => setTimeout(r, 500));
+    await chrome.runtime.sendMessage(cancel).catch(() => {});
+  }
+  return next;
+}
+
 // Messages from the build are handled one at a time, in arrival order. A
 // progress update reads the state and writes it back; run concurrently, the
 // last "100%" could land after "done" and leave the state stuck on running
@@ -469,6 +493,15 @@ async function handleBuildMessage(msg) {
     // A language tick or untick made while this build ran was held back
     // (applyLanguageChoice); it goes through now.
     applyLanguageChoice();
+  } else if (msg.type === 'cancelled') {
+    // Stopped by the Cancel button. saved: what a full build had already
+    // made live ('titles': the episodes are pending, as the status line
+    // says), or null when nothing changed.
+    const state = await getBuildState();
+    await setBuildState({ status: 'cancelled', kind: msg.kind || state.kind || 'full', saved: msg.saved || null, at: Date.now() });
+    await closeOffscreen();
+    updateBadge();
+    if (state.kind !== 'akas') applyLanguageChoice();
   } else if (msg.type === 'error') {
     const state = await getBuildState();
     await setBuildState({ status: 'error', kind: state.kind, message: msg.message, at: Date.now() });
@@ -668,8 +701,9 @@ async function maybeRefresh() {
   const { autoRefresh = true } = await chrome.storage.sync.get('autoRefresh');
   const state = await getBuildState();
   if (state.status === 'running') return;
-  // Don't hammer IMDb if builds keep failing: wait a day after an error.
-  if (state.status === 'error' && Date.now() - (state.at || 0) < DAY_MS) return;
+  // Don't hammer IMDb if builds keep failing: wait a day after an error,
+  // and after a build the user cancelled, which said "not now".
+  if ((state.status === 'error' || state.status === 'cancelled') && Date.now() - (state.at || 0) < DAY_MS) return;
   const plan = await refreshPlan(await RatingsDB.getMeta(), { scheduled: true });
   if (!plan.kind || plan.due > Date.now()) return;
   if (plan.kind === 'akas') {

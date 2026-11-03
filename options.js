@@ -21,6 +21,8 @@ const PHASES = {
   keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
+// The phases Cancel waits out: a save is never cut short (builder.js cancel).
+const SAVING = new Set(['writing', 'writing-episodes', 'updating', 'keying', 'writing-akas']);
 
 // "Polish", "Polish and German", "Polish, German and French".
 function languageNames(langs) {
@@ -111,16 +113,34 @@ function showBuild(build) {
   }
   if (build.status === 'running') {
     box.hidden = false;
+    $('buildBarRow').hidden = false;
     btn.disabled = true;
+    $('cancelBuild').disabled = !!build.cancelling;
     $('buildBar').value = build.pct || 0;
     const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
     const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
     // A full build's titles go live before the episodes download.
     const usable = build.usable ? 'Ratings now show on the streaming sites (reload any that are already open). ' : '';
-    $('buildText').textContent = usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
+    // Cancel pressed: a download stops at once, a save (builder.js cancel)
+    // runs to its end first.
+    const cancelling = !build.cancelling ? '' : SAVING.has(build.phase) ? 'Cancelling once this save is through: ' : 'Cancelling: ';
+    $('buildText').textContent = cancelling + usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
+    return;
+  }
+  if (build.status === 'cancelled') {
+    // Stopped by Cancel: nothing changed, unless a full build had already
+    // made its titles live (build.saved), which the status line reports
+    // as episodes pending.
+    box.hidden = false;
+    $('buildBarRow').hidden = true;
+    btn.disabled = omdbOnlyMode;
+    $('buildText').textContent = build.saved === 'titles'
+      ? 'Cancelled after the titles were saved; episode ratings arrive with the next full rebuild.'
+      : 'Cancelled; nothing was changed.';
     return;
   }
   box.hidden = false;
+  $('buildBarRow').hidden = false;
   btn.disabled = false;
   $('buildBar').value = 0;
   // The titles list is only ever fetched on the Get titles button, so a
@@ -400,6 +420,14 @@ $('build').addEventListener('click', async () => {
   showBuild(await chrome.runtime.sendMessage({ type: 'build' }));
 });
 
+// Stops the build that is running (background.js cancelBuild): a download
+// at once, with nothing changed; a save once it is through. For a click
+// that was a mistake, and for testing.
+$('cancelBuild').addEventListener('click', async () => {
+  $('cancelBuild').disabled = true;
+  showBuild(await chrome.runtime.sendMessage({ type: 'cancel-build' }));
+});
+
 // The ratings-only pass by hand (Advanced): what the weekly refresh does,
 // so the progress and the "Ratings updated" box are the same.
 $('buildRatings').addEventListener('click', async () => {
@@ -484,7 +512,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes.buildState) {
     const s = changes.buildState.newValue;
     showBuild(s);
-    if (s && (s.status === 'done' || s.status === 'error')) refreshStats();
+    if (s && ['done', 'cancelled', 'error'].includes(s.status)) refreshStats();
   }
 });
 

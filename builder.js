@@ -50,11 +50,53 @@ const RatingsBuilder = (() => {
   // series (25 would drop to ~420k), still enough votes to mean something.
   const EPISODE_MIN_VOTES = 10;
 
+  // Cancel (the settings page's button, via build-worker.js): a download in
+  // flight is aborted and the run ends with an error marked cancelled, and
+  // between steps check() does the same. Saves are never cut short: a
+  // half-written save would leave the database inconsistent (writeTitles
+  // empties the shared ids table first), and each takes seconds where a
+  // download takes minutes. So a cancel while downloading changes nothing,
+  // and one that lands after writeTitles leaves the titles live with the
+  // episodes pending (saved: 'titles'), the state the status line already
+  // knows. After the episodes are saved the build is complete, so a late
+  // cancel only skips the optional akas refresh.
+  let cancelled = false;
+  let aborter = null;
+  let saved = null; // what a cancelled full build has already made live
+
+  function begin() {
+    cancelled = false;
+    aborter = null;
+    saved = null;
+  }
+
+  function cancel() {
+    cancelled = true;
+    if (aborter) aborter.abort();
+  }
+
+  const stopped = () => Object.assign(new Error('cancelled'), { cancelled: true, saved });
+
+  function check() {
+    if (cancelled) throw stopped();
+  }
+
   // Yields decompressed lines; reports compressed bytes read for progress.
+  // Aborted by cancel(): the fetch (or the read in progress) then fails,
+  // and the failure is reported as the cancel it is.
   async function* lines(url, onBytes) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
-    yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes);
+    check();
+    aborter = new AbortController();
+    try {
+      const res = await fetch(url, { signal: aborter.signal });
+      if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
+      yield* linesFrom(res.body, Number(res.headers.get('content-length')) || 0, onBytes);
+    } catch (e) {
+      if (cancelled) throw stopped();
+      throw e;
+    } finally {
+      aborter = null;
+    }
   }
 
   // The same over any stream of gzip'd text (a Blob's, say).
@@ -222,6 +264,7 @@ const RatingsBuilder = (() => {
   // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'keying'|'writing-akas', pct: 0..1, detail })
   // onUsable(info) fires once the titles are live, before the episodes stream.
   async function build({ minVotes = 25, langs = [], onProgress, onUsable } = {}) {
+    begin();
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
     const fetchAkas = langs.length > 0 && RatingsDB.akasStale(await RatingsDB.getMeta());
 
@@ -265,6 +308,9 @@ const RatingsBuilder = (() => {
     }
 
     // 3. Titles go live now: badges can start while the episodes download.
+    //    The last chance to cancel with nothing changed; from here the save
+    //    runs to the end (see cancel above).
+    check();
     progress('writing', 0);
     const day = new Date().toISOString().slice(0, 10);
     const info = {
@@ -277,6 +323,7 @@ const RatingsBuilder = (() => {
       format: RatingsDB.FORMAT,
     };
     await RatingsDB.writeTitles(index, ids, info, (done, total) => progress('writing', total ? done / total : 1));
+    saved = 'titles';
     // The akas rows name titles by ID; the entries stay (the same arrays,
     // no copies) while the index's keys go.
     const byId = new Map();
@@ -318,6 +365,7 @@ const RatingsBuilder = (() => {
     ratings.clear();
 
     // 5. Episodes into the live database.
+    check();
     progress('writing-episodes', 0);
     await RatingsDB.writeEpisodes(episodes, episodeCount, (done, total) => progress('writing-episodes', total ? done / total : 1), leftover);
     episodes.clear();
@@ -326,13 +374,14 @@ const RatingsBuilder = (() => {
     //    and most people need none. A failure here is not the build's:
     //    the titles and episodes are in, and the languages still key from
     //    the old extract (step 3), so the build is done and the next
-    //    rebuild tries the file again. The result says so (akasError).
+    //    rebuild tries the file again. The result says so (akasError). A
+    //    cancel by now only skips this step: the build is complete.
     let akasError = null;
-    if (fetchAkas) {
+    if (fetchAkas && !cancelled) {
       try {
         akas = await applyLanguages(langs, byId, progress, true);
       } catch (e) {
-        akasError = String((e && e.message) || e);
+        if (!(e && e.cancelled)) akasError = String((e && e.message) || e);
       }
     }
     byId.clear();
@@ -346,6 +395,7 @@ const RatingsBuilder = (() => {
   // onProgress({ phase: 'akas'|'keying'|'writing-akas', pct, detail })
   // Returns { akas, langs } from RatingsDB.writeAkas.
   async function addLanguages({ langs = [], download = false, onProgress } = {}) {
+    begin();
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
     if (!langs.length) {
       // None chosen: the keys go, the extract stays for next time.
@@ -361,13 +411,15 @@ const RatingsBuilder = (() => {
   // onProgress({ phase: 'ratings'|'updating', pct, detail })
   // Returns { unknown, changed, episodesChanged } from RatingsDB.updateRatings.
   async function refreshRatings({ minVotes = 25, onProgress } = {}) {
+    begin();
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
     const ratings = await readRatings(minVotes, progress);
+    check();
     progress('updating', 0);
     const info = await RatingsDB.updateRatings(ratings, minVotes, (done, total) => progress('updating', total ? done / total : 1));
     ratings.clear();
     return info;
   }
 
-  return { build, refreshRatings, addLanguages };
+  return { build, refreshRatings, addLanguages, cancel };
 })();

@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     worker = new Worker('build-worker.js');
     worker.onmessage = (e) => {
       chrome.runtime.sendMessage({ target: 'background', ...e.data });
-      if (e.data.type === 'done' || e.data.type === 'error') stop();
+      if (['done', 'cancelled', 'error'].includes(e.data.type)) stop();
     };
     worker.onerror = (e) => {
       chrome.runtime.sendMessage({ target: 'background', type: 'error', message: e.message || 'build worker failed' });
@@ -34,4 +34,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     heartbeat = setInterval(() => chrome.runtime.sendMessage({ target: 'background', type: 'heartbeat' }).catch(() => {}), HEARTBEAT_MS);
     worker.postMessage({ type: 'start', kind: msg.kind, minVotes: msg.minVotes, langs: msg.langs || [] });
   }
+  // The settings page's Cancel button: the worker stops at its next chance
+  // and reports 'cancelled' (build-worker.js), which ends it as above.
+  if (msg.type === 'cancel') worker?.postMessage({ type: 'cancel' });
 });
