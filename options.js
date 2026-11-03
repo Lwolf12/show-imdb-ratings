@@ -81,71 +81,67 @@ let draftLangs = null;
 const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
-function showBuild(build) {
-  const box = $('buildProgress');
-  const btn = $('build');
-  const running = !!build && build.status === 'running';
-  btn.title = omdbOnlyMode ? 'Not used with OMDb only' : '';
-  $('buildRatings').disabled = running || !ratingsPassOk;
-  $('buildRatings').title = ratingsPassOk ? 'Re-reads IMDb’s ratings file and updates every stored rating' : 'Needs a finished full build first (Update now)';
-  $('buildDone').hidden = true;
-  if (!build || build.status === 'idle') {
-    box.hidden = true;
-    btn.disabled = omdbOnlyMode;
-    return;
-  }
-  if (build.status === 'done') {
-    box.hidden = true;
-    btn.disabled = omdbOnlyMode;
-    if (Date.now() - (build.at || 0) < DONE_RECENT_MS) {
-      $('doneText').textContent = build.kind === 'ratings'
-        ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
-        : build.kind === 'akas'
-        ? ((build.info.langs || []).length ? 'Titles in ' + languageNames(build.info.langs) + ' matched' : 'Titles in other languages removed') + ' (reload any streaming sites that are already open).'
-        : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
-          '(reload any that are already open).' +
-          // The rebuild's last step, a fresh list of titles in other
-          // languages, failed: the kept list still serves (builder.js step 6).
-          (build.info.akasError ? ' The list of titles in other languages could not be refreshed (' + build.info.akasError + '); the kept one stays in use.' : '');
-      $('buildDone').hidden = false;
-    }
-    return;
-  }
+// What the status line says about a build, in place of the database line
+// (refreshStats, and showBuild on every progress tick): its progress while
+// it runs, so that with the bar in the Update now row a build moves nothing
+// on the page; the failure afterwards; a cancel for a few minutes. null:
+// the line is the database's. Two lines at most at the window's width.
+function buildLine(build) {
+  if (!build) return null;
   if (build.status === 'running') {
-    box.hidden = false;
-    $('buildBarRow').hidden = false;
-    btn.disabled = true;
-    $('cancelBuild').disabled = !!build.cancelling;
-    $('buildBar').value = build.pct || 0;
     const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
     const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
     // A full build's titles go live before the episodes download.
-    const usable = build.usable ? 'Ratings now show on the streaming sites (reload any that are already open). ' : '';
+    const usable = build.usable ? 'Ratings now show (reload open streaming tabs). ' : '';
     // Cancel pressed: a download stops at once, a save (builder.js cancel)
     // runs to its end first.
-    const cancelling = !build.cancelling ? '' : SAVING.has(build.phase) ? 'Cancelling once this save is through: ' : 'Cancelling: ';
-    $('buildText').textContent = cancelling + usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
-    return;
+    const cancelling = !build.cancelling ? '' : SAVING.has(build.phase) ? 'Cancelling after this save: ' : 'Cancelling: ';
+    return { text: cancelling + usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail, bad: false };
   }
-  if (build.status === 'cancelled') {
+  if (build.status === 'error') {
+    // The titles list is only ever fetched on the Get titles button, so a
+    // failed one waits for the next click, not the schedule.
+    return { text: 'Failed: ' + build.message + (build.kind === 'akas' ? ' (click Get titles to try again)' : ' (will retry automatically in a day)'), bad: true };
+  }
+  if (build.status === 'cancelled' && Date.now() - (build.at || 0) < DONE_RECENT_MS) {
     // Stopped by Cancel: nothing changed, unless a full build had already
-    // made its titles live (build.saved), which the status line reports
-    // as episodes pending.
-    box.hidden = false;
-    $('buildBarRow').hidden = true;
-    btn.disabled = omdbOnlyMode;
-    $('buildText').textContent = build.saved === 'titles'
-      ? 'Cancelled after the titles were saved; episode ratings arrive with the next full rebuild.'
-      : 'Cancelled; nothing was changed.';
+    // made its titles live (build.saved), which the database line then
+    // reports as episodes pending.
+    return { text: build.saved === 'titles' ? 'Cancelled after the titles were saved; episode ratings arrive with the next full rebuild.' : 'Cancelled; nothing was changed.', bad: false };
+  }
+  return null;
+}
+
+function showBuild(build) {
+  const btn = $('build');
+  const running = !!build && build.status === 'running';
+  btn.title = omdbOnlyMode ? 'Not used with OMDb only' : '';
+  btn.disabled = running || omdbOnlyMode;
+  $('buildRatings').disabled = running || !ratingsPassOk;
+  $('buildRatings').title = ratingsPassOk ? 'Re-reads IMDb’s ratings file and updates every stored rating' : 'Needs a finished full build first (Update now)';
+  $('buildDone').hidden = true;
+  $('buildBarRow').hidden = !running;
+  if (running) {
+    $('cancelBuild').disabled = !!build.cancelling;
+    $('buildBar').value = build.pct || 0;
+    $('localStatus').textContent = buildLine(build).text;
+    $('localStatus').classList.remove('bad');
     return;
   }
-  box.hidden = false;
-  $('buildBarRow').hidden = false;
-  btn.disabled = false;
-  $('buildBar').value = 0;
-  // The titles list is only ever fetched on the Get titles button, so a
-  // failed one waits for the next click, not the schedule.
-  $('buildText').textContent = 'Failed: ' + build.message + (build.kind === 'akas' ? ' (click Get titles to try again)' : ' (will retry automatically in a day)');
+  // The failed or cancelled text is refreshStats' (buildLine), which
+  // follows every change of state.
+  if (build && build.status === 'done' && Date.now() - (build.at || 0) < DONE_RECENT_MS) {
+    $('doneText').textContent = build.kind === 'ratings'
+      ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
+      : build.kind === 'akas'
+      ? ((build.info.langs || []).length ? 'Titles in ' + languageNames(build.info.langs) + ' matched' : 'Titles in other languages removed') + ' (reload any streaming sites that are already open).'
+      : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
+        '(reload any that are already open).' +
+        // The rebuild's last step, a fresh list of titles in other
+        // languages, failed: the kept list still serves (builder.js step 6).
+        (build.info.akasError ? ' The list of titles in other languages could not be refreshed (' + build.info.akasError + '); the kept one stays in use.' : '');
+    $('buildDone').hidden = false;
+  }
 }
 
 // In its own window (the usual way it opens) or a tab, the panel offers to
@@ -182,17 +178,21 @@ async function refreshStats() {
   $('sourceLocal').checked = !omdbOnlyMode;
   $('sourceOmdb').checked = omdbOnlyMode;
   $('useOmdbText').textContent = omdbOnlyMode ? 'Look up titles at OMDb (every rating comes from here)' : 'Also look up titles the database doesn’t have';
-  // No database yet: with OMDb lookups on and a key that works, every
-  // title goes to OMDb meanwhile (background.js lookup); otherwise nothing
-  // shows, which the line says in red, as it does for OMDb only without a
-  // key. Two lines either way, like the other states.
+  // The status line: a build that runs, failed or was just cancelled
+  // (buildLine) comes first. No database yet: with OMDb lookups on and a
+  // key that works, every title goes to OMDb meanwhile (background.js
+  // lookup); otherwise nothing shows, which the line says in red, as it
+  // does for OMDb only without a key. Two lines either way, like the
+  // other states.
   const noDb = !omdbOnlyMode && !l.present;
-  $('localStatus').textContent = omdbOnlyMode ? omdbOnlyStatus(l, keyed)
+  const line = buildLine(u.build);
+  $('localStatus').textContent = line ? line.text
+    : omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : noDb ? (keyed
       ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or choose OMDb only above.'
       : 'No ratings yet: click Update now to build the database (a few minutes), or enter an OMDb key below and choose OMDb only.')
     : localStatus(l, building, !!(u.schedule && u.schedule.manual), await diskUsage());
-  $('localStatus').classList.toggle('bad', (omdbOnlyMode || noDb) && !keyed);
+  $('localStatus').classList.toggle('bad', line ? line.bad : (omdbOnlyMode || noDb) && !keyed);
   $('nextRefresh').textContent = l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
