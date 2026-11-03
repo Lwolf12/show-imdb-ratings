@@ -395,7 +395,14 @@ function otherLanguagesText(u, l, building) {
   // No database yet: the ticked languages do nothing until Update now has
   // built it (in red, like the Get titles case below).
   if (!l.present) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match once Update now has built the database (reads 520 MB more).' : 'Tick the languages you use; the first build will include them.';
-  if (!onHand(chosen)) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match after Get titles has run (reads 520 MB, keeps about 50 MB).' : 'Tick the languages you use.';
+  if (!onHand(chosen)) {
+    if (!chosen.length) return 'Tick the languages you use.';
+    // A kept list from before some of these languages were added: the
+    // others keep matching while the file is read again.
+    const lacking = chosen.filter((x) => !onHand([x]));
+    const keep = chosen.filter((x) => onHand([x]));
+    return 'Not in use yet: titles in ' + languageNames(lacking) + ' only match after Get titles has run (reads 520 MB' + (keep.length ? '); ' + languageNames(keep) + ' keeps matching meanwhile.' : ', keeps about 50 MB).');
+  }
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
   if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
@@ -544,16 +551,18 @@ $('forgetAka').addEventListener('click', async (e) => {
   refreshStats();
 });
 
-// Applies the draft. With the kept list on hand the worker keys the new
-// choice by itself on the write (background.js applyLanguageChoice);
-// without it, the build message fetches the 520 MB.
+// Applies the draft. With the kept list on hand and covering the choice,
+// the worker keys it by itself on the write (background.js
+// applyLanguageChoice); otherwise the build message fetches the 520 MB,
+// which only ever starts from this click.
 $('downloadLangs').addEventListener('click', async () => {
   $('downloadLangs').disabled = true;
+  const langs = draftLangs !== null ? draftLangs : storedLangs;
   if (draftLangs !== null) {
     await chrome.storage.sync.set({ titleLangs: draftLangs });
     draftLangs = null;
   }
-  if (!extractOnHand) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  if (!onHand(langs)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
   $('downloadLangs').disabled = false;
   setTimeout(refreshStats, 500);
 });
