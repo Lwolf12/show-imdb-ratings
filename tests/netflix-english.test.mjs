@@ -89,6 +89,17 @@ test('a page that itself comes in another script gives no English name, and is n
   assert.equal(s.fetches.length, 1);
 });
 
+test('a page with no name is a failure, not a final answer', async () => {
+  const s = sandbox({ 9: { h1: '' } });
+  await settle();
+  const el = card('오자크', '9');
+  s.card.titleOf(el);
+  await settle();
+  assert.equal(s.fetches.length, 1);
+  assert.equal(s.card.titleOf(el), '오자크');
+  assert.equal(s.stored.nfEnglish, undefined, 'nothing stored as no-English');
+});
+
 test('a missing page is retried only after a while', async () => {
   const s = sandbox({});
   await settle();

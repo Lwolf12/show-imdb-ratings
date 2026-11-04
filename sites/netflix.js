@@ -209,9 +209,11 @@ async function readTitlePage(id) {
 
 // What the public page named a title: its English name, or '' when the
 // page itself came in another script (Netflix serves it in the country's
-// language), so it is not asked again.
+// language), so it is not asked again. A page with no name at all (a
+// markup change, an interstitial) is a failure, retried later.
 function noteEnglish(id, name) {
-  nf.english[id] = name && !OTHER_SCRIPT.test(name) ? name : '';
+  if (!name) throw new Error('no name on the title page');
+  nf.english[id] = OTHER_SCRIPT.test(name) ? '' : name;
 }
 
 async function resolveEpisode(episodeId) {

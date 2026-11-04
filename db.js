@@ -499,8 +499,11 @@ const RatingsDB = (() => {
       episodesPending: true,
       langs: [],
       akas: 0,
+      // The extract outlives the rebuild, and so must what is known of it
+      // (its date, size and format: akasCovers reads the format).
       akasAt: (old && old.akasAt) || 0,
       akasSize: (old && old.akasSize) || 0,
+      akasFormat: (old && old.akasFormat) || 0,
     }, 'info');
     await complete(tx);
     if (onProgress) onProgress(total, total);
