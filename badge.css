@@ -250,8 +250,8 @@ html.imdbext-hide-na .imdbext-badge--card.imdbext-badge--none {
 .imdbext-badge--episode {
   flex: none;
   margin: 0 10px;
-  padding: 2px 7px;
-  font-size: 13px; /* a step above the card badge: it sits beside 16px episode titles */
+  padding: 2px 8px;
+  font-size: 14px; /* above the card badge's 12px: it sits beside 16px episode titles */
   vertical-align: middle;
 }
 
