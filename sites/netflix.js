@@ -421,11 +421,18 @@ window.IMDBEXT_SITE = {
         let t = label.replace(known, '');
         t = t.replace(/,\s*(show|movie|film|serial|program)\s*$/iu, '').trim();
         if (!t) return null;
-        const parts = t.split(/\s*,\s*/);
-        const out = [];
-        for (let n = parts.length; n >= 1; n--) out.push(parts.slice(0, n).join(', '));
-        const prefixed = !known.test(label) && t.match(/^[^:,]{3,40}:\s+(.+)$/);
-        if (prefixed) out.push(prefixed[1]);
+        // Chinese and Japanese labels use the full-width colon and comma
+        // with no space after them ("精選內容：現代驅魔師"). The part after
+        // an unknown prefix gets the same comma treatment as the whole.
+        const withoutTrailing = (s) => {
+          const parts = s.split(/\s*[,，]\s*/);
+          const list = [];
+          for (let n = parts.length; n >= 1; n--) list.push(parts.slice(0, n).join(', '));
+          return list;
+        };
+        const out = withoutTrailing(t);
+        const prefixed = !known.test(label) && t.match(/^[^:：,，]{3,40}[:：]\s*(.+)$/u);
+        if (prefixed) for (const c of withoutTrailing(prefixed[1])) if (!out.includes(c)) out.push(c);
         // A name in another script ("เกมเด่น: เอเลี่ยน", Alien): the page
         // data names the banner's id, and its English name goes first.
         const name = out.find((c) => OTHER_SCRIPT.test(c) && pageIdOf(c));
