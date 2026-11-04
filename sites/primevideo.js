@@ -186,7 +186,9 @@
               // The heading exists twice, for different widths (the 2026
               // grid shows the second copy); the badge goes in the visible
               // one, and a badge left in the other copy by a resize moves.
-              const rows = [...item.querySelectorAll('[data-automation-id^="ep-title-episode-"] h3')];
+              // Any heading of the item that starts with the number counts,
+              // since the copies need not share a wrapper.
+              const rows = [...item.querySelectorAll('h3')].filter((r) => /^\d+\.\s/.test(r.textContent.trim()));
               const row = rows.find((r) => r.getBoundingClientRect().width > 0) || rows[0] || null;
               const stray = rows.map((r) => r !== row && r.querySelector('.imdbext-badge--episode')).find(Boolean);
               if (stray && !row.querySelector('.imdbext-badge--episode')) row.appendChild(stray);
