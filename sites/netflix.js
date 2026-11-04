@@ -154,6 +154,34 @@ function englishFirst(id, name) {
   return name;
 }
 
+// The home page's first data, an inline script holding Netflix's cache for
+// the banner ("videoId":60029356 … "title":"เอเลี่ยน"): the banner's own
+// markup carries no id and its buttons no links, so this is where its id
+// comes from, for the English-name fallback. Read once per page load, on
+// first use; the rows arrive later by other means and are not in it.
+let pageIds = null;
+function pageIdOf(name) {
+  if (pageIds === null) {
+    pageIds = new Map();
+    for (const sc of document.scripts) {
+      const t = sc.src ? '' : sc.textContent;
+      if (!t.includes('"videoId"')) continue;
+      const re = /"videoId":(\d+)(?:(?!"videoId":)[\s\S]){0,4000}?"title":"((?:[^"\\]|\\.)*)"/g;
+      let m;
+      while ((m = re.exec(t))) {
+        let title;
+        try {
+          title = JSON.parse('"' + m[2] + '"');
+        } catch (e) {
+          continue;
+        }
+        if (!pageIds.has(title)) pageIds.set(title, m[1]);
+      }
+    }
+  }
+  return pageIds.get(name) || null;
+}
+
 function queueRead(id, kind) {
   const key = (kind === 'english' ? 'en:' : 'ep:') + id;
   if (nf.pending.has(key) || Date.now() - (nf.failed[id] || 0) < RETRY_FAILED_MS) return;
@@ -398,6 +426,13 @@ window.IMDBEXT_SITE = {
         for (let n = parts.length; n >= 1; n--) out.push(parts.slice(0, n).join(', '));
         const prefixed = !known.test(label) && t.match(/^[^:,]{3,40}:\s+(.+)$/);
         if (prefixed) out.push(prefixed[1]);
+        // A name in another script ("เกมเด่น: เอเลี่ยน", Alien): the page
+        // data names the banner's id, and its English name goes first.
+        const name = out.find((c) => OTHER_SCRIPT.test(c) && pageIdOf(c));
+        if (name) {
+          const english = englishFirst(pageIdOf(name), name);
+          if (Array.isArray(english)) return [english[0], ...out];
+        }
         return out;
       },
       // The attribute row starts with "Show" or "Movie" ("Program" or
