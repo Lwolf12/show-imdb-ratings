@@ -42,7 +42,7 @@ test('scriptLanguages: kana settle Japanese, Han alone may be either, Cyrillic a
   assert.deepEqual([...R.scriptLanguages('הבית')], ['he']);
   assert.deepEqual([...R.scriptLanguages('سلام')], ['ar']);
   assert.deepEqual([...R.scriptLanguages('दंगल')], ['hi']);
-  assert.deepEqual([...R.scriptLanguages('ฉลาดเกมส์โกง')], [], 'Thai is not in the table');
+  assert.deepEqual([...R.scriptLanguages('ฉลาดเกมส์โกง')], ['th']);
   assert.deepEqual([...R.scriptLanguages('Stranger Things')], []);
 });
 

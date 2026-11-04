@@ -58,12 +58,12 @@ const RatingsDB = (() => {
   // one along, which do no harm as keys. English needs nothing: the
   // primary and original titles are already keys. Languages in other
   // scripts (Korean, Japanese, Chinese, Russian, Ukrainian, Bulgarian,
-  // Greek, Hebrew, Arabic, Hindi; since 1.2.2) are keyed with
+  // Greek, Hebrew, Arabic, Thai, Hindi; since 1.2.2) are keyed with
   // normaliseAny, which keeps every script. How far each goes is IMDb's
   // doing (title.akas, 2026-11): Japanese and Hindi names for nearly
   // every title, Cyrillic for 150,000, Chinese 71,000, Greek 43,000,
-  // Korean 5,700, Arabic 2,400, Hebrew 500; Thai has 500 too and is left
-  // out. On Netflix a name in any of these scripts also gets its English
+  // Korean 5,700, Arabic 2,400, Hebrew and Thai 500 each. On Netflix a
+  // name in any of these scripts also gets its English
   // name from the title's public page (sites/netflix.js), which is where
   // most matches come from. An extract made before a language was added
   // lacks its rows (AKAS_NEEDS, akasCovers).
@@ -108,6 +108,7 @@ const RatingsDB = (() => {
     el: ['GR'],
     he: ['IL'],
     ar: ['EG', 'SA', 'AE'],
+    th: ['TH'],
     hi: [],
   };
   // Tags for the same language as the browser, a page or IMDb may write
@@ -125,7 +126,7 @@ const RatingsDB = (() => {
   // on hand (Apply). 1: the Latin languages of 1.2.0; 2: the scripts
   // above and the original titles in them.
   const AKAS_FORMAT = 2;
-  const AKAS_NEEDS = { ko: 2, ja: 2, zh: 2, ru: 2, uk: 2, bg: 2, el: 2, he: 2, ar: 2, hi: 2 };
+  const AKAS_NEEDS = { ko: 2, ja: 2, zh: 2, ru: 2, uk: 2, bg: 2, el: 2, he: 2, ar: 2, th: 2, hi: 2 };
 
   // Whether the extract on hand (meta.akasAt) has rows for these
   // languages. No extract: nothing to cover, true.
@@ -150,6 +151,7 @@ const RatingsDB = (() => {
     ['Greek', ['el']],
     ['Hebrew', ['he']],
     ['Arabic', ['ar']],
+    ['Thai', ['th']],
     ['Devanagari', ['hi']],
   ].map(([script, langs]) => [new RegExp('\\p{Script=' + script + '}', 'u'), langs]);
 
