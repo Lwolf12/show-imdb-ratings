@@ -543,10 +543,14 @@ window.IMDBEXT_SITE = {
         const m = text.match(SEASON_NUMBER);
         if (m) return Number(m[1] || m[2]);
         const named = text.match(/^(.*\S)\s+(\d+)$/);
-        const show = this.showOf(el);
-        const key = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-        if (named && show && key(named[1]) === key(show)) return Number(named[2]);
-        if (show && key(text) === key(show)) return 1;
+        // showOf may name the show more than once (modalTitle: the English
+        // name first, then the name on the page); any of them counts, and
+        // the comparison keeps letters and digits of every script.
+        const shows = [].concat(this.showOf(el)).filter((s) => typeof s === 'string' && s);
+        const key = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+        const isShow = (s) => key(s) && shows.some((name) => key(name) === key(s));
+        if (named && isShow(named[1])) return Number(named[2]);
+        if (isShow(text)) return 1;
         if (!toggle || LIMITED_SERIES.test(text)) return 1;
         return null;
       },

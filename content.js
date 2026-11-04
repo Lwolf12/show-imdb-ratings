@@ -265,11 +265,14 @@
   const episodeState = new WeakMap(); // list element -> { key, pending, redraws }
 
   function scanEpisodes(el, target) {
-    const show = target.showOf(el);
+    // showOf may name the show more than once, like titleOf (Netflix in
+    // another script: the English name first, then the name on the page).
+    const shows = [].concat(target.showOf(el)).filter((t) => typeof t === 'string' && t);
+    const show = shows.length ? shows : null;
     const season = target.seasonOf(el);
     const items = show && season != null ? target.items(el) : [];
     if (!items.length) return;
-    const key = show + '|' + items.map((i) => (i.season ?? season) + ':' + i.number).join(',');
+    const key = shows.join('/') + '|' + items.map((i) => (i.season ?? season) + ':' + i.number).join(',');
     const same = el.getAttribute(PROCESSED) === key;
     if (same && el.querySelector('.imdbext-badge--episode')) return;
     if (same && el.hasAttribute('data-imdbext-done')) return; // looked up, nothing rated
@@ -285,17 +288,21 @@
     el.removeAttribute('data-imdbext-done');
     const seasons = [...new Set(items.map((i) => i.season ?? season))];
     state.pending = true;
-    decorateEpisodes(el, target, key, show, season, seasons).finally(() => {
+    decorateEpisodes(el, target, key, shows, season, seasons).finally(() => {
       state.pending = false;
     });
   }
 
-  async function decorateEpisodes(el, target, key, show, season, seasons) {
+  // shows: the show's names to try in order; the first one found is it.
+  async function decorateEpisodes(el, target, key, shows, season, seasons) {
     let series;
     const bySeason = {};
     try {
       const year = typeof target.yearOf === 'function' ? target.yearOf(el) || null : null;
-      series = await chrome.runtime.sendMessage({ type: 'rating', title: show, kind: 'series', year, lang: pageLang() });
+      for (const show of shows) {
+        series = await chrome.runtime.sendMessage({ type: 'rating', title: show, kind: 'series', year, lang: pageLang() });
+        if (series && series.imdbID) break;
+      }
       if (el.getAttribute(PROCESSED) !== key) return;
       if (!series || !series.imdbID) {
         el.setAttribute('data-imdbext-done', ''); // show not found: nothing to rate
