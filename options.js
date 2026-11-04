@@ -565,7 +565,8 @@ $('downloadLangs').addEventListener('click', async () => {
     await chrome.storage.sync.set({ titleLangs: draftLangs });
     draftLangs = null;
   }
-  if (!onHand(langs)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  // No language left: the write above clears the keys by itself.
+  if (langs.length && !onHand(langs)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
   $('downloadLangs').disabled = false;
   setTimeout(refreshStats, 500);
 });
