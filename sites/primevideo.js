@@ -164,7 +164,7 @@
         // Episode list on a series page: #tab-content-episodes with one
         // [data-testid="episode-list-item"] per episode, whose number and
         // title are one heading, "1. Daybreak", inside
-        // [data-automation-id^="ep-title-episode-"]. Each season is its own
+        // [data-automation-id^="ep-title-episode-"], laid out twice. Each season is its own
         // page; the season dropdown ([data-testid="dp-season-selector"]) is
         // labelled "Season 1", as is the page title. No dropdown and no
         // season in the title means a single season.
@@ -183,7 +183,13 @@
         items(el) {
           return [...el.querySelectorAll('[data-testid="episode-list-item"]')]
             .map((item) => {
-              const row = item.querySelector('[data-automation-id^="ep-title-episode-"] h3');
+              // The heading exists twice, for different widths (the 2026
+              // grid shows the second copy); the badge goes in the visible
+              // one, and a badge left in the other copy by a resize moves.
+              const rows = [...item.querySelectorAll('[data-automation-id^="ep-title-episode-"] h3')];
+              const row = rows.find((r) => r.getBoundingClientRect().width > 0) || rows[0] || null;
+              const stray = rows.map((r) => r !== row && r.querySelector('.imdbext-badge--episode')).find(Boolean);
+              if (stray && !row.querySelector('.imdbext-badge--episode')) row.appendChild(stray);
               const m = row && row.textContent.trim().match(/^(\d+)\.\s/);
               return { number: m ? Number(m[1]) : NaN, row };
             })
