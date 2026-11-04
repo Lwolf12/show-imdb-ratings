@@ -21,10 +21,15 @@ function videoMeta(el) {
 // site, German, French, Spanish, Portuguese, Italian and Dutch from
 // Netflix's usual wording there. In another language the titles still
 // match (db.js LANGUAGES); only the type, year and season hints are lost.
-const SEASON = 'seasons?|sezon(?:y|ów)?|staffeln?|saisons?|temporadas?|stagion[ei]|seizoen(?:en)?';
-const EPISODE = 'episodes?|odcin(?:ek|ki|ków)|folgen?|épisodes?|epis[oó]dios?|episod[io]|afleveringe?n?';
-const PART = 'parts?|część|części|teile?|parties?|partes?|part[ei]|de(?:el|len)|volumes?|tomy?|bände?';
-const LIMITED = 'limited series|mini-?series|miniserial|miniserie|mini-série|minissérie';
+// The scripts the languages option covers (1.2.2) are here too: Chinese
+// ("第 2 季", "共 5 季"), Japanese, Korean, Thai, Russian and the other
+// Cyrillic languages, Greek, Hindi, Arabic and Hebrew; in Chinese the
+// number comes before the word, which SHOW_LENGTH and SEASON_NUMBER
+// both allow.
+const SEASON = 'seasons?|sezon(?:y|ów)?|staffeln?|saisons?|temporadas?|stagion[ei]|seizoen(?:en)?|季|シーズン|시즌|ซีซั่?น|сезон(?:ы|ов|а|и|ів|у)?|σεζόν|κύκλο[ςυι]|सीज़?न|الموسم|مواسم|موسم|עונ(?:ה|ות)';
+const EPISODE = 'episodes?|odcin(?:ek|ki|ków)|folgen?|épisodes?|epis[oó]dios?|episod[io]|afleveringe?n?|集|話|エピソード|에피소드|화|ตอน|серии|серий|серия|эпизод(?:а|ов)?|επεισόδι(?:ο|α)|एपिसोड|حلق(?:ة|ات)|פרק(?:ים)?';
+const PART = 'parts?|część|części|teile?|parties?|partes?|part[ei]|de(?:el|len)|volumes?|tomy?|bände?|部|パート|파트|ส่วน|ภาค|част(?:ь|и|ей)|μέρ(?:ος|η)';
+const LIMITED = 'limited series|mini-?series|miniserial|miniserie|mini-série|minissérie|限定劇集|有限劇集|迷你劇集|限定系列|迷你剧|リミテッドシリーズ|ミニシリーズ|미니시리즈|리미티드 시리즈|มินิซีรีส์|ลิมิเต็ดซีรีส์|мини-?сериал|лимитированный сериал';
 // "Show", "Serial" (pl), "Serie" (de, es, it, nl), "Série" (fr, pt),
 // "Program" (pl billboard); "Movie", "Film", "Filme" (pt), "Película".
 // Not followed by a lower-case letter: textContent runs the pieces together
@@ -37,8 +42,8 @@ const RUNTIME = /^\s*(\d+\s*(h|hr|std\.?|godz\.?|u\.?|ore?|uur)\s*)?(\d+\s*(m|mi
 // A watched show's "S1:E3" line, with the episode letter in Netflix's
 // language ("S1:O1" in Polish).
 const SEASON_EPISODE = /S\d+:\p{Lu}\d+/u;
-// "Season 2" -> 2 in the episode list's dropdown.
-const SEASON_NUMBER = new RegExp('(?:' + SEASON + ')\\s*(\\d+)', 'iu');
+// "Season 2" -> 2 in the episode list's dropdown; "第 2 季" in Chinese.
+const SEASON_NUMBER = new RegExp('(?:' + SEASON + ')\\s*(\\d+)|第\\s*(\\d+)\\s*季', 'iu');
 const LIMITED_SERIES = new RegExp(LIMITED, 'iu');
 
 // "Episodes & info" on an episode card's preview opens the show's detail
@@ -47,14 +52,18 @@ const LIMITED_SERIES = new RegExp(LIMITED, 'iu');
 // line gives the episode's running time ("2008 58m") instead of "5 Seasons".
 // SHOW_LENGTH is a show's length in that line: "5 Seasons", "8 Episodes",
 // "Limited Series", "2 Parts", "5 sezonów". No word boundaries: textContent
-// runs the pieces together ("20135 SeasonsHD").
-const SHOW_LENGTH = new RegExp('\\d+\\s*(' + SEASON + '|' + EPISODE + '|' + PART + ')|' + LIMITED, 'iu');
+// runs the pieces together ("20135 SeasonsHD"). The word may also come
+// first ("シーズン5").
+const SHOW_LENGTH = new RegExp('\\d+\\s*(' + SEASON + '|' + EPISODE + '|' + PART + ')|(' + SEASON + '|' + EPISODE + '|' + PART + ')\\s*\\d+|' + LIMITED, 'iu');
+// Japanese metadata comes through letter-spaced ("5 シ ー ズ ン"), so the
+// text is tried without its spaces as well.
+const hasShowLength = (s) => SHOW_LENGTH.test(s) || SHOW_LENGTH.test(s.replace(/\s+/g, ''));
 
 function isEpisodeView(modal) {
   return (
     !!modal &&
     !!modal.querySelector('[data-uia="episode-selector"]') &&
-    !SHOW_LENGTH.test(videoMeta(modal))
+    !hasShowLength(videoMeta(modal))
   );
 }
 
@@ -376,7 +385,7 @@ window.IMDBEXT_SITE = {
       },
       typeOf(el) {
         const length = el.querySelector('.duration')?.textContent || '';
-        if (SHOW_LENGTH.test(length)) return 'series';
+        if (hasShowLength(length)) return 'series';
         return RUNTIME.test(length) && /\d/.test(length) ? 'movie' : null;
       },
       yearOf(el) {
@@ -482,7 +491,7 @@ window.IMDBEXT_SITE = {
         const first = line ? line.textContent.split('|')[0].trim() : videoMeta(el);
         if (SERIES_WORD.test(first)) return 'series';
         if (MOVIE_WORD.test(first)) return 'movie';
-        if (SHOW_LENGTH.test(videoMeta(el))) return 'series';
+        if (hasShowLength(videoMeta(el))) return 'series';
         if (el.querySelector('[data-uia="episode-selector"]')) return 'series';
         return SEASON_EPISODE.test(el.textContent) ? 'series' : null;
       },
@@ -532,7 +541,7 @@ window.IMDBEXT_SITE = {
         const toggle = el.querySelector('[data-uia="dropdown-toggle"]');
         const text = ((toggle ? toggle.textContent : el.querySelector('.episodeSelector-header')?.textContent) || '').trim();
         const m = text.match(SEASON_NUMBER);
-        if (m) return Number(m[1]);
+        if (m) return Number(m[1] || m[2]);
         const named = text.match(/^(.*\S)\s+(\d+)$/);
         const show = this.showOf(el);
         const key = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
