@@ -6,9 +6,15 @@
 // 290x163, position:relative, overflow:hidden. Hovering expands the card in
 // place and adds [data-testid="standard-mini-details"] with a
 // [data-testid="metadata-default"] row (maturity rating, stars, year).
-// Large portrait cards are [data-testid="super-carousel-card"] and the top
-// banner is [data-testid="top-hero-card"]; both name the title in an
-// <a aria-label> and in image alt text.
+// Large portrait cards are [data-testid="super-carousel-card"] (the
+// "Featured Originals" rows): the poster link and its focus button carry
+// the title as aria-label, and a status badge says NEW SERIES, NEW SEASON
+// or NEW MOVIE. One card at a time is expanded, in place, to a wide
+// panel with a Play link, a watchlist button and a metadata footer
+// (maturity, genre, Amazon's stars, runtime or seasons); its first
+// <a aria-label> is then "Play", so the title must come from the poster
+// link, not the first link. The top banner is [data-testid="top-hero-card"],
+// which names the title in an <a aria-label> and in image alt text.
 //
 // Card titles often carry season suffixes ("Yellowstone - Season 1",
 // "The First 48 S22"), which must be stripped before an OMDb lookup.
@@ -84,7 +90,21 @@
       {
         kind: 'card',
         selector: '[data-testid="super-carousel-card"]',
-        titleOf: ariaOrAltTitle,
+        titleOf(el) {
+          const named = el.querySelector('[data-testid="poster-link"][aria-label], [data-testid="poster-focus-button"][aria-label]');
+          const art = el.querySelector('[data-testid="title-art"] img[alt]');
+          return cleanTitle((named && named.getAttribute('aria-label')) || (art && art.alt) || '') || ariaOrAltTitle(el);
+        },
+        typeOf(el) {
+          // The status badge ("NEW SERIES", "NEW MOVIE"; "TOP 10" says
+          // nothing) and, expanded, the metadata footer ("2 seasons" or a
+          // runtime). Without it "The Greatest" (a 2026 series) got the
+          // 2009 film's rating.
+          const text = [...el.querySelectorAll('[data-testid="status-badge"], [data-testid="metadata-badge"], [data-testid="meta-footer"]')].map((e) => e.textContent).join(' ');
+          if (/\b(series|season|episode)s?\b/i.test(text)) return 'series';
+          if (/\bmovie\b/i.test(text) || el.querySelector('[data-testid="runtime"]')) return 'movie';
+          return null;
+        },
         host(el) {
           return el;
         },
