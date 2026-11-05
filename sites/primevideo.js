@@ -84,6 +84,12 @@
           return typeFromEntity(el.getAttribute('data-card-entity-type'));
         },
         host(el) {
+          // The "Top 10" chart row ([data-testid="charts-container"]) uses the
+          // same article but leaves it position: static, so the badge's
+          // absolute corner was measured from a far ancestor and landed off
+          // the page. The big rank number sits outside the article, so
+          // positioning it changes nothing else.
+          if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
           return el;
         },
       },
