@@ -219,9 +219,12 @@ async function refreshStats() {
   $('otherLangs').checked = !!u.langsOn;
   $('otherLangs').disabled = omdbOnlyMode;
   const listWasHidden = $('langBox').hidden;
-  $('langBox').hidden = !u.langsOn || omdbOnlyMode;
+  // Under OMDb only the box stays where it is, greyed: hiding it would
+  // move Advanced up and down with the source choice.
+  $('langBox').hidden = !u.langsOn;
+  $('langBox').classList.toggle('off', omdbOnlyMode);
   renderLanguages(u, building, listWasHidden);
-  $('otherLangsText').textContent = omdbOnlyMode ? '' : failedAkas ? 'Get titles failed: ' + failed.message + '. Click Get titles to try again.' : otherLanguagesText(u, l, building);
+  $('otherLangsText').textContent = omdbOnlyMode ? 'Not used with OMDb only; the ticks are kept for switching back.' : failedAkas ? 'Get titles failed: ' + failed.message + '. Click Get titles to try again.' : otherLanguagesText(u, l, building);
   loadedLangs = l.akasAt ? l.langs || [] : [];
   storedLangs = u.langs || [];
   extractOnHand = !!l.akasAt;
@@ -358,7 +361,7 @@ function renderLanguages(u, building, reorder) {
   for (const label of box.querySelectorAll('label')) {
     const input = label.querySelector('input');
     input.checked = chosen.has(input.value);
-    input.disabled = !!building;
+    input.disabled = !!building || omdbOnlyMode;
     label.querySelector('.hint').textContent = browser.has(input.value) ? '(your browser)' : pages.has(input.value) ? '(seen on a streaming page)' : '';
   }
   if (reorder) {

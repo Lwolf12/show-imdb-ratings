@@ -55,6 +55,7 @@
        kept list cannot key): red text and outline, like the line above it. */
     #langRow button.needed { color: #c33; box-shadow: inset 0 0 0 1px #c33; font-weight: 600; }   /* the border keeps its width: nothing moves */
     #langBox p { margin: 2px 0 4px; }
+    #langBox.off, #langBox.off .hint { color: #999; }   /* OMDb only: kept in place, not in use */
     .langs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 100px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; margin: 2px 0 2px 22px; font-size: 13px; }
     /* Each label is only as wide as its box and name, so the empty rest of
        a row (where a scroll often lands) toggles nothing. */
