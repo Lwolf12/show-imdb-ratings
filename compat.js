@@ -1,10 +1,13 @@
-// Shared by background.js and options.js (content scripts don't need it):
-// which browser this is, and Firefox's consent for sending title names to
-// OMDb. Chrome loads it with importScripts, Firefox lists it in the
-// manifest before background.js, and options.html has a script tag for it.
+// Shared by the background scripts and options.js (content scripts don't
+// need it): which browser this is, Firefox's consent for sending title
+// names to OMDb, and a day in milliseconds. Chrome loads it with
+// importScripts, Firefox lists it first in the manifest's background
+// scripts, and options.html has a script tag for it.
 //
 // getBrowserInfo is Firefox-only and lives on its own browser.* namespace.
 const FIREFOX = typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Firefox asks the user before data leaves the device: the manifest declares
 // the optional data collection "websiteContent" (store/firefox-manifest.mjs),

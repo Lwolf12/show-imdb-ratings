@@ -10,7 +10,7 @@ The Chrome listing is in `LISTING.md`.
 
 1. **Submit a New Add-on → On this site** (listed on addons.mozilla.org).
 2. Upload the Firefox ZIP. The validator should show no errors; it warns
-   about `offscreen` calls in `background.js`, which are Chrome-only and
+   about `offscreen` calls in `build.js`, which are Chrome-only and
    never run in Firefox (see the reviewer notes).
 3. Platforms: **Firefox** only. Not Firefox for Android: streaming
    sites send phones to their apps, and the 280 MB database build is a
@@ -122,7 +122,7 @@ sites); 1280×800 PNG.
 > settings page, and stored in IndexedDB (hence unlimitedStorage). It runs
 > in a web worker inside offscreen.html, which in Firefox is a hidden
 > iframe in the background event page. The offscreen.* calls in
-> background.js are behind a check for Firefox and only run in Chrome.
+> build.js are behind a check for Firefox and only run in Chrome.
 >
 > OMDb (www.omdbapi.com) is optional: it is used only after the user enters
 > their own API key, and in Firefox only after they grant the optional

@@ -1,13 +1,13 @@
-// titleVariants (background.js): the packaging a site adds to a title that
+// titleVariants (lookup.js): the packaging a site adds to a title that
 // the local lookup strips when the exact name misses. The function stands
 // alone in the worker, so its source is lifted out and run here.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const src = readFileSync(new URL('../background.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const src = readFileSync(new URL('../lookup.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const m = src.match(/\nfunction titleVariants\(title, kind\) \{[\s\S]*?\n\}\n/);
-assert.ok(m, 'titleVariants found in background.js');
+assert.ok(m, 'titleVariants found in lookup.js');
 const titleVariants = new Function(m[0] + '\nreturn titleVariants;')();
 
 const only = (title, kind = null) => {

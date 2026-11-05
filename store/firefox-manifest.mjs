@@ -3,9 +3,9 @@
 // build-zip.ps1:  node firefox-manifest.mjs > manifest.json
 //
 // What differs in Firefox:
-// - background: an event page listing its scripts (compat.js and db.js first, which the
-//   Chrome service worker loads with importScripts) instead of a service
-//   worker; no "offscreen" permission (the build page goes in a frame of
+// - background: an event page listing its scripts (the ones the Chrome
+//   service worker loads with importScripts, in the same order, then
+//   background.js itself) instead of a service worker; no "offscreen" permission (the build page goes in a frame of
 //   the background page, see ensureOffscreen in background.js).
 // - browser_specific_settings: the add-on ID, Firefox 140 or later (the
 //   first with the built-in data consent below), and data collection: none
@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 const src = new URL('../manifest.json', import.meta.url);
 const m = JSON.parse(readFileSync(src, 'utf8'));
 
-m.background = { scripts: ['compat.js', 'db.js', 'background.js'] };
+m.background = { scripts: ['compat.js', 'db.js', 'omdb.js', 'lookup.js', 'languages.js', 'refresh.js', 'build.js', 'background.js'] };
 m.permissions = m.permissions.filter((p) => p !== 'offscreen');
 m.browser_specific_settings = {
   gecko: {

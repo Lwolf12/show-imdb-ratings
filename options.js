@@ -1,64 +1,9 @@
-const $ = (id) => document.getElementById(id);
-
-function say(text, cls) {
-  const s = $('status');
-  s.textContent = text;
-  s.className = cls || 'ok';
-}
-
-const STALE_WORKER =
-  'The extension’s background worker is out of date. On chrome://extensions, click the reload icon on this extension’s card, then reopen this panel.';
-
-const PHASES = {
-  starting: 'Starting…',
-  ratings: 'Downloading ratings',
-  basics: 'Downloading title list',
-  episodes: 'Downloading episode list',
-  writing: 'Saving titles to the database',
-  'writing-episodes': 'Saving episodes to the database',
-  updating: 'Updating ratings in the database',
-  akas: 'Reading IMDb’s list of titles by country (520 MB pass through; about 50 MB kept)',
-  keying: 'Matching titles in the chosen languages',
-  'writing-akas': 'Saving titles in other languages',
-};
-// The one phase Cancel waits out: the akas store is emptied before it is
-// written, so that save runs through (builder.js cancel); every other
-// phase stops where it is.
-const SAVING_PHASE = 'writing-akas';
-
-// "Polish", "Polish and German", "Polish, German and French".
-function languageNames(langs) {
-  let names;
-  try {
-    const dn = new Intl.DisplayNames(['en'], { type: 'language' });
-    names = (langs || []).map((l) => dn.of(l) || l);
-  } catch (e) {
-    names = [...(langs || [])];
-  }
-  if (names.length < 2) return names.join('');
-  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
-}
-
-function ago(ts) {
-  const days = Math.floor((Date.now() - ts) / 86400000);
-  return days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago';
-}
-
-// "due now" or "due Sunday, Nov 2".
-function due(ts) {
-  if (ts <= Date.now()) return 'due now';
-  return 'due ' + new Date(ts).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-}
-
-const WAITING = (n) => n.toLocaleString() + ' newly rated title' + (n === 1 ? '' : 's') + ' waiting for the full rebuild';
-
-// The refresh intervals (background.js schedule) as words.
-const EVERY = { 0: 'only when you click Update now', 7: 'weekly', 14: 'every two weeks', 30: 'monthly', 61: 'every two months', 91: 'every three months' };
-
-// What the automatic refresh does with the intervals in force.
-function scheduleText(s) {
-  return 'ratings ' + EVERY[s.ratingsDays] + ' (reads 9 MB), the full title list ' + EVERY[s.fullDays] + ' (reads 280 MB)';
-}
+// The settings page: the database's build and status (refreshStats, which
+// also fills the languages section in options-languages.js), the sites,
+// the badges, OMDb, Advanced and the one-time update note. The texts are
+// in options-text.js; options.html loads compat.js, options-text.js,
+// options-languages.js and this file, in that order, into one global
+// scope.
 
 // ------------------------------------------------------------ database
 
@@ -74,33 +19,8 @@ let ratingsPassOk = false;
 // controls are greyed, since no database is built or consulted.
 let omdbOnlyMode = false;
 let dbPresent = false;
-let loadedLangs = []; // languages keyed in the database at the last refresh (refreshStats)
-let storedLangs = []; // the languages chosen in storage at the last refresh
-let extractOnHand = false; // the kept list exists, so changed ticks need no download
-let onHand = () => false; // ...and covers these languages (refreshStats)
-// The ticks are a draft until the button under the list is clicked: the
-// ticked languages when they differ from storedLangs, else null.
-let draftLangs = null;
-const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
-let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
-// What the status line says while a build runs, in place of the database
-// line (refreshStats, and showBuild on every progress tick): its progress,
-// so that with the bar in the Update now row a build moves nothing on the
-// page. null: the line is the database's (a failure is reported where its
-// retry lives, refreshStats; a cancel beside Update now, showBuild). Two
-// lines at most at the window's width.
-function buildLine(build) {
-  if (!build || build.status !== 'running') return null;
-  const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
-  const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
-  // A full build's titles go live before the episodes download.
-  const usable = build.usable ? 'Ratings now show (reload open streaming tabs). ' : '';
-  // Cancel pressed: a download stops at once, a save (builder.js cancel)
-  // runs to its end first.
-  const cancelling = !build.cancelling ? '' : build.phase === SAVING_PHASE ? 'Cancelling after this save: ' : 'Cancelling: ';
-  return cancelling + usable + (PHASES[build.phase] || build.phase) + ' ' + Math.round((build.pct || 0) * 100) + '%' + detail;
-}
+let omdbConnected = false; // OMDb lookups on with a confirmed key (refreshStats)
 
 // A build cancelled while this page was open says so next to Update now
 // (the status line keeps its own text, which says what shows meanwhile);
@@ -281,13 +201,6 @@ async function refreshStats() {
   loadExtras(!keyDirty() && keyed, note);
 }
 
-// What the database holds and when it was built: the full build's date,
-// and the ratings pass's when it came later. A first run whose episode
-// stage was interrupted has titles only until the next full rebuild. One
-// built by an older version is rebuilt once by itself, unless the
-// automatic refresh is off: then this line asks for it.
-// manual: the full rebuild is Update now's alone (Advanced), so what waits
-// for one says so.
 // What the extension's storage takes on disk, from the browser (the
 // database and the remembered ratings together), as "312 MB"; '' when
 // the browser won't say. The panel's other MB figures are reads from
@@ -311,161 +224,6 @@ async function diskUsage() {
 }
 
 const diskChanged = () => { diskAt = 0; };
-
-function localStatus(l, building, manual, disk) {
-  let s = l.titles.toLocaleString() + ' titles' + (l.episodes ? ' and ' + l.episodes.toLocaleString() + ' episodes' : '') +
-    ', built ' + l.built + ' (' + ago(l.builtAt) + ')' + (disk ? ', ' + disk + ' on disk' : '');
-  if (l.ratingsAt > l.builtAt) s += '; ratings updated ' + l.ratingsBuilt + ' (' + ago(l.ratingsAt) + ')';
-  s += '.';
-  if (l.unknown) s += ' ' + WAITING(l.unknown).replace(/^./, (c) => c.toUpperCase()) + (manual ? ' (Update now).' : '.');
-  if (!l.episodes) {
-    s += building ? ' Episode ratings are still downloading.'
-      : manual ? ' Episode ratings arrive when you click Update now.' : ' Episode ratings arrive with the next full rebuild.';
-  }
-  if (l.outdated) {
-    s += manual ? ' Built by an older version; click Update now to rebuild it, which ratings updates need too.'
-      : ' Built by an older version; the next automatic refresh rebuilds it (or click Update now).';
-  }
-  return s;
-}
-
-// The language list under "Match titles in other languages": every
-// language the database can key (usage langsAll), by English name, the
-// chosen ones ticked, with a hint on the browser's own language and on
-// languages seen on streaming pages. Built once; later calls only update
-// the ticks.
-// The ticked languages come first, the rest alphabetically. The order is set
-// while the list is out of sight (page load, box unticked), so a language
-// ticked just now stays where it was until the list is next shown.
-function renderLanguages(u, building, reorder) {
-  const box = $('langList');
-  if (!box.children.length && (u.langsAll || []).length) {
-    const rows = u.langsAll.map((code) => ({ code, name: languageNames([code]) || code }));
-    rows.sort((a, b) => a.name.localeCompare(b.name));
-    for (const { code, name } of rows) {
-      const label = document.createElement('label');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.value = code;
-      input.addEventListener('change', tickLanguages);
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(' ' + name + ' '));
-      const hint = document.createElement('span');
-      hint.className = 'hint';
-      label.appendChild(hint);
-      box.appendChild(label);
-    }
-  }
-  const chosen = new Set(draftLangs || u.langs || []);
-  const browser = new Set(u.langsBrowser || []);
-  const pages = new Set(u.langsPages || []);
-  for (const label of box.querySelectorAll('label')) {
-    const input = label.querySelector('input');
-    input.checked = chosen.has(input.value);
-    input.disabled = !!building || omdbOnlyMode;
-    label.querySelector('.hint').textContent = browser.has(input.value) ? '(your browser)' : pages.has(input.value) ? '(seen on a streaming page)' : '';
-  }
-  if (reorder) {
-    const labels = [...box.querySelectorAll('label')];
-    labels.sort((a, b) => (chosen.has(b.querySelector('input').value) - chosen.has(a.querySelector('input').value)) || a.childNodes[1].textContent.localeCompare(b.childNodes[1].textContent));
-    for (const label of labels) box.appendChild(label);
-  }
-}
-
-// A tick is a draft: nothing is written or built until the button under the
-// list is clicked, so several languages go in one pass, and unticking
-// before the click is the way to change one's mind.
-function tickLanguages() {
-  const ticked = [...$('langList').querySelectorAll('input:checked')].map((i) => i.value);
-  if (!dbPresent) {
-    // No database, so no Apply: the first build (Update now) reads the
-    // choice from storage, and nothing can start before it.
-    draftLangs = null;
-    chrome.storage.sync.set({ titleLangs: ticked }).then(refreshStats);
-    if (ticked.length) say('Titles in ' + languageNames(ticked) + ' match once Update now has built the database (reads 520 MB more).', 'bad');
-    else say('No language ticked.');
-    return;
-  }
-  draftLangs = sameLangs(ticked, storedLangs) ? null : ticked;
-  refreshStats();
-}
-
-// Over the picker, one short line: where things stand. The explanation
-// of the option itself is in its "i" tip; the option off shows nothing.
-function otherLanguagesText(u, l, building) {
-  const chosen = u.langs || [];
-  const have = l.langs || [];
-  if (!u.langsOn) return '';
-  if (draftLangs !== null && l.present && !building) {
-    return 'Not applied yet: click ' + (onHand(draftLangs) ? 'Apply' : 'Get titles') + ' to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
-  }
-  // No database yet: the ticked languages do nothing until Update now has
-  // built it (in red, like the Get titles case below).
-  if (!l.present) return chosen.length ? 'Not in use yet: titles in ' + languageNames(chosen) + ' only match once Update now has built the database (reads 520 MB more).' : 'Tick the languages you use; the first build will include them.';
-  if (!onHand(chosen)) {
-    if (!chosen.length) return 'Tick the languages you use.';
-    // A kept list from before some of these languages were added: the
-    // others keep matching while the file is read again.
-    const lacking = chosen.filter((x) => !onHand([x]));
-    const keep = chosen.filter((x) => onHand([x]));
-    return 'Not in use yet: titles in ' + languageNames(lacking) + ' only match after Get titles has run (reads 520 MB' + (keep.length ? '); ' + languageNames(keep) + ' keeps matching meanwhile.' : ', keeps about 50 MB).');
-  }
-  const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
-  if (building) return 'Changes apply after the current build.' + kept;
-  if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
-  return (have.length ? 'Matched in ' + languageNames(have) + '.' : 'None ticked.') + kept;
-}
-
-// The status line with OMDb only chosen. keyed: OMDb can answer (lookups
-// on, key confirmed); otherwise nothing can, and the line says what to fix.
-// A database on the device is kept for switching back, and said so.
-// Two lines at the window's width, like localStatus (and the line is held
-// at two, options.html), so switching the source moves nothing below it.
-// OMDb's daily limit and Delete database are explained where they live,
-// the tooltip above and Advanced.
-function omdbOnlyStatus(l, keyed) {
-  const titles = l.present ? l.titles.toLocaleString() + ' titles' : '';
-  if (!keyed) {
-    return 'No ratings yet: enter an OMDb key below and click Test, or choose Local database' +
-      (l.present ? ' (' + titles + ' kept).' : ' and click Update now.');
-  }
-  return 'Not used: ratings come from OMDb' +
-    (l.present ? '. The database (' + titles + ', built ' + l.built + ') is kept for switching back.' : ' (1,000 lookups a day, each remembered for 30 days).');
-}
-
-// The next automatic refresh (background.js refreshPlan): which kind, what
-// it downloads and when, and how new titles arrive for people without an
-// OMDb key. The paragraph holds two lines (options.html), and the ratings
-// text leaves the sizes and intervals to the box's own label above it so
-// that it fits them whatever the weekday.
-function nextRefresh(u) {
-  const n = u.next || {};
-  if (u.autoRefresh === false) {
-    const mb = n.fullMb || 280;
-    return 'Automatic refresh is off. Update now rebuilds everything (reads ' + mb + ' MB from IMDb' + (n.akas ? ', with a fresh list of titles in other languages' : '') + ').';
-  }
-  if (!n.kind) return '';
-  if (n.kind === 'ratings') {
-    return 'Next: ratings only, ' + due(n.due) + '. New titles arrive with the full rebuild; ' +
-      (n.keyed ? 'OMDb covers them meanwhile.' : 'an OMDb key would cover them sooner.');
-  }
-  // The language ticks changed: keyed again from the kept list (local,
-  // seconds), or waiting for the Download button when there is none.
-  if (n.kind === 'akas') {
-    if (n.mb) return 'Waiting for the Get titles button: titles in ' + languageNames(n.langs) + ' (reads ' + n.mb + ' MB, keeps about 50 MB).';
-    return 'Next: titles in ' + (n.langs.length ? languageNames(n.langs) : 'no other language') + ', from the kept list, ' + due(n.due) + '.';
-  }
-  const why = {
-    unknown: 'many newly rated titles are waiting',
-    episodes: 'the episode list never finished',
-    format: 'it was built by an older version',
-  }[n.reason];
-  // The MB figure counts the languages list; the words for it fit the two
-  // lines only without a reason, which matters more (the figure stays).
-  const withAkas = n.akas && !why ? ', with a fresh list of titles in other languages' : '';
-  if (n.manual) return 'Waiting for Update now: full rebuild (reads ' + n.mb + ' MB' + withAkas + ')' + (why ? ', because ' + why : '') + '.';
-  return 'Next: full rebuild (reads ' + n.mb + ' MB' + withAkas + '), ' + due(n.due) + (why ? ', because ' + why : '') + '.';
-}
 
 // Update now rebuilds regardless of age, but a database under a day old is
 // almost certainly current, so ask for a second click before re-downloading
@@ -514,72 +272,6 @@ $('buildRatings').addEventListener('click', async () => {
   showNote('');
   $('buildRatings').disabled = true;
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
-});
-
-// Off: lookups stop using the keys at once; the keys, the kept list and
-// the ticks all stay, so on again is instant, with nothing to apply.
-// Only before any Apply (nothing stored yet) do the languages seen on
-// streaming pages come pre-ticked as a draft, with the "Not applied yet"
-// line and the button.
-$('otherLangs').addEventListener('change', async () => {
-  const on = $('otherLangs').checked;
-  const loaded = loadedLangs; // before the write: the worker clears them on it
-  draftLangs = null;
-  const writes = { otherLanguages: on };
-  if (on) {
-    const { titleLangs } = await chrome.storage.sync.get('titleLangs');
-    const stored = Array.isArray(titleLangs) ? titleLangs : [];
-    if (stored.length) {
-      storedLangs = stored;
-    } else {
-      const seen = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
-      draftLangs = seen.length && dbPresent ? seen : null; // no database: stored outright, the first build reads it
-      storedLangs = dbPresent ? [] : seen;
-      writes.titleLangs = dbPresent ? [] : seen;
-    }
-  }
-  await chrome.storage.sync.set(writes); // one write, one change event in the worker
-  say(!on ? 'Titles in other languages off; the kept list stays for turning it back on.'
-    : storedLangs.length && dbPresent ? 'Titles in ' + languageNames(storedLangs) + ' match again.'
-    : dbPresent ? 'Tick the languages to match, then click the button next to the box.'
-    : 'Tick the languages to match; Update now then builds the database with them.');
-  // Off with languages loaded: the ratings already matched in them stay
-  // remembered (30 days, like any other), which looks as if the option
-  // were still on. One line offers to forget them; leaving it is the default.
-  $('forgetLine').hidden = on || !loaded.length;
-  if (!on && loaded.length) $('forgetText').textContent = 'Ratings already matched in ' + languageNames(loaded) + ' stay remembered for up to 30 days.';
-  // Off: the list goes now, not when refreshStats runs half a second on,
-  // or the forget line shows under the list for that moment.
-  if (!on) $('langBox').hidden = true;
-  setTimeout(refreshStats, 500);
-});
-
-// Drops the remembered answers that came through the languages store
-// (db.js lookup marks them aka); English matches stay.
-$('forgetAka').addEventListener('click', async (e) => {
-  e.preventDefault();
-  $('forgetLine').hidden = true;
-  const keys = Object.entries(await ratingEntries()).filter(([, v]) => v && v.aka).map(([k]) => k);
-  await chrome.storage.local.remove(keys);
-  say('Forgot ' + keys.length + ' ratings matched in other languages; reload any streaming sites that are open.');
-  refreshStats();
-});
-
-// Applies the draft. With the kept list on hand and covering the choice,
-// the worker keys it by itself on the write (background.js
-// applyLanguageChoice); otherwise the build message fetches the 520 MB,
-// which only ever starts from this click.
-$('downloadLangs').addEventListener('click', async () => {
-  $('downloadLangs').disabled = true;
-  const langs = draftLangs !== null ? draftLangs : storedLangs;
-  if (draftLangs !== null) {
-    await chrome.storage.sync.set({ titleLangs: draftLangs });
-    draftLangs = null;
-  }
-  // No language left: the write above clears the keys by itself.
-  if (langs.length && !onHand(langs)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
-  $('downloadLangs').disabled = false;
-  setTimeout(refreshStats, 500);
 });
 
 $('auto').addEventListener('change', async () => {
