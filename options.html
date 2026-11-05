@@ -66,7 +66,8 @@
        button and everything below it stay where they are. */
     #buildRow { position: relative; }
     .note { position: absolute; left: 0; top: calc(100% + 2px); z-index: 2; box-sizing: border-box; width: 100%; max-width: 420px; padding: 6px 10px; border-radius: 4px; background: #fff4d6; border: 1px solid #e8c56a; color: #5a4300; font-weight: 600; font-size: 13px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
-    .done { display: flex; gap: 10px; align-items: center; margin: 8px 0; padding: 8px 10px; border-radius: 4px; background: #e6f6ec; border: 1px solid #8fd1a8; color: #1d5e36; font-size: 13px; }
+    #refreshSlot { position: relative; }
+    .done { position: absolute; left: 0; top: -4px; z-index: 2; box-sizing: border-box; width: 100%; display: flex; gap: 10px; align-items: center; margin: 0; padding: 4px 10px; border-radius: 4px; background: #e6f6ec; border: 1px solid #8fd1a8; color: #1d5e36; font-size: 13px; line-height: 1.35; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); }
     .done[hidden] { display: none; }
     .done > div { flex: 1; }
     .done button { padding: 5px 12px; white-space: nowrap; }
@@ -143,12 +144,17 @@
         <div id="buildRow" class="row"><button id="build" type="button">Update now</button><span id="buildNote" class="note" hidden></span>
           <span id="buildBarRow" hidden><progress id="buildBar" max="1" value="0"></progress><button id="cancelBuild" type="button">Cancel</button></span>
           <span id="buildAfter" class="muted" hidden></span></div>
-        <div id="buildDone" class="done" hidden>
-          <div><b>All set.</b> <span id="doneText"></span></div>
-          <button id="closeTab" type="button" hidden>Close</button>
-        </div>
         <label class="check"><input id="auto" type="checkbox"> Refresh automatically: <span id="autoText">ratings weekly (reads 9 MB), the full title list about monthly (reads 280 MB)</span></label>
-        <p id="nextRefresh" class="muted"></p>
+        <!-- The "All set" box after a build floats over the two lines held
+             for the next-refresh text, so its coming and going moves nothing;
+             that text is back once the box is closed. -->
+        <div id="refreshSlot">
+          <p id="nextRefresh" class="muted"></p>
+          <div id="buildDone" class="done" hidden>
+            <div><b>All set.</b> <span id="doneText"></span></div>
+            <button id="closeTab" type="button" hidden>Close</button>
+          </div>
+        </div>
       </section>
 
       <section>
