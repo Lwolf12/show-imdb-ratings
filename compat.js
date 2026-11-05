@@ -44,3 +44,19 @@ async function askOmdbConsent() {
   omdbConsentCache = null;
   return browser.permissions.request({ data_collection: ['websiteContent'] }).catch(() => false);
 }
+
+// Access to datasets.imdbws.com, where the build fetches IMDb's files.
+// Chrome grants the manifest's hosts at install; Firefox treats them as
+// the user's to give and withdraw (about:addons, Permissions), and a
+// temporary add-on starts without them, so a build would fail with a
+// bare NetworkError. Asked before every build the settings page starts,
+// as the click handler's first await: a prompt the first time, an
+// immediate yes once granted. Chrome: always yes. The pattern is the
+// manifest's own: Firefox grants exactly what it declares and refuses
+// anything broader.
+const IMDB_ORIGINS = (chrome.runtime.getManifest().host_permissions || []).filter((p) => p.includes('datasets.imdbws.com'));
+
+async function askImdbAccess() {
+  if (!FIREFOX) return true;
+  return browser.permissions.request({ origins: IMDB_ORIGINS }).catch(() => false);
+}

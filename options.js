@@ -211,6 +211,11 @@ function showNote(text) {
   n.hidden = !text;
 }
 
+// Firefox: the build reads from datasets.imdbws.com, which the user can
+// deny there (askImdbAccess, compat.js). Asked first on every build
+// button, since Firefox only asks during the click.
+const NO_IMDB_ACCESS = 'Nothing built: Firefox was not allowed to let the extension read IMDb’s files from datasets.imdbws.com.';
+
 $('build').addEventListener('click', async () => {
   const fresh = builtAt && Date.now() - builtAt < 24 * 60 * 60 * 1000;
   if (fresh && Date.now() > confirmUntil) {
@@ -221,6 +226,7 @@ $('build').addEventListener('click', async () => {
   }
   confirmUntil = 0;
   showNote('');
+  if (!(await askImdbAccess())) return say(NO_IMDB_ACCESS, 'bad');
   $('build').disabled = true;
   showBuild(await chrome.runtime.sendMessage({ type: 'build' }));
 });
@@ -237,6 +243,7 @@ $('cancelBuild').addEventListener('click', async () => {
 // so the progress and the "Ratings updated" box are the same.
 $('buildRatings').addEventListener('click', async () => {
   showNote('');
+  if (!(await askImdbAccess())) return say(NO_IMDB_ACCESS, 'bad');
   $('buildRatings').disabled = true;
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
 });

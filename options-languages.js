@@ -204,15 +204,17 @@ $('forgetAka').addEventListener('click', async (e) => {
 // applyLanguageChoice); otherwise the build message fetches the 520 MB,
 // which only ever starts from this click.
 $('downloadLangs').addEventListener('click', async () => {
-  $('downloadLangs').disabled = true;
   const list = langs.draft !== null ? langs.draft : langs.chosen;
+  const fetches = list.length > 0 && !langs.onHand(list); // Get titles: the 520 MB from datasets.imdbws.com
+  if (fetches && !(await askImdbAccess())) return say(NO_IMDB_ACCESS, 'bad'); // Firefox's prompt, the click's first await
+  $('downloadLangs').disabled = true;
   if (langs.draft !== null) {
     await chrome.storage.sync.set({ titleLangs: langs.draft });
     langs.chosen = langs.draft;
     langs.draft = null;
   }
   // No language left: the write above clears the keys by itself.
-  if (list.length && !langs.onHand(list)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  if (fetches) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
   $('downloadLangs').disabled = false;
   setTimeout(refreshStats, 500);
 });

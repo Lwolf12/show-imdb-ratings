@@ -208,7 +208,10 @@ What differs:
   counts as off.
 - **Site access.** Firefox lets the user withdraw access to a single site
   on about:addons. The settings show such a site unticked, and ticking it
-  asks Firefox for access again.
+  asks Firefox for access again. The same goes for datasets.imdbws.com,
+  where the build reads IMDb's files: Update now, Update ratings only and
+  Get titles ask for it first, so a temporary add-on (which starts with
+  no site access at all) can build too.
 
 To try it without the store: build the ZIPs, open `about:debugging`, click
 **This Firefox → Load Temporary Add-on…** and pick
