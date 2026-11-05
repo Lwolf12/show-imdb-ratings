@@ -548,6 +548,9 @@ $('otherLangs').addEventListener('change', async () => {
   // were still on. One line offers to forget them; leaving it is the default.
   $('forgetLine').hidden = on || !loaded.length;
   if (!on && loaded.length) $('forgetText').textContent = 'Ratings already matched in ' + languageNames(loaded) + ' stay remembered for up to 30 days.';
+  // Off: the list goes now, not when refreshStats runs half a second on,
+  // or the forget line shows under the list for that moment.
+  if (!on) $('langBox').hidden = true;
   setTimeout(refreshStats, 500);
 });
 
