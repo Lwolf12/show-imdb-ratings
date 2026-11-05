@@ -19,6 +19,7 @@ const only = (title, kind = null) => {
 test('season, notes, credits and Part 1 come off; the year is kept apart', () => {
   assert.deepEqual(only('Yellowstone - Season 1', 'series'), { title: 'Yellowstone', kind: 'series', year: null });
   assert.deepEqual(only('Scary Movie (2026) - Extended Cut'), { title: 'Scary Movie', kind: null, year: '2026' });
+  assert.deepEqual(only('Blade Runner: The Final Cut'), { title: 'Blade Runner', kind: null, year: null });
   assert.deepEqual(only('Greater [OV]'), { title: 'Greater', kind: null, year: null });
   assert.deepEqual(only('Red Eye (UK)'), { title: 'Red Eye', kind: null, year: null });
   assert.deepEqual(only('Ghosts UK'), { title: 'Ghosts', kind: null, year: null });

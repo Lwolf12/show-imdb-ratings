@@ -35,7 +35,7 @@ function titleVariants(title, kind) {
   const out = [];
   // "Scary Movie (2026) - Extended Cut": the cut goes first, so the year
   // before it is still found.
-  let t = title.replace(/\s*[-–:]\s*(extended|unrated|director[’']s|theatrical)\s+(cut|edition)\s*$/i, '');
+  let t = title.replace(/\s*[-–:]\s*(the\s+)?(extended|unrated|director[’']s|theatrical|final)\s+(cut|edition)\s*$/i, ''); // "Blade Runner: The Final Cut"
   let year = null;
   const y = t.match(/\s*\(((?:19|20)\d\d)\)\s*$/);
   if (y) {
