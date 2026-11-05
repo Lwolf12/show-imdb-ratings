@@ -585,20 +585,6 @@ const RatingsDB = (() => {
     return blob || null;
   }
 
-  // "Match titles in other languages" switched off: the keys go, so nothing
-  // matches; the kept extract stays (akasAt, akasSize untouched), so
-  // switching back on keys the languages again with no download. Only
-  // clear() removes the extract.
-  async function clearAkas() {
-    const db = await open();
-    const tx = db.transaction(['akas_a', 'akas_b'], 'readwrite');
-    tx.objectStore('akas_a').clear();
-    tx.objectStore('akas_b').clear();
-    await complete(tx);
-    const m = await getMeta();
-    if (m) await putMeta({ ...m, langs: [], akas: 0 });
-  }
-
   // Stage two: the episodes (Map of series imdbID -> { season: [[ep, rating,
   // votes, imdbID]] }) into the live pair's episode store, and extraIds
   // (Map of imdbID -> [rating, votes]: rated episodes with no kept series)
@@ -701,5 +687,5 @@ const RatingsDB = (() => {
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
+  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, updateRatings, clear };
 })();

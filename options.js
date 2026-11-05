@@ -139,7 +139,8 @@ function showBuild(build) {
     $('doneText').textContent = build.kind === 'ratings'
       ? 'Ratings updated' + (build.info.unknown ? '; ' + WAITING(build.info.unknown) + '.' : '.')
       : build.kind === 'akas'
-      ? ((build.info.langs || []).length ? 'Titles in ' + languageNames(build.info.langs) + ' matched' : 'Titles in other languages removed') + ' (reload any streaming sites that are already open).'
+      ? ((build.info.langs || []).length > 3 ? 'Titles in ' + build.info.langs.length + ' languages matched' // named, they would not fit the box's lines
+        : (build.info.langs || []).length ? 'Titles in ' + languageNames(build.info.langs) + ' matched' : 'Titles in other languages removed') + ' (reload any streaming sites that are already open).'
       : build.info.titles.toLocaleString() + ' titles. Ratings now show on the streaming sites ' +
         '(reload any that are already open).' +
         // The rebuild's last step, a fresh list of titles in other
@@ -380,7 +381,7 @@ function tickLanguages() {
     // No database, so no Apply: the first build (Update now) reads the
     // choice from storage, and nothing can start before it.
     draftLangs = null;
-    chrome.storage.sync.set({ titleLangs: ticked, titleLangsLast: ticked }).then(refreshStats);
+    chrome.storage.sync.set({ titleLangs: ticked }).then(refreshStats);
     if (ticked.length) say('Titles in ' + languageNames(ticked) + ' match once Update now has built the database (reads 520 MB more).', 'bad');
     else say('No language ticked.');
     return;
@@ -515,30 +516,31 @@ $('buildRatings').addEventListener('click', async () => {
   showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'ratings' }));
 });
 
-// Off: the worker drops the keys at once (storage.onChanged); the kept list
-// and the ticks stay. On: nothing is keyed yet. The languages stored from
-// last time come back as a draft, so the same "Not applied yet" line and
-// button appear as for a tick, and the stored choice is emptied until Apply
-// writes it again. With none stored (the box was ticked and unticked
-// without an Apply), the last applied choice (titleLangsLast) comes back;
-// only before any Apply do the languages seen on streaming pages stand in.
+// Off: lookups stop using the keys at once; the keys, the kept list and
+// the ticks all stay, so on again is instant, with nothing to apply.
+// Only before any Apply (nothing stored yet) do the languages seen on
+// streaming pages come pre-ticked as a draft, with the "Not applied yet"
+// line and the button.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
   const loaded = loadedLangs; // before the write: the worker clears them on it
   draftLangs = null;
   const writes = { otherLanguages: on };
   if (on) {
-    const { titleLangs, titleLangsLast } = await chrome.storage.sync.get(['titleLangs', 'titleLangsLast']);
+    const { titleLangs } = await chrome.storage.sync.get('titleLangs');
     const stored = Array.isArray(titleLangs) ? titleLangs : [];
-    const last = Array.isArray(titleLangsLast) ? titleLangsLast : [];
-    const seen = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
-    const draft = stored.length ? stored : last.length ? last : seen;
-    draftLangs = draft.length && dbPresent ? draft : null; // no database: stored outright, the first build reads it
-    storedLangs = dbPresent ? [] : draft;
-    writes.titleLangs = dbPresent ? [] : draft;
+    if (stored.length) {
+      storedLangs = stored;
+    } else {
+      const seen = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
+      draftLangs = seen.length && dbPresent ? seen : null; // no database: stored outright, the first build reads it
+      storedLangs = dbPresent ? [] : seen;
+      writes.titleLangs = dbPresent ? [] : seen;
+    }
   }
   await chrome.storage.sync.set(writes); // one write, one change event in the worker
   say(!on ? 'Titles in other languages off; the kept list stays for turning it back on.'
+    : storedLangs.length && dbPresent ? 'Titles in ' + languageNames(storedLangs) + ' match again.'
     : dbPresent ? 'Tick the languages to match, then click the button next to the box.'
     : 'Tick the languages to match; Update now then builds the database with them.');
   // Off with languages loaded: the ratings already matched in them stay
@@ -568,7 +570,7 @@ $('downloadLangs').addEventListener('click', async () => {
   $('downloadLangs').disabled = true;
   const langs = draftLangs !== null ? draftLangs : storedLangs;
   if (draftLangs !== null) {
-    await chrome.storage.sync.set({ titleLangs: draftLangs, titleLangsLast: draftLangs });
+    await chrome.storage.sync.set({ titleLangs: draftLangs });
     draftLangs = null;
   }
   // No language left: the write above clears the keys by itself.
@@ -952,7 +954,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
 // Every setting back to its default: all sites on, badges always with the
 // star label, no extras, OMDb lookups on if there is a key, the local
 // database with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'titleLangsLast', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;

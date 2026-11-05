@@ -177,11 +177,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 // "Match titles in other languages" or its language list changed. Off:
-// the keys go (the extract stays for next time). A new list of languages
-// (the settings page writes it on Apply; turning the option on writes an
-// empty one) is keyed from the extract on hand, a local job of seconds,
-// so it runs now, with the automatic refresh off or the full rebuild set
-// to manual too. With no extract yet, nothing happens until the Get
+// nothing to do; the keys stay (lookups ignore them while the option is
+// off), so turning it back on is instant. A new list of languages (the
+// settings page writes it on Apply) is keyed from the extract on hand, a
+// local job of seconds, so it runs now, with the automatic refresh off or
+// the full rebuild set to manual too. On again after a rebuild dropped
+// the keys: keyed again the same way, by itself. With no extract yet, nothing happens until the Get
 // titles button (the build message, kind 'akas'): the 520 MB is only
 // ever the user's own click.
 // During a build the change waits; handleBuildMessage applies it when
@@ -190,10 +191,7 @@ async function applyLanguageChoice() {
   if ((await getBuildState()).status === 'running') return;
   const meta = await RatingsDB.getMeta();
   if (!meta) return; // nothing to key or clear (OMDb only, or no build yet)
-  if (!(await otherLanguagesOn())) {
-    if ((meta.langs || []).length) await RatingsDB.clearAkas();
-    return;
-  }
+  if (!(await otherLanguagesOn())) return;
   const langs = await titleLanguages();
   if (sameSet(langs, meta.langs || [])) return;
   // From the extract on hand, in seconds; one that lacks a language just
