@@ -15,6 +15,12 @@ function say(text, cls) {
 const STALE_WORKER =
   'Background worker out of date: on chrome://extensions, click reload on this extension’s card, then reopen this panel.';
 
+// What the status line says for each build phase (buildLine). The line
+// is held at two lines (options.html #localStatus), and a full build's
+// later phases carry the "Ratings now show (reload open streaming tabs)."
+// prefix, so with the percentage and the count a phase name must stay
+// under about 55 characters, or the line grows to three and the rows
+// below move.
 const PHASES = {
   starting: 'Starting…',
   ratings: 'Downloading ratings',
@@ -23,7 +29,7 @@ const PHASES = {
   writing: 'Saving titles to the database',
   'writing-episodes': 'Saving episodes to the database',
   updating: 'Updating ratings in the database',
-  akas: 'Reading IMDb’s list of titles by country (520 MB pass through; about 50 MB kept)',
+  akas: 'Reading titles in other languages (520 MB pass-through)',
   keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
