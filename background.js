@@ -177,8 +177,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 // "Match titles in other languages" or its language list changed. Off:
-// nothing to do; the keys stay (lookups ignore them while the option is
-// off), so turning it back on is instant. A new list of languages (the
+// the keys stay (lookups ignore them while the option is off), so turning
+// it back on is instant; unless no choice is stored any more (Reset
+// settings), when they are stale and go, or the page would report them
+// as matched and the next tick would start a pass to remove them. A new list of languages (the
 // settings page writes it on Apply) is keyed from the extract on hand, a
 // local job of seconds, so it runs now, with the automatic refresh off or
 // the full rebuild set to manual too. On again after a rebuild dropped
@@ -191,7 +193,12 @@ async function applyLanguageChoice() {
   if ((await getBuildState()).status === 'running') return;
   const meta = await RatingsDB.getMeta();
   if (!meta) return; // nothing to key or clear (OMDb only, or no build yet)
-  if (!(await otherLanguagesOn())) return;
+  if (!(await otherLanguagesOn())) {
+    const { titleLangs } = await chrome.storage.sync.get('titleLangs');
+    const stored = Array.isArray(titleLangs) && titleLangs.length > 0;
+    if (!stored && (meta.langs || []).length) await RatingsDB.clearAkas();
+    return;
+  }
   const langs = await titleLanguages();
   if (sameSet(langs, meta.langs || [])) return;
   // From the extract on hand, in seconds; one that lacks a language just

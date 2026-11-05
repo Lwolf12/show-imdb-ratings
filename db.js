@@ -566,6 +566,21 @@ const RatingsDB = (() => {
     return { akas: keys.length, langs: [...langs] };
   }
 
+  // No choice of languages stored any more (Reset settings while the
+  // option is off): the keys go, so nothing matches and nothing is
+  // reported as matched; the kept extract stays (akasAt, akasSize
+  // untouched), so ticking languages again keys them with no download.
+  // Only clear() removes the extract.
+  async function clearAkas() {
+    const db = await open();
+    const tx = db.transaction(['akas_a', 'akas_b'], 'readwrite');
+    tx.objectStore('akas_a').clear();
+    tx.objectStore('akas_b').clear();
+    await complete(tx);
+    const m = await getMeta();
+    if (m) await putMeta({ ...m, langs: [], akas: 0 });
+  }
+
   // The akas extract (see files in the layout): putFile stores a fresh
   // one and notes when and how big; getFile returns it or null.
   async function putFile(blob) {
@@ -687,5 +702,5 @@ const RatingsDB = (() => {
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, updateRatings, clear };
+  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
 })();
