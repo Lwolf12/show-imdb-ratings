@@ -15,7 +15,7 @@ const DONE_RECENT_MS = 10 * 60 * 1000;
 // The ratings-only pass (Advanced) needs a finished full build of the
 // current format to update; refreshStats says whether there is one.
 let ratingsPassOk = false;
-// "OMDb only" chosen (background.js omdbOnly): the build and refresh
+// "OMDb only" chosen (refresh.js omdbOnly): the build and refresh
 // controls are greyed, since no database is built or consulted.
 let omdbOnlyMode = false;
 let dbPresent = false;
@@ -92,10 +92,6 @@ async function refreshStats() {
   }
   const l = u.local || {};
   builtAt = l.present ? l.builtAt || 0 : 0;
-  // Whether the kept list can key these languages: it must exist and date
-  // from after each was added (background.js langsNeed, db.js AKAS_NEEDS),
-  // else Get titles reads the file again.
-  onHand = (langs) => !!l.akasAt && (langs || []).every((x) => ((u.langsNeed || {})[x] || 1) <= (l.akasFormat || 1));
   const building = u.build && u.build.status === 'running';
   const keyed = !!(u.schedule && u.schedule.keyed); // OMDb lookups on, key confirmed
   omdbOnlyMode = !!u.omdbOnly;
@@ -110,7 +106,7 @@ async function refreshStats() {
   $('useOmdbText').textContent = omdbOnlyMode ? '(every rating comes from here)' : '(titles the database lacks, and the scores below)';
   // The status line: a build that runs, failed or was just cancelled
   // (buildLine) comes first. No database yet: with OMDb lookups on and a
-  // key that works, every title goes to OMDb meanwhile (background.js
+  // key that works, every title goes to OMDb meanwhile (lookup.js
   // lookup); otherwise nothing shows, which the line says in red, as it
   // does for OMDb only without a key. Two lines either way, like the
   // other states.
@@ -129,7 +125,6 @@ async function refreshStats() {
   // keeps the database's own summary.
   const failed = u.build && u.build.status === 'error' && !omdbOnlyMode ? u.build : null;
   const failedBuild = !!(failed && failed.kind !== 'akas');
-  const failedAkas = !!(failed && failed.kind === 'akas' && u.langsOn);
   $('nextRefresh').textContent = failedBuild
     ? 'Last build failed: ' + failed.message + '.' + (l.present && u.autoRefresh !== false ? ' Retried automatically in a day.' : '')
     : l.present && !building && !omdbOnlyMode ? nextRefresh(u) : '';
@@ -137,35 +132,7 @@ async function refreshStats() {
   $('auto').checked = u.autoRefresh !== false;
   $('auto').disabled = omdbOnlyMode;
   $('autoText').textContent = scheduleText(u.schedule);
-  $('otherLangs').checked = !!u.langsOn;
-  $('otherLangs').disabled = omdbOnlyMode;
-  const listWasHidden = $('langBox').hidden;
-  // Under OMDb only the box stays where it is, greyed: hiding it would
-  // move Advanced up and down with the source choice.
-  $('langBox').hidden = !u.langsOn;
-  $('langBox').classList.toggle('off', omdbOnlyMode);
-  renderLanguages(u, building, listWasHidden);
-  $('otherLangsText').textContent = omdbOnlyMode ? 'Not used with OMDb only; the ticks are kept for switching back.' : failedAkas ? 'Get titles failed: ' + failed.message + '. Click Get titles to try again.' : otherLanguagesText(u, l, building);
-  loadedLangs = l.akasAt ? l.langs || [] : [];
-  storedLangs = u.langs || [];
-  extractOnHand = !!l.akasAt;
-  if (u.langsOn) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
-  // Languages ticked but the list never fetched: said in red, since the
-  // option looks on while nothing matches yet.
-  // Red while ticked languages cannot match yet: no database, or no list
-  // of titles on hand (Get titles).
-  $('otherLangsText').classList.toggle('bad', failedAkas || !!(u.langsOn && !omdbOnlyMode && !onHand(storedLangs) && storedLangs.length && !building && draftLangs === null));
-  // The button applies the ticks: Get titles while the list was never
-  // fetched (the one place the 520 MB is read), Apply once it is on hand
-  // and only the keys change. Shown for a draft, or for languages chosen
-  // but never fetched.
-  $('downloadLangs').hidden = !(u.langsOn && l.present && !building && !omdbOnlyMode && (draftLangs !== null || (!onHand(storedLangs) && storedLangs.length)));
-  const apply = onHand(draftLangs || storedLangs);
-  $('downloadLangs').textContent = apply ? 'Apply' : 'Get titles';
-  $('downloadLangs').title = apply ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
-  // Red whenever it is the click that is waited for: a draft not applied
-  // yet (Apply or Get titles), or ticked languages the list cannot key.
-  $('downloadLangs').classList.toggle('needed', draftLangs !== null || (!apply && storedLangs.length > 0));
+  refreshLanguages(u, l, building, failed); // the languages section, options-languages.js
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
   $('ratingsDays').disabled = omdbOnlyMode;
@@ -179,7 +146,7 @@ async function refreshStats() {
   $('limit').textContent = u.limitHit ? '(limit reached; paused for now)' : '';
   // The Use OMDb box, the switch for all OMDb traffic. Under OMDb only it
   // is on and stays on: that mode has no other source (the source handler
-  // stores it so, loadOmdb catches an older choice, and background.js
+  // stores it so, loadOmdb catches an older choice, and omdb.js
   // omdbSettings counts it on regardless). Under Local database it is greyed
   // without a saved key, or while one is being typed (keyDirty), as are
   // the extras below, whatever a build or a lookup changed meanwhile.
@@ -258,7 +225,7 @@ $('build').addEventListener('click', async () => {
   showBuild(await chrome.runtime.sendMessage({ type: 'build' }));
 });
 
-// Stops the build that is running (background.js cancelBuild): a download
+// Stops the build that is running (build.js cancelBuild): a download
 // at once, with nothing changed; a save once it is through. For a click
 // that was a mistake, and for testing.
 $('cancelBuild').addEventListener('click', async () => {
@@ -532,7 +499,7 @@ $('test').addEventListener('click', async () => {
 
 // Extra scores from OMDb (sync extraRatings {rt, mc, awards, imdb, cards};
 // the scores, awards and cards on and the IMDb figure off until the user
-// changes a box, the same default as content.js and background.js). The
+// changes a box, the same default as content.js and lookup.js). The
 // boxes are greyed out, with a note, until the saved key is confirmed
 // working (a passed Test, or any OMDb answer); ticks are kept while greyed,
 // so they apply again once the key works.
@@ -579,7 +546,7 @@ $('clear').addEventListener('click', async () => {
   refreshStats();
 });
 
-// Deletes the database (background.js deleteDatabase) and reports in the
+// Deletes the database (build.js deleteDatabase) and reports in the
 // status line; true when it went. Shared by Delete database and the
 // switch to OMDb only.
 async function deleteDatabase() {
@@ -613,7 +580,7 @@ $('deleteDb').addEventListener('click', async () => {
   refreshStats();
 });
 
-// Where ratings come from (sync ratingsSource, background.js omdbOnly).
+// Where ratings come from (sync ratingsSource, refresh.js omdbOnly).
 // OMDb only switches OMDb on (the Use OMDb box, which stays on under it:
 // refreshStats), after Firefox's consent prompt; a refusal leaves Local
 // database chosen. It can be chosen before there is a working key: the
@@ -655,7 +622,7 @@ $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;
   const { omdbKey = '' } = await chrome.storage.sync.get('omdbKey');
   await chrome.storage.sync.remove(SETTING_KEYS);
-  // The languages seen on streaming pages (background.js notePageLang)
+  // The languages seen on streaming pages (languages.js notePageLang)
   // pre-tick the language list; after a reset nothing should come pre-ticked.
   await chrome.storage.local.remove('pageLangs');
   if (omdbKey) await chrome.storage.sync.set({ omdbFallback: true });

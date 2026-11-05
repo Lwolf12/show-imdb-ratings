@@ -41,21 +41,33 @@ async function seenLanguages() {
 // file is a 520 MB download that an English browser on English pages
 // never needs). Off, the akas store is neither built nor consulted.
 // Asked on every lookup, so the answer is kept in memory; the
-// storage.onChanged listener above updates it.
+// storage.onChanged listener below updates it.
 let otherLanguagesCache = null;
 
 async function otherLanguagesOn() {
-  if (otherLanguagesCache === null) {
-    const { otherLanguages = false } = await chrome.storage.sync.get('otherLanguages');
-    otherLanguagesCache = otherLanguages === true;
-  }
+  return otherLanguagesCache === null ? readOtherLanguages() : otherLanguagesCache;
+}
+
+// The switch read afresh. The settings page's report (usage) uses this,
+// since its request can reach the background before the change event that
+// updates the cache does.
+async function readOtherLanguages() {
+  const { otherLanguages = false } = await chrome.storage.sync.get('otherLanguages');
+  otherLanguagesCache = otherLanguages === true;
   return otherLanguagesCache;
 }
 
+// The languages in force: the choice while the box is on, none while off.
 async function titleLanguages() {
-  if (!(await otherLanguagesOn())) return [];
+  return (await otherLanguagesOn()) ? chosenLanguages() : [];
+}
+
+// The choice itself (sync titleLangs), whether or not the box is on: the
+// settings page shows it again when the box comes back on. Codes an
+// earlier version stored differently are folded (nb counts as no), and
+// anything the database cannot key is dropped.
+async function chosenLanguages() {
   const { titleLangs = [] } = await chrome.storage.sync.get('titleLangs');
-  // nb ticked under an earlier version counts as no.
   return [...new Set((Array.isArray(titleLangs) ? titleLangs : []).map(RatingsDB.languageOf))].filter((l) => RatingsDB.LANGUAGES[l]);
 }
 
@@ -104,3 +116,13 @@ async function applyLanguageChoice() {
 }
 
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+
+// The settings page's writes land here: the box and the list apply at
+// once; Reset settings forgets the page languages seen, and with them the
+// day's throttle on noting them, so the next Polish page is noted again.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.pageLangs && changes.pageLangs.newValue === undefined) notedLangs.clear();
+  if (area !== 'sync') return;
+  if (changes.otherLanguages) otherLanguagesCache = changes.otherLanguages.newValue === true;
+  if (changes.otherLanguages || changes.titleLangs) applyLanguageChoice();
+});

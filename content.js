@@ -30,7 +30,7 @@
 
   // The page's language ("pl" on a Polish Netflix profile), sent with each
   // lookup so the worker can add that language's titles to the database
-  // (background.js notePageLang). Read each time: a site can switch it
+  // (languages.js notePageLang). Read each time: a site can switch it
   // without a page load.
   function pageLang() {
     return (document.documentElement.lang || '').slice(0, 12);

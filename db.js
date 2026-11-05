@@ -115,7 +115,7 @@ const RatingsDB = (() => {
   // them: Norwegian comes as nb (Bokmål, what Chrome and Firefox send) or
   // nn as well as no; Chinese as cmn or yue in IMDb's data; Hebrew as iw
   // and Indonesian as in in older browsers. Applied wherever a tag comes
-  // in (background.js langCode, builder.js).
+  // in (languages.js langCode, builder.js).
   const LANGUAGE_ALIASES = { nb: 'no', nn: 'no', cmn: 'zh', yue: 'zh', iw: 'he', in: 'id' };
   const languageOf = (tag) => LANGUAGE_ALIASES[tag] || tag;
 
@@ -198,7 +198,7 @@ const RatingsDB = (() => {
   }
 
   // What the stored keys were built with. A database of an older format is
-  // rebuilt once after an update (background.js maybeRefresh).
+  // rebuilt once after an update (refresh.js maybeRefresh).
   //   1  movies, TV films and series; plain normalise
   //   2  also direct-to-video, TV specials, TV shorts and shorts (builder.js
   //      TYPE), and abbreviations joined in normalise
@@ -215,7 +215,7 @@ const RatingsDB = (() => {
   // that wants any language fetches the file again. A missing extract is
   // not stale: the 520 MB is only ever the settings page's Get titles
   // button, or the first build with languages ticked (builder.js), never
-  // a rebuild running by itself. Shared by builder.js and background.js
+  // a rebuild running by itself. Shared by builder.js and refresh.js
   // (refreshPlan), which says what the build downloads.
   function akasStale(meta) {
     return !!(meta && meta.akasAt) && Date.now() - meta.akasAt > AKAS_DAYS * 24 * 60 * 60 * 1000;
@@ -352,7 +352,7 @@ const RatingsDB = (() => {
   // same name (the 2026 series "East of Eden" over the 1955 film). Entries
   // are most-voted first, so without a year match the popular one wins.
   // akas: whether titles in other languages (the akas store) count too;
-  // background.js passes the user's choice.
+  // the background passes the user's choice (languages.js).
   async function lookup(title, kind, year, akas = true) {
     const m = await getMeta();
     if (!m) return null;
@@ -396,7 +396,7 @@ const RatingsDB = (() => {
   }
 
   // The rating of a title by its IMDb ID, for titles the database knows no
-  // name for (learned from OMDb, see background.js lookup): {rating, votes,
+  // name for (learned from OMDb, see lookup.js lookup): {rating, votes,
   // built} or null when the ids table lacks it.
   async function lookupById(imdbID) {
     const m = await getMeta();

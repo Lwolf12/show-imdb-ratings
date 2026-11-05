@@ -129,16 +129,11 @@ async function setupStatus() {
   return { needed, building: state.status === 'running' };
 }
 
+// A language change has its own listener in languages.js.
 chrome.storage.onChanged.addListener((changes, area) => {
-  // Reset settings forgets the page languages seen; the day's throttle on
-  // noting them goes too, so the next Polish page is noted again.
-  if (area === 'local' && changes.pageLangs && changes.pageLangs.newValue === undefined) notedLangs.clear();
   if (area !== 'sync') return;
   if (changes.omdbKey) omdbKeyRejected = false;
   if (changes.omdbKey || changes.omdbFallback || changes.ratingsSource) updateBadge();
-  // The language choice changed (settings page): applied at once.
-  if (changes.otherLanguages) otherLanguagesCache = changes.otherLanguages.newValue === true;
-  if (changes.otherLanguages || changes.titleLangs) applyLanguageChoice();
 });
 
 // Stored answers from before OMDb's fuzzy matches were rejected may carry
@@ -295,10 +290,11 @@ async function usage() {
     day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk,
     ratingsDays: schedule.ratingsDays, fullDays: schedule.fullDays, schedule,
     omdbOnly: await omdbOnly(),
-    langs: await titleLanguages(),
-    langsOn: await otherLanguagesOn(),
+    langs: await titleLanguages(), // in force: the choice while the box is on
+    langsChosen: await chosenLanguages(), // the choice, box on or off
+    langsOn: await readOtherLanguages(),
     langsAll: Object.keys(RatingsDB.LANGUAGES),
-    langsNeed: RatingsDB.AKAS_NEEDS, // which languages an older extract lacks (options.js onHand)
+    langsNeed: RatingsDB.AKAS_NEEDS, // which languages an older extract lacks (options-languages.js onHand)
     langsBrowser: browserLanguages(),
     langsPages: await pageLanguages(),
   };

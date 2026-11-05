@@ -1,17 +1,73 @@
 // The settings page's "Match titles in other languages" section: the
 // language list and its ticks (a draft until Apply or Get titles), the
-// line over the picker, and the box's own switch. Loaded after
-// options-text.js and before options.js, which fills this section's state
-// on every refreshStats.
+// line over the picker, the button, and the box's own switch. Loaded after
+// options-text.js and before options.js, whose refreshStats calls
+// refreshLanguages with the background's report on every change.
 
-let loadedLangs = []; // languages keyed in the database at the last refresh (refreshStats)
-let storedLangs = []; // the languages chosen in storage at the last refresh
-let extractOnHand = false; // the kept list exists, so changed ticks need no download
-let onHand = () => false; // ...and covers these languages (refreshStats)
-// The ticks are a draft until the button under the list is clicked: the
-// ticked languages when they differ from storedLangs, else null.
-let draftLangs = null;
+// Everything the section knows, from the background's usage report
+// (refreshLanguages) and the ticks (tickLanguages); no handler reads
+// storage or the page itself, so the page and the background always
+// agree on what is chosen.
+//   on        the box: sync otherLanguages
+//   chosen    the languages stored (sync titleLangs), kept while the box
+//             is off, so on again shows the last applied choice
+//   keyed     the languages the database matches now (meta.langs, with a
+//             kept list)
+//   draft     ticks not yet applied: the ticked languages when they differ
+//             from chosen, else null
+//   onHand    whether the kept list can key these languages: it exists and
+//             dates from after each was added (usage langsNeed, db.js
+//             AKAS_NEEDS); else Get titles reads the 520 MB file again
+//   suggest   the languages worth pre-ticking the first time: the
+//             browser's own and those seen on streaming pages
+//   dbPresent, omdbOnly, building   the page's state the section depends on
+const langs = { on: false, chosen: [], keyed: [], draft: null, onHand: () => false, suggest: [], dbPresent: false, omdbOnly: false, building: false };
 const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+
+// Fills the section from the usage report u and its database status l.
+// failed: the build that failed last, if any (a languages pass's failure
+// is reported here, where Get titles is).
+function refreshLanguages(u, l, building, failed) {
+  langs.on = !!u.langsOn;
+  langs.chosen = u.langsChosen || [];
+  langs.keyed = l.akasAt ? l.langs || [] : [];
+  langs.dbPresent = !!l.present;
+  langs.omdbOnly = !!u.omdbOnly;
+  langs.building = !!building;
+  langs.onHand = (list) => !!l.akasAt && (list || []).every((x) => ((u.langsNeed || {})[x] || 1) <= (l.akasFormat || 1));
+  langs.suggest = [...new Set([...(u.langsBrowser || []), ...(u.langsPages || [])])];
+  // A draft the store has caught up with (Apply went through) is done.
+  if (langs.draft !== null && sameLangs(langs.draft, langs.chosen)) langs.draft = null;
+
+  $('otherLangs').checked = langs.on;
+  $('otherLangs').disabled = langs.omdbOnly;
+  const listWasHidden = $('langBox').hidden;
+  // Under OMDb only the box stays where it is, greyed: hiding it would
+  // move Advanced up and down with the source choice.
+  $('langBox').hidden = !langs.on;
+  $('langBox').classList.toggle('off', langs.omdbOnly);
+  renderLanguages(u, listWasHidden);
+  const failedAkas = !!(failed && failed.kind === 'akas' && langs.on);
+  $('otherLangsText').textContent = langs.omdbOnly ? 'Not used with OMDb only; the ticks are kept for switching back.'
+    : failedAkas ? 'Get titles failed: ' + failed.message + '. Click Get titles to try again.'
+    : otherLanguagesText(l);
+  // Red while ticked languages cannot match yet: no database, or no list
+  // of titles on hand (Get titles).
+  $('otherLangsText').classList.toggle('bad', failedAkas || (langs.on && !langs.omdbOnly && !langs.building && langs.draft === null && langs.chosen.length > 0 && !langs.onHand(langs.chosen)));
+  if (langs.on) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
+  // The button applies the ticks: Get titles while the list was never
+  // fetched (the one place the 520 MB is read), Apply once it is on hand
+  // and only the keys change. Shown for a draft, or for languages chosen
+  // but never fetched.
+  const btn = $('downloadLangs');
+  btn.hidden = !(langs.on && langs.dbPresent && !langs.building && !langs.omdbOnly && (langs.draft !== null || (langs.chosen.length > 0 && !langs.onHand(langs.chosen))));
+  const apply = langs.onHand(langs.draft || langs.chosen);
+  btn.textContent = apply ? 'Apply' : 'Get titles';
+  btn.title = apply ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
+  // Red whenever it is the click that is waited for: a draft not applied
+  // yet (Apply or Get titles), or ticked languages the list cannot key.
+  btn.classList.toggle('needed', langs.draft !== null || (!apply && langs.chosen.length > 0));
+}
 
 // The language list under "Match titles in other languages": every
 // language the database can key (usage langsAll), by English name, the
@@ -21,7 +77,7 @@ const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x
 // The ticked languages come first, the rest alphabetically. The order is set
 // while the list is out of sight (page load, box unticked), so a language
 // ticked just now stays where it was until the list is next shown.
-function renderLanguages(u, building, reorder) {
+function renderLanguages(u, reorder) {
   const box = $('langList');
   if (!box.children.length && (u.langsAll || []).length) {
     const rows = u.langsAll.map((code) => ({ code, name: languageNames([code]) || code }));
@@ -40,13 +96,13 @@ function renderLanguages(u, building, reorder) {
       box.appendChild(label);
     }
   }
-  const chosen = new Set(draftLangs || u.langs || []);
+  const chosen = new Set(langs.draft || langs.chosen);
   const browser = new Set(u.langsBrowser || []);
   const pages = new Set(u.langsPages || []);
   for (const label of box.querySelectorAll('label')) {
     const input = label.querySelector('input');
     input.checked = chosen.has(input.value);
-    input.disabled = !!building || omdbOnlyMode;
+    input.disabled = langs.building || langs.omdbOnly;
     label.querySelector('.hint').textContent = browser.has(input.value) ? '(your browser)' : pages.has(input.value) ? '(seen on a streaming page)' : '';
   }
   if (reorder) {
@@ -61,27 +117,27 @@ function renderLanguages(u, building, reorder) {
 // before the click is the way to change one's mind.
 function tickLanguages() {
   const ticked = [...$('langList').querySelectorAll('input:checked')].map((i) => i.value);
-  if (!dbPresent) {
+  if (!langs.dbPresent) {
     // No database, so no Apply: the first build (Update now) reads the
     // choice from storage, and nothing can start before it.
-    draftLangs = null;
+    langs.draft = null;
     chrome.storage.sync.set({ titleLangs: ticked }).then(refreshStats);
     if (ticked.length) say('Titles in ' + languageNames(ticked) + ' match once Update now has built the database (reads 520 MB more).', 'bad');
     else say('No language ticked.');
     return;
   }
-  draftLangs = sameLangs(ticked, storedLangs) ? null : ticked;
+  langs.draft = sameLangs(ticked, langs.chosen) ? null : ticked;
   refreshStats();
 }
 
 // Over the picker, one short line: where things stand. The explanation
 // of the option itself is in its "i" tip; the option off shows nothing.
-function otherLanguagesText(u, l, building) {
-  const chosen = u.langs || [];
+function otherLanguagesText(l) {
+  const { on, chosen, draft, onHand, building } = langs;
   const have = l.langs || [];
-  if (!u.langsOn) return '';
-  if (draftLangs !== null && l.present && !building) {
-    return 'Not applied yet: click ' + (onHand(draftLangs) ? 'Apply' : 'Get titles') + ' to ' + (draftLangs.length ? 'match titles in ' + languageNames(draftLangs) : 'match no other language') + '. Nothing changes until then.';
+  if (!on) return '';
+  if (draft !== null && l.present && !building) {
+    return 'Not applied yet: click ' + (onHand(draft) ? 'Apply' : 'Get titles') + ' to ' + (draft.length ? 'match titles in ' + languageNames(draft) : 'match no other language') + '. Nothing changes until then.';
   }
   // No database yet: the ticked languages do nothing until Update now has
   // built it (in red, like the Get titles case below).
@@ -96,42 +152,36 @@ function otherLanguagesText(u, l, building) {
   }
   const kept = ' List from ' + new Date(l.akasAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' kept (' + Math.round(l.akasSize / 1048576) + ' MB).';
   if (building) return 'Changes apply after the current build.' + kept;
-  if (chosen.length !== have.length || chosen.some((x) => !have.includes(x))) return 'Updating…' + kept;
+  if (!sameLangs(chosen, have)) return 'Updating…' + kept;
   return (have.length ? 'Matched in ' + languageNames(have) + '.' : 'None ticked.') + kept;
 }
 
-// Off: lookups stop using the keys at once; the keys, the kept list and
-// the ticks all stay, so on again is instant, with nothing to apply.
-// Only before any Apply (nothing stored yet) do the languages seen on
-// streaming pages come pre-ticked as a draft, with the "Not applied yet"
-// line and the button.
+// The box. Off: lookups stop using the keys at once; the keys, the kept
+// list and the choice all stay, so on again is instant, with nothing to
+// apply (languages.js applyLanguageChoice). Only with nothing chosen yet
+// (the first time, or after Reset settings) do the languages seen come
+// pre-ticked: as a draft with a database, with the "Not applied yet" line
+// and the button; stored outright without one, since the first build
+// reads the choice and nothing can start before it.
 $('otherLangs').addEventListener('change', async () => {
   const on = $('otherLangs').checked;
-  const loaded = loadedLangs; // before the write: the worker clears them on it
-  draftLangs = null;
+  const keyed = langs.keyed;
+  langs.draft = null;
   const writes = { otherLanguages: on };
-  if (on) {
-    const { titleLangs } = await chrome.storage.sync.get('titleLangs');
-    const stored = Array.isArray(titleLangs) ? titleLangs : [];
-    if (stored.length) {
-      storedLangs = stored;
-    } else {
-      const seen = [...$('langList').querySelectorAll('label')].filter((lb) => lb.querySelector('.hint').textContent).map((lb) => lb.querySelector('input').value);
-      draftLangs = seen.length && dbPresent ? seen : null; // no database: stored outright, the first build reads it
-      storedLangs = dbPresent ? [] : seen;
-      writes.titleLangs = dbPresent ? [] : seen;
-    }
+  if (on && !langs.chosen.length) {
+    if (langs.dbPresent) langs.draft = langs.suggest.length ? langs.suggest : null;
+    else writes.titleLangs = langs.suggest;
   }
-  await chrome.storage.sync.set(writes); // one write, one change event in the worker
+  await chrome.storage.sync.set(writes); // one write, one change event in the background
   say(!on ? 'Titles in other languages off; the kept list stays for turning it back on.'
-    : storedLangs.length && dbPresent ? 'Titles in ' + languageNames(storedLangs) + ' match again.'
-    : dbPresent ? 'Tick the languages to match, then click the button next to the box.'
+    : langs.chosen.length && langs.dbPresent ? 'Titles in ' + languageNames(langs.chosen) + ' match again.'
+    : langs.dbPresent ? 'Tick the languages to match, then click the button next to the box.'
     : 'Tick the languages to match; Update now then builds the database with them.');
-  // Off with languages loaded: the ratings already matched in them stay
+  // Off with languages keyed: the ratings already matched in them stay
   // remembered (30 days, like any other), which looks as if the option
   // were still on. One line offers to forget them; leaving it is the default.
-  $('forgetLine').hidden = on || !loaded.length;
-  if (!on && loaded.length) $('forgetText').textContent = 'Ratings already matched in ' + languageNames(loaded) + ' stay remembered for up to 30 days.';
+  $('forgetLine').hidden = on || !keyed.length;
+  if (!on && keyed.length) $('forgetText').textContent = 'Ratings already matched in ' + languageNames(keyed) + ' stay remembered for up to 30 days.';
   // Off: the list goes now, not when refreshStats runs half a second on,
   // or the forget line shows under the list for that moment.
   if (!on) $('langBox').hidden = true;
@@ -150,18 +200,19 @@ $('forgetAka').addEventListener('click', async (e) => {
 });
 
 // Applies the draft. With the kept list on hand and covering the choice,
-// the worker keys it by itself on the write (background.js
+// the background keys it by itself on the write (languages.js
 // applyLanguageChoice); otherwise the build message fetches the 520 MB,
 // which only ever starts from this click.
 $('downloadLangs').addEventListener('click', async () => {
   $('downloadLangs').disabled = true;
-  const langs = draftLangs !== null ? draftLangs : storedLangs;
-  if (draftLangs !== null) {
-    await chrome.storage.sync.set({ titleLangs: draftLangs });
-    draftLangs = null;
+  const list = langs.draft !== null ? langs.draft : langs.chosen;
+  if (langs.draft !== null) {
+    await chrome.storage.sync.set({ titleLangs: langs.draft });
+    langs.chosen = langs.draft;
+    langs.draft = null;
   }
   // No language left: the write above clears the keys by itself.
-  if (langs.length && !onHand(langs)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  if (list.length && !langs.onHand(list)) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
   $('downloadLangs').disabled = false;
   setTimeout(refreshStats, 500);
 });

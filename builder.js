@@ -291,7 +291,7 @@ const RatingsBuilder = (() => {
   }
 
   // The full build. langs: the languages besides English the user chose
-  // (background.js titleLanguages); their keys are made again from the
+  // (languages.js titleLanguages); their keys are made again from the
   // extract right after the titles go live, and the akas file is fetched
   // again, last, once the extract on hand is old (db.js akasStale), and
   // on the first build, always the user's own click, when languages are

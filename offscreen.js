@@ -2,7 +2,7 @@
 // streaming work itself (Chrome stops idle workers), so it opens this hidden
 // page, which runs the build in a web worker and relays progress back. In
 // Firefox the page is a frame inside the background event page (see
-// ensureOffscreen in background.js).
+// ensureOffscreen in build.js).
 
 let worker = null;
 let heartbeat = null;

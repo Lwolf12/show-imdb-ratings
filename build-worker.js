@@ -3,7 +3,7 @@
 // completion, a cancel and errors with postMessage. kind: 'full' (the
 // dumps), 'ratings' (the ratings dump into the existing database) or
 // 'akas' (titles in more languages into the existing database). langs:
-// the languages besides English to match titles in (background.js
+// the languages besides English to match titles in (languages.js
 // titleLanguages). A 'cancel' message stops the run at its next chance
 // (RatingsBuilder.cancel): the reply says what it had already saved.
 

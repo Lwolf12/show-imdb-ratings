@@ -58,7 +58,7 @@ function due(ts) {
 
 const WAITING = (n) => n.toLocaleString() + ' newly rated title' + (n === 1 ? '' : 's') + ' waiting for the full rebuild';
 
-// The refresh intervals (background.js schedule) as words.
+// The refresh intervals (refresh.js refreshIntervals) as words.
 const EVERY = { 0: 'only when you click Update now', 7: 'weekly', 14: 'every two weeks', 30: 'monthly', 61: 'every two months', 91: 'every three months' };
 
 // What the automatic refresh does with the intervals in force.
@@ -126,7 +126,7 @@ function omdbOnlyStatus(l, keyed) {
     (l.present ? '. The database (' + titles + ', built ' + l.built + ') is kept for switching back.' : ' (1,000 lookups a day, each remembered for 30 days).');
 }
 
-// The next automatic refresh (background.js refreshPlan): which kind, what
+// The next automatic refresh (refresh.js refreshPlan): which kind, what
 // it downloads and when, and how new titles arrive for people without an
 // OMDb key. The paragraph holds two lines (options.html), and the ratings
 // text leaves the sizes and intervals to the box's own label above it so
