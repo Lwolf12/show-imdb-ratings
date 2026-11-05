@@ -153,7 +153,7 @@ test('without a database a tick is stored at once, for the first build to read',
   assert.strictEqual(t.$('downloadLangs').hidden, true);
   await t.tick('de');
   assert.deepEqual(t.storage.areas.sync.titleLangs, ['pl', 'de']);
-  assert.match(t.$('status').textContent, /^Titles in Polish and German match once Update now/);
+  assert.match(t.$('status').textContent, /^Titles in Polish and German match after the first build/);
   assert.strictEqual(t.$('status').className, 'bad');
   assert.strictEqual(t.builds().length, 0);
 });

@@ -122,7 +122,7 @@ function tickLanguages() {
     // choice from storage, and nothing can start before it.
     langs.draft = null;
     chrome.storage.sync.set({ titleLangs: ticked }).then(refreshStats);
-    if (ticked.length) say('Titles in ' + languageNames(ticked) + ' match once Update now has built the database (reads 520 MB more).', 'bad');
+    if (ticked.length) say('Titles in ' + (ticked.length > 3 ? ticked.length + ' languages' : languageNames(ticked)) + ' match after the first build (reads 520 MB more).', 'bad');
     else say('No language ticked.');
     return;
   }
@@ -176,7 +176,7 @@ $('otherLangs').addEventListener('change', async () => {
   say(!on ? 'Titles in other languages off; the kept list stays for turning it back on.'
     : langs.chosen.length && langs.dbPresent ? 'Titles in ' + languageNames(langs.chosen) + ' match again.'
     : langs.dbPresent ? 'Tick the languages to match, then click the button next to the box.'
-    : 'Tick the languages to match; Update now then builds the database with them.');
+    : 'Tick the languages to match; the first build includes them.');
   // Off with languages keyed: the ratings already matched in them stay
   // remembered (30 days, like any other), which looks as if the option
   // were still on. One line offers to forget them; leaving it is the default.
