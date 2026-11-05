@@ -13,7 +13,7 @@ function say(text, cls) {
 }
 
 const STALE_WORKER =
-  'The extension’s background worker is out of date. On chrome://extensions, click the reload icon on this extension’s card, then reopen this panel.';
+  'Background worker out of date: on chrome://extensions, click reload on this extension’s card, then reopen this panel.';
 
 const PHASES = {
   starting: 'Starting…',

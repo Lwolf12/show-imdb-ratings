@@ -12,7 +12,10 @@
        its edge (Advanced, Get titles) in the usual states. */
     body { font: 14px/1.45 system-ui, sans-serif; margin: 0 auto; padding: 12px 20px 10px; max-width: 560px; color: #222;
            min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; }
-    header { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; margin: 0 0 8px; }
+    /* The status line floats over the header's right half, its last line on
+       the title's baseline: a second line stacks above it, into the page's
+       top padding, instead of growing the header and moving every row. */
+    header { position: relative; margin: 0 0 8px; }
     h1 { font-size: 16px; margin: 0; }
     section { margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid #e3e3e3; }
     .col > section:last-child { border-bottom: 0; }
@@ -99,7 +102,7 @@
        the longest fit with room to spare on fonts wider than Segoe UI. */
     #localStatus { font-size: 13px; min-height: 2.9em; }
     .extras { margin-top: 2px; }
-    #status { flex: 1; min-width: 200px; font-weight: 600; font-size: 13px; text-align: right; }
+    #status { position: absolute; right: 0; bottom: 2px; width: 52%; z-index: 2; font-weight: 600; font-size: 13px; line-height: 1.2; text-align: right; }
     .ok { color: #2a7; }
     .bad { color: #c33; }
     details summary { cursor: pointer; color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; }
