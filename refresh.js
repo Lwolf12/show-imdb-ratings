@@ -76,7 +76,9 @@ async function refreshIntervals() {
 //             the database has no name for
 //   age       the usual schedule
 //   languages (kind 'akas', mb 0) the chosen languages differ from the
-//             keyed ones and the extract is on hand: keyed again from it
+//             keyed ones and the extract is on hand: keyed again from it.
+//             Only with the box on: off, the keys stay for turning it back
+//             on (languages.js applyLanguageChoice), so nothing is due
 //   download  (kind 'akas', mb 520) languages chosen but no extract yet:
 //             waits for the settings page's Get titles button, never runs
 //             by itself. Only the settings page sees this plan; the
@@ -93,6 +95,7 @@ async function refreshPlan(meta, { scheduled = false } = {}) {
   if (!meta || (await omdbOnly())) return { kind: null };
   const now = Date.now();
   const s = await refreshIntervals();
+  const langsOn = await otherLanguagesOn();
   const langs = await titleLanguages();
   const akas = langs.length > 0 && (RatingsDB.akasStale(meta) || !RatingsDB.akasCovers(meta, langs));
   // fullMb and akas ride on every plan: what Update now would download
@@ -109,7 +112,7 @@ async function refreshPlan(meta, { scheduled = false } = {}) {
     if ((meta.unknown || 0) >= UNKNOWN_REBUILD) return full('unknown', now);
     if (fullDue <= now) return full('age', fullDue);
   }
-  if (!sameSet(langs, meta.langs || [])) {
+  if (langsOn && !sameSet(langs, meta.langs || [])) {
     if ((meta.akasAt && RatingsDB.akasCovers(meta, langs)) || !langs.length) return { kind: 'akas', reason: 'languages', due: now, mb: 0, langs, ...s };
     if (!scheduled) return { kind: 'akas', reason: 'download', due: now, mb: DOWNLOAD_MB.akas, langs, ...s };
   }
