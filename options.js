@@ -513,6 +513,9 @@ async function loadExtras(keyOk, note = '(no working key)') {
     box.disabled = !keyOk;
   }
   $('extras').classList.toggle('off', !keyOk);
+  // The note takes the place of the cost remark after On cards too, so the
+  // row's tip stays on the line at larger font sizes.
+  $('cardsCost').hidden = !keyOk;
   $('extrasNote').hidden = !!keyOk;
   $('extrasNote').textContent = note;
 }
