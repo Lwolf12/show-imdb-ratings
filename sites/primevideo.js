@@ -18,6 +18,15 @@
 //
 // Card titles often carry season suffixes ("Yellowstone - Season 1",
 // "The First 48 S22"), which must be stripped before an OMDb lookup.
+//
+// The rest of amazon.com (verified 2026-11-05 in Chrome), reached when the
+// user adds www.amazon.com as an address under Prime Video (sites-list.js):
+// the shop's search results are <div data-component-type="s-search-result">
+// cards with the product name in an <h2>; a film or show among them says
+// "Prime Video" as its format, or "Starring:" / "Directed by:" lines, or
+// is a disc with "[Blu-ray]", "[DVD]" or "(4K UHD + Digital)" on its name.
+// Books and everything else are left alone. The image box
+// (.s-product-image-container, position: relative) hosts the badge.
 
 (() => {
   const SUFFIXES = [
@@ -26,6 +35,9 @@
     /\s+s\d{1,2}\s*$/i,
     /\s*[-–:]\s*(the\s+)?complete\s+(first|second|third|fourth|fifth|\w+)\s+season\s*$/i,
     /\s*[\(\[](4k|uhd|4k uhd|ultra hd|hd|unrated|extended|director'?s cut)[\)\]]\s*$/i,
+    // A disc's format tag: "[Blu-ray]", "(4K UHD + Blu-ray + Digital)", "[DVD] [2019]".
+    /\s*[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd|digital|steelbook|edition)\b[^\)\]]*[\)\]]\s*$/i,
+    /\s*[\(\[]\d{4}[\)\]]\s*$/,
   ];
 
   function cleanTitle(raw) {
@@ -64,6 +76,17 @@
     const fromArt = cleanTitle((art && art.alt) || '');
     if (fromArt) return fromArt;
     return cleanTitle(document.title.replace(/^watch\s+/i, '').replace(/\s*\|\s*prime video\s*$/i, ''));
+  }
+
+  // A search result that is a film or show: its format reads Prime Video or
+  // a disc, or it has the credits lines. The text is scanned once per card.
+  function isVideoResult(el) {
+    const h2 = el.querySelector('h2');
+    if (h2 && /[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd)\b/i.test(h2.textContent)) return true;
+    return [...el.querySelectorAll('span, a')].some((e) => {
+      const t = (e.textContent || '').trim();
+      return t === 'Prime Video' || t === 'DVD' || t === 'Blu-ray' || /^(Starring|Directed by):/.test(t);
+    });
   }
 
   function ariaOrAltTitle(el) {
@@ -113,6 +136,26 @@
         },
         host(el) {
           return el;
+        },
+      },
+      {
+        // The shop's search results (www.amazon.com added as an address):
+        // films and shows only, told by their format or credits.
+        kind: 'card',
+        selector: '[data-component-type="s-search-result"]',
+        titleOf(el) {
+          if (!isVideoResult(el)) return null;
+          const h2 = el.querySelector('h2');
+          return cleanTitle(h2 ? h2.textContent : '');
+        },
+        typeOf(el) {
+          const h2 = el.querySelector('h2');
+          const name = (h2 && h2.textContent) || '';
+          if (/\b(season|complete series|episodes?)\b/i.test(name)) return 'series';
+          return null;
+        },
+        host(el) {
+          return el.querySelector('.s-product-image-container') || null;
         },
       },
       {
