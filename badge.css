@@ -409,10 +409,14 @@ html.imdbext-label-imdb .imdbext-rt::before {
   content: "\01F3C6\00a0";
 }
 
-/* "On cards too": the short scores inside a card's corner badge. */
+/* "On cards too": the short scores inside a card's corner badge. They go
+   before the IMDb score (order), so the score sits at the badge's right
+   end, the corner, and is what stays in view when the badge is wider than
+   the card; content.js fitCardExtras sheds the scores that do not fit. */
 .imdbext-badge--card .imdbext-extras {
+  order: -1;
   gap: 5px;
-  margin-left: 2px;
+  margin-right: 2px;
   font-size: 11px;
 }
 
@@ -437,7 +441,7 @@ html.imdbext-label-imdb .imdbext-rt::before {
 
 .film-poster > .imdbext-badge--card .imdbext-extras {
   gap: 3px;
-  margin-left: 1px;
+  margin-right: 1px;
   font-size: 10px;
 }
 

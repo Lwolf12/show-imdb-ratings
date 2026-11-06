@@ -242,7 +242,46 @@
         name && 'https://www.metacritic.com/search/' + encodeURIComponent(name) + '/');
     }
     if (extraWant.awards && x.awards && !onCard) add('imdbext-awards', x.awards, x.awards + ' (via OMDb)');
-    if (wrap.childElementCount) badge.appendChild(wrap);
+    if (!wrap.childElementCount) return;
+    badge.appendChild(wrap);
+    if (onCard) fitCardExtras(badge);
+  }
+
+  // A card's corner badge keeps the IMDb score at its right end (badge.css
+  // puts the short scores before it), and sheds those scores, last first,
+  // while the badge is wider than the room it has: wider than its host, or
+  // lying under a neighbour, as in a stack of overlapping posters. A badge
+  // outside the viewport is measured when it comes into view, since what
+  // lies over it cannot be told until then.
+  const fitWhenVisible = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      fitWhenVisible.unobserve(entry.target);
+      fitCardExtras(entry.target);
+    }
+  });
+
+  function fitCardExtras(badge) {
+    const wrap = badge.querySelector('.imdbext-extras');
+    const host = badge.parentElement;
+    if (!wrap || !host) return;
+    const b = badge.getBoundingClientRect();
+    const inView = b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth;
+    if (!inView && b.width > 0) {
+      fitWhenVisible.observe(badge);
+    }
+    const crowded = () => {
+      const r = badge.getBoundingClientRect();
+      if (r.left < host.getBoundingClientRect().left + 2) return true;
+      if (!inView) return false;
+      const y = r.top + r.height / 2;
+      const over = document.elementFromPoint(r.left + 1, y);
+      // The right end under something too: not the scores' fault.
+      const rightOver = document.elementFromPoint(r.right - 1, y);
+      return !!over && !badge.contains(over) && !!rightOver && badge.contains(rightOver);
+    };
+    while (wrap.lastElementChild && crowded()) wrap.lastElementChild.remove();
+    if (!wrap.childElementCount) wrap.remove();
   }
 
   // Episode lists (target kind 'episodes'): the adapter names the show
