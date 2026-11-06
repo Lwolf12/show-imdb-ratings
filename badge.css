@@ -419,3 +419,28 @@ html.imdbext-label-imdb .imdbext-rt::before {
 .imdbext-badge--card .imdbext-mc {
   padding: 0 3px;
 }
+
+/* Letterboxd: posters are 150 px wide in most grids, so the corner badge
+   is a size smaller and tighter, and with the short scores on ("On cards
+   too") stays inside the poster. */
+.film-poster > .imdbext-badge--card {
+  top: 4px;
+  right: 4px;
+  gap: 3px;
+  padding: 1px 4px;
+  font-size: 11px;
+}
+
+.film-poster > .imdbext-badge--card::before {
+  font-size: 11px;
+}
+
+.film-poster > .imdbext-badge--card .imdbext-extras {
+  gap: 3px;
+  margin-left: 1px;
+  font-size: 10px;
+}
+
+.film-poster > .imdbext-badge--card .imdbext-mc {
+  padding: 0 2px;
+}
