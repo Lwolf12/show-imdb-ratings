@@ -162,6 +162,23 @@ test('a tick stays ticked when an earlier save stored the site as off (the grant
   assert.ok(grants.set.has('https://letterboxd.com/*'));
 });
 
+test('the grant event firing the instant the prompt is allowed, before the tick is saved, cannot untick (Firefox)', async () => {
+  // Stored off from an earlier untick; the browser fires onAdded in the
+  // same instant request() resolves, and its read of the store wins the
+  // race with the save; with a slow save the busy guard has also lifted
+  // by the time the handler acts.
+  const { options, storage, grants } = await page({ sync: { sites: { letterboxd: false } } });
+  const set = storage.sync.set;
+  storage.sync.set = async (obj) => { await settle(5); return set(obj); };
+  const input = options.siteRows().find((r) => r.key === 'letterboxd').label.querySelector('input');
+  input.checked = true;
+  await input.dispatch('change');
+  await settle(40);
+  assert.equal(input.checked, true);
+  assert.equal(storage.areas.sync.sites.letterboxd, true);
+  assert.ok(grants.set.has('https://letterboxd.com/*'));
+});
+
 test('a second change while the prompt is open (Firefox toggles the box back) is dropped; the click wins', async () => {
   const { options, storage } = await page();
   options.call('chrome.permissions.request = () => new Promise((r) => { globalThis.__answer = r; })');

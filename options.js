@@ -383,11 +383,13 @@ async function loadSites() {
 
 // Access granted or withdrawn elsewhere (Site access on chrome://extensions,
 // about:addons): the ticks follow, in place. The browser fires the same
-// events for the page's own request, before the tick that asked has been
-// saved, and Firefox's contains() can still say no for a moment after
-// its own prompt was allowed; so an added event only ever ticks (rows the
-// browser now grants), a removed event only ever unticks (rows it no
-// longer grants), and a row whose change is still in hand is left alone.
+// events for the page's own request: Firefox in the very instant its
+// prompt is allowed, so this handler's read of the stored switches can
+// race the save of the tick that asked and come back with the old "off".
+// So an added event only ever ticks (rows the browser now grants and the
+// store does not say are off), a removed event only ever unticks (rows
+// it no longer grants), and a row whose change is still in hand is left
+// alone.
 async function refreshGrants(added) {
   const { sites = {} } = await chrome.storage.sync.get('sites');
   for (const row of siteRows) {
@@ -395,7 +397,11 @@ async function refreshGrants(added) {
     const granted = await chrome.permissions.contains({ origins: patternsOf(row) });
     if (granted !== added) continue;
     row.granted = granted;
-    row.box.checked = granted && sites[row.key] !== false;
+    if (added) {
+      if (sites[row.key] !== false) row.box.checked = true;
+    } else {
+      row.box.checked = false;
+    }
     row.hint.textContent = siteHint(row);
   }
 }
@@ -443,10 +449,10 @@ async function siteChanged(row) {
       await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});
       row.granted = false;
     }
+    if (registered(row)) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
   } finally {
     row.busy = false;
   }
-  if (registered(row)) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
   say(label + (box.checked ? ' on.' : ' off.') + note);
 }
 
