@@ -546,11 +546,11 @@ const MODE_SAID = {
 const LABEL_BOXES = [...document.querySelectorAll('input[name=badgeLabel]')];
 
 async function loadBadges() {
-  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star', compactBadges = false } =
+  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star', compactBadges = true } =
     await chrome.storage.sync.get(['cardBadges', 'hideNA', 'badgeLabel', 'compactBadges']);
   for (const box of MODE_BOXES) box.checked = box.value === cardBadges;
   $('hideNA').checked = hideNA;
-  $('compactBadges').checked = compactBadges === true;
+  $('compactBadges').checked = compactBadges !== false;
   for (const box of LABEL_BOXES) box.checked = box.value === badgeLabel;
 }
 
@@ -575,8 +575,10 @@ $('hideNA').addEventListener('change', async () => {
   say($('hideNA').checked ? '“n/a” badges hidden on cards.' : '“n/a” badges shown on cards.');
 });
 
-// Smaller, see-through card badges everywhere (content.js applyBadgePrefs);
-// off by default, since the solid badge is the one that reads on bright art.
+// Smaller, see-through card badges everywhere (content.js applyBadgePrefs),
+// the default: the rating should be there when looked for, not the first
+// thing on the page. Unticked, the full-size solid badge, which reads
+// better on bright art.
 $('compactBadges').addEventListener('change', async () => {
   await chrome.storage.sync.set({ compactBadges: $('compactBadges').checked });
   say($('compactBadges').checked ? 'Compact card badges.' : 'Full-size card badges.');

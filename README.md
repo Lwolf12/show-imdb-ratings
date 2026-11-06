@@ -72,8 +72,8 @@ is a small adapter file, so more services can be added.
 5. Optional: under **Badges on title cards**, show card badges always,
    only when the mouse is over a card, or not at all (previews, banners
    and title pages keep their rating either way); show the grey "n/a"
-   badges, hidden by default; make the card badges compact (smaller and
-   see-through, the look Letterboxd's posters always have); and pick the
+   badges, hidden by default; untick Compact badges for full-size solid
+   card badges instead of the smaller, see-through default; and pick the
    label before the score, a star (default) or the yellow IMDb tag.
    Hovering any badge says it is the IMDb rating and where it came from.
 

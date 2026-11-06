@@ -434,8 +434,8 @@ html.imdbext-label-imdb .imdbext-rt::before {
 
 /* Compact card badges, two ways in: Letterboxd's posters always (150 px
    wide in most grids, 90 px slices in the stacked list previews), and
-   every site with the settings' "Compact badges" tick (content.js puts
-   imdbext-compact on <html>). Two sizes smaller, tight, and on a lighter
+   every site with the settings' "Compact badges" tick, on by default
+   (content.js puts imdbext-compact on <html>). Two sizes smaller, tight, and on a lighter
    ground that lets the artwork show through; with the short scores on
    ("On cards too") a tomato fits beside the score on a slice. Episode
    badges and the chips in previews and banners are not affected. */

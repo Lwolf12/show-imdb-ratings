@@ -12,23 +12,23 @@ async function page(sync = {}) {
   return { storage, options };
 }
 
-test('Compact badges: off by default, stored on a tick, shown ticked on load', async () => {
+test('Compact badges: on by default, stored on an untick, shown unticked on load', async () => {
   const { storage, options } = await page();
   const box = options.$('compactBadges');
-  assert.equal(box.checked, false);
-  box.checked = true;
+  assert.equal(box.checked, true);
+  box.checked = false;
   await box.dispatch('change');
-  assert.equal(storage.areas.sync.compactBadges, true);
-  assert.match(options.$('status').textContent, /Compact card badges/);
+  assert.equal(storage.areas.sync.compactBadges, false);
+  assert.match(options.$('status').textContent, /Full-size card badges/);
 
-  const again = await page({ compactBadges: true });
-  assert.equal(again.options.$('compactBadges').checked, true);
+  const again = await page({ compactBadges: false });
+  assert.equal(again.options.$('compactBadges').checked, false);
 });
 
-test('Reset settings drops it', async () => {
-  const { storage, options } = await page({ compactBadges: true });
+test('Reset settings brings the default back', async () => {
+  const { storage, options } = await page({ compactBadges: false });
   await options.$('resetSettings').dispatch('click');
   await settle();
   assert.equal(storage.areas.sync.compactBadges, undefined);
-  assert.equal(options.$('compactBadges').checked, false);
+  assert.equal(options.$('compactBadges').checked, true);
 });
