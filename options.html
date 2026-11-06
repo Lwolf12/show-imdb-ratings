@@ -71,11 +71,11 @@
     .langs label { display: inline-flex; justify-self: start; align-items: center; gap: 4px; white-space: nowrap; }
     .langs .hint { color: #777; font-size: 11px; }
     /* The Sites list: two columns like the languages list, scrolling after
-       four rows, so the eight sites on from the start are all in view and
-       the new ones and any added address (a full-width row) sit below.
+       six rows, so the eight sites on from the start are all in view with
+       room for the new ones and any added address (a full-width row).
        Ticked rows first, ordered once when the page opens, so a tick
        moves nothing; the section's height never changes either. */
-    .sites { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 80px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 2px 8px; margin: 2px 0 0; font-size: 13px; }
+    .sites { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 120px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 2px 8px; margin: 2px 0 0; font-size: 13px; }
     .sites label.check { margin: 1px 0; white-space: nowrap; }
     .sites label.address { grid-column: 1 / -1; }
     .sites .hint { color: #777; font-size: 11px; }
@@ -258,14 +258,13 @@
 
       <section>
         <h2>Badges on title cards
-          <span class="tip left" tabindex="0" data-tip="Only on hover: a card's badge appears while the mouse is over it. Off: no badges on cards at all. Previews, banners and title pages always show the rating. Changes apply to open tabs right away."
-                aria-label="Only on hover: a card's badge appears while the mouse is over it. Off: no badges on cards at all. Previews, banners and title pages always show the rating. Changes apply to open tabs right away.">i</span></h2>
+          <span class="tip left" tabindex="0" data-tip="Only on hover: a card's badge appears while the mouse is over it. Off: no badges on cards at all. Hover previews, banners and title pages show the rating either way. To turn ratings off on a site, untick it under Sites. Changes apply to open tabs right away."
+                aria-label="Only on hover: a card's badge appears while the mouse is over it. Off: no badges on cards at all. Hover previews, banners and title pages show the rating either way. To turn ratings off on a site, untick it under Sites. Changes apply to open tabs right away.">i</span></h2>
         <div class="choices three">
           <label class="check"><input type="radio" name="cardBadges" value="always"> Always</label>
           <label class="check"><input type="radio" name="cardBadges" value="hover"> Only on hover</label>
           <label class="check"><input type="radio" name="cardBadges" value="off"> Off</label>
         </div>
-        <p class="muted">Hover previews, banners and title pages show the rating either way. To turn ratings off on a site, untick it under Sites.</p>
         <label class="check"><input id="hideNA" type="checkbox"> Hide “n/a” on cards with no IMDb match</label>
         <div class="row">Label before the rating:
           <label class="check"><input type="radio" name="badgeLabel" value="star"> <span class="sample">★ 7.8</span></label>
