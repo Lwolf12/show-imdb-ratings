@@ -377,11 +377,14 @@ async function loadSites() {
 }
 
 // Access granted or withdrawn elsewhere (Site access on chrome://extensions,
-// about:addons): the ticks follow, in place.
+// about:addons): the ticks follow, in place. The browser fires the same
+// event for the page's own request, before the tick that asked has been
+// saved; a row whose change is still in hand is left alone, or the old
+// stored value would untick it.
 async function refreshGrants() {
   const { sites = {} } = await chrome.storage.sync.get('sites');
   for (const row of siteRows) {
-    if (!needsGrant(row)) continue;
+    if (!needsGrant(row) || row.busy) continue;
     row.granted = await chrome.permissions.contains({ origins: patternsOf(row) });
     row.box.checked = row.granted && sites[row.key] !== false;
     row.hint.textContent = siteHint(row);
@@ -402,22 +405,27 @@ async function siteChanged(row) {
   const { box } = row;
   const label = row.address || SL.SITES[row.name].label;
   let note = '';
-  if (box.checked && needsGrant(row) && !row.granted) {
-    // Must be the first await: the browser only asks during the click.
-    const granted = await chrome.permissions.request({ origins: patternsOf(row) }).catch(() => false);
-    if (!granted) {
-      box.checked = false;
-      say(label + ' stays off: access to the site was not allowed.', 'bad');
-      return;
+  row.busy = true;
+  try {
+    if (box.checked && needsGrant(row) && !row.granted) {
+      // Must be the first await: the browser only asks during the click.
+      const granted = await chrome.permissions.request({ origins: patternsOf(row) }).catch(() => false);
+      if (!granted) {
+        box.checked = false;
+        say(label + ' stays off: access to the site was not allowed.', 'bad');
+        return;
+      }
+      row.granted = true;
+      row.hint.textContent = siteHint(row);
+      note = ' Reload any ' + label + ' tab that was already open.';
     }
-    row.granted = true;
-    row.hint.textContent = siteHint(row);
-    note = ' Reload any ' + label + ' tab that was already open.';
-  }
-  await saveSites();
-  if (!box.checked && needsGrant(row) && !keepGrant(row)) {
-    await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});
-    row.granted = false;
+    await saveSites();
+    if (!box.checked && needsGrant(row) && !keepGrant(row)) {
+      await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});
+      row.granted = false;
+    }
+  } finally {
+    row.busy = false;
   }
   if (registered(row)) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
   say(label + (box.checked ? ' on.' : ' off.') + note);

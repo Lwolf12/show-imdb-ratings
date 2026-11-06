@@ -144,6 +144,20 @@ test('ticking Letterboxd asks for its address, stores the switch and registers; 
   assert.ok(!scripting.scripts.has('letterboxd@letterboxd.com'));
 });
 
+test('a tick stays ticked when an earlier save stored the site as off (the grant event fires before the save)', async () => {
+  // Any click on another box saves the whole list, Letterboxd as false;
+  // the browser's onAdded for the page's own request then arrives before
+  // the tick is saved, and must not untick it from the stored value.
+  const { options, storage, grants } = await page({ sync: { sites: { hulu: false, letterboxd: false } } });
+  const row = options.siteRows().find((r) => r.key === 'letterboxd');
+  row.label.querySelector('input').checked = true;
+  await row.label.querySelector('input').dispatch('change');
+  await settle();
+  assert.equal(row.label.querySelector('input').checked, true);
+  assert.equal(storage.areas.sync.sites.letterboxd, true);
+  assert.ok(grants.set.has('https://letterboxd.com/*'));
+});
+
 test('a refused grant leaves the site off and says so', async () => {
   const { options, storage, grants } = await page({ allow: false });
   const row = options.siteRows().find((r) => r.key === 'letterboxd');
