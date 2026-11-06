@@ -788,7 +788,7 @@ $('resetSettings').addEventListener('click', async () => {
 // first time the page opens, for versions with something the user may have
 // wondered about; shown once, then forgotten.
 const UPDATE_NOTES = {
-  '1.3.0': 'Updated to 1.3.0. New under Sites: Letterboxd (tick it to allow the site), and a row to add an address of your own, such as your country’s Amazon store.',
+  '1.3.0': 'Updated to 1.3.0. New under Sites: Letterboxd (tick it to allow it) and a row to add an address of your own.', // two lines at most, in Firefox’s wider font too
   '1.2.0': FIREFOX
     ? 'Updated to 1.2.0. HBO Max moved to www.hbomax.com; if HBO Max is unticked under Sites, tick it to allow the new address.'
     : 'Updated to 1.2.0. HBO Max moved to www.hbomax.com, which is why Chrome asked about that site.',
