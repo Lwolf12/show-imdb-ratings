@@ -550,8 +550,29 @@
   }
 
   // The settings panel keeps {sites: {netflix: true, ...}} in sync storage;
-  // a site missing from it is on. One read on a disabled site, then nothing.
-  const enabled = (sites) => !sites || sites[site.name] !== false;
+  // a site missing from it is on. An address the user added under a site
+  // (sites-list.js; "www.amazon.co.uk/gp/video") has a switch of its own
+  // in the same object, keyed by the address, which rules on its pages;
+  // the site's own switch rules on the addresses the manifest gives it.
+  // One read on a disabled site, then nothing.
+  const underAddress = (address) => {
+    const slash = address.indexOf('/');
+    const host = slash < 0 ? address : address.slice(0, slash);
+    const path = slash < 0 ? '' : address.slice(slash);
+    return host === location.hostname && (!path || location.pathname === path || location.pathname.startsWith(path + '/'));
+  };
+  const ownPage = () => (chrome.runtime.getManifest().content_scripts || [])
+    .filter((cs) => (cs.js || []).some((f) => f === 'sites/' + site.name + '.js' || f.endsWith('/sites/' + site.name + '.js')))
+    .some((cs) => cs.matches.some((m) => underAddress(m.replace(/^https:\/\//, '').replace(/\/\*$/, ''))));
+  function enabled(sites) {
+    if (!sites) return true;
+    if (!ownPage()) {
+      // The longest added address covering this page has the say.
+      const key = Object.keys(sites).filter((k) => k.includes('.') && underAddress(k)).sort((a, b) => b.length - a.length)[0];
+      if (key) return sites[key] !== false;
+    }
+    return sites[site.name] !== false;
+  }
 
   // Badge settings: cardBadges 'always' | 'hover' | 'off', hideNA drops the
   // grey "n/a" card badges, badgeLabel 'star' (default) | 'imdb' picks the

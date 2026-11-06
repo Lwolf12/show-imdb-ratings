@@ -35,7 +35,8 @@ The Chrome listing is in `LISTING.md`.
 
 > See IMDb ratings without leaving the streaming site. Works on eight of
 > the major streaming services (the full list is on the project page
-> below). While you browse, every title card gets a small rating badge.
+> below), and on Letterboxd if you switch it on. While you browse, every
+> title card gets a small rating badge.
 > Hovering a title adds the year and vote count to the site's own preview,
 > with a link to the title's page. Banners and title pages get a rating
 > chip too. A show's episode list also gets a rating next to every episode,
@@ -128,6 +129,16 @@ sites); 1280×800 PNG.
 > their own API key, and in Firefox only after they grant the optional
 > "websiteContent" data-collection permission, which the settings page
 > requests when OMDb is turned on.
+>
+> Since 1.3.0 the manifest lists letterboxd.com and https://*/* among the
+> host permissions (optional in Firefox, like all of them). Letterboxd is
+> off until the user ticks it on the settings page, which asks for that
+> one host. The https://*/* entry exists so the user can add an address of
+> their own under one of the known sites (a country's Amazon store, say):
+> the page asks Firefox for exactly the address typed, inside the click,
+> and background.js then registers the content script for that address
+> with scripting.registerContentScripts. The extension never requests all
+> sites, and nothing runs on a site the user did not tick or add.
 >
 > No code is minified or transpiled. The manifest is generated from the
 > Chrome manifest by store/firefox-manifest.mjs in the public

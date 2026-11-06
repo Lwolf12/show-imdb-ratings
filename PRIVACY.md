@@ -1,9 +1,10 @@
 # Privacy policy: Show IMDb Ratings on Streaming Services
 
-Last updated: 2026-10-28
+Last updated: 2026-11-05
 
 This extension shows IMDb user ratings on title cards while you browse
-Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+, Paramount+ and Tubi.
+Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+, Paramount+ and Tubi,
+and, if you switch it on in the settings, Letterboxd.
 It works the same in Chrome and Firefox. It has no accounts, no analytics and no server of its own. Everything below
 runs in your browser.
 
@@ -70,6 +71,17 @@ anyone, including the developer. It does not read anything on the streaming
 sites other than the title names, years and movie/series type shown on the
 cards, banners and preview panels it decorates.
 
+## Where the extension runs
+
+Only on the eight streaming services above, on Letterboxd once you tick it
+under Sites (the browser asks you to allow letterboxd.com first), and on
+any address you add yourself under Sites, for a country's store or a site
+that moved. An added address is allowed through the browser's own prompt,
+for exactly that address, and the extension then runs its usual script
+there. It never asks for access to all websites, and it never runs on a
+site you did not tick or add; removing the address or unticking the site
+gives the permission back.
+
 ## Data sharing and sale
 
 No data is sold, shared with third parties or used for advertising. The
@@ -85,4 +97,5 @@ open an issue at <https://github.com/Lwolf12/show-imdb-ratings/issues>.
 
 IMDb is a trademark of IMDb.com, Inc. This extension is an independent
 project and is not affiliated with, endorsed by or sponsored by IMDb, OMDb,
-Netflix, Amazon, Hulu, Warner Bros. Discovery, Apple, Disney, Paramount or Tubi.
+Netflix, Amazon, Hulu, Warner Bros. Discovery, Apple, Disney, Paramount, Tubi
+or Letterboxd.

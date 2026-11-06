@@ -70,6 +70,20 @@
        a row (where a scroll often lands) toggles nothing. */
     .langs label { display: inline-flex; justify-self: start; align-items: center; gap: 4px; white-space: nowrap; }
     .langs .hint { color: #777; font-size: 11px; }
+    /* The Sites list: two columns like the languages list, scrolling after
+       four rows, so the eight sites on from the start are all in view and
+       the new ones and any added address (a full-width row) sit below.
+       Ticked rows first, ordered once when the page opens, so a tick
+       moves nothing; the section's height never changes either. */
+    .sites { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 80px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 2px 8px; margin: 2px 0 0; font-size: 13px; }
+    .sites label.check { margin: 1px 0; white-space: nowrap; }
+    .sites label.address { grid-column: 1 / -1; }
+    .sites .hint { color: #777; font-size: 11px; }
+    .sites .x { margin-left: auto; padding: 0 4px; color: #999; text-decoration: none; font-size: 15px; line-height: 1; }
+    .sites .x:hover { color: #c33; }
+    #siteAdd { margin: 2px 0 0; flex-wrap: nowrap; }
+    #siteAdd input, #siteAdd select, #siteAdd button { font-size: 13px; padding: 3px 8px; }
+    #siteAdd select { max-width: 40%; }
     /* The "built N minutes ago" note Update now shows for a few seconds
        floats under the button instead of taking a place in its row, so the
        button and everything below it stay where they are. */
@@ -232,17 +246,13 @@
     <div class="col">
       <section>
         <h2>Sites
-          <span class="tip left" tabindex="0" data-tip="Every service is on from the start. Untick one to stop seeing ratings there; the extension then stays idle on it. Prime Video covers primevideo.com and amazon.com/gp/video; Paramount+ includes its Showtime titles. Changes apply to open tabs right away."
-                aria-label="Every service is on from the start. Untick one to stop seeing ratings there; the extension then stays idle on it. Prime Video covers primevideo.com and amazon.com/gp/video; Paramount+ includes its Showtime titles. Changes apply to open tabs right away.">i</span></h2>
-        <div class="choices">
-          <label class="check"><input class="site" data-site="netflix" type="checkbox"> Netflix</label>
-          <label class="check"><input class="site" data-site="primevideo" type="checkbox"> Prime Video</label>
-          <label class="check"><input class="site" data-site="hulu" type="checkbox"> Hulu</label>
-          <label class="check"><input class="site" data-site="hbomax" type="checkbox"> HBO Max</label>
-          <label class="check"><input class="site" data-site="appletv" type="checkbox"> Apple TV</label>
-          <label class="check"><input class="site" data-site="disneyplus" type="checkbox"> Disney+</label>
-          <label class="check"><input class="site" data-site="paramountplus" type="checkbox"> Paramount+</label>
-          <label class="check"><input class="site" data-site="tubi" type="checkbox"> Tubi</label>
+          <span class="tip left" tabindex="0" data-tip="The eight streaming services are on from the start; untick one to stop seeing ratings there. A site marked new is off until you tick it, and the browser then asks to allow it. To cover a country’s store or a site that moved, add its address below (www.amazon.co.uk/gp/video) and pick the site whose pages it serves; it gets a row and a tick of its own. Prime Video covers primevideo.com and amazon.com/gp/video; Paramount+ includes its Showtime titles. Changes apply to open tabs right away, except that a site just allowed needs its tab reloaded."
+                aria-label="The eight streaming services are on from the start; untick one to stop seeing ratings there. A site marked new is off until you tick it, and the browser then asks to allow it. To cover a country’s store or a site that moved, add its address below (www.amazon.co.uk/gp/video) and pick the site whose pages it serves; it gets a row and a tick of its own. Prime Video covers primevideo.com and amazon.com/gp/video; Paramount+ includes its Showtime titles. Changes apply to open tabs right away, except that a site just allowed needs its tab reloaded.">i</span></h2>
+        <div id="siteList" class="sites"></div>
+        <div id="siteAdd" class="row">
+          <input id="siteAddress" type="text" placeholder="Add an address: host, or host/path" spellcheck="false" autocomplete="off">
+          <select id="siteAdapter" title="The site whose pages are at that address"></select>
+          <button id="siteAddBtn" title="The browser then asks to allow that address">Add</button>
         </div>
       </section>
 
@@ -287,6 +297,7 @@
     · by <a href="https://github.com/Lwolf12/show-imdb-ratings" target="_blank" rel="noopener">Lwolf12</a></p>
 
   <script src="compat.js"></script>
+  <script src="sites-list.js"></script>
   <script src="options-text.js"></script>
   <script src="options-languages.js"></script>
   <script src="options.js"></script>

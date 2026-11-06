@@ -130,6 +130,9 @@ featuring): skip for the first submission.
 | Host permission `https://datasets.imdbws.com/` | Downloads IMDb's public ratings data dumps to build the local database. |
 | Host permission `https://www.omdbapi.com/` | Optional fallback lookups for titles not in the local database, only when the user has entered an OMDb API key. |
 | Content scripts on `www.netflix.com`, `www.primevideo.com`, `www.amazon.com/gp/video/`, `www.hulu.com`, `www.hbomax.com` (and `play.hbomax.com`, its address until November 2026), `tv.apple.com`, `www.disneyplus.com`, `www.paramountplus.com`, `tubitv.com` | Reads the title names shown on each site's title cards, banners and previews and draws the rating badge next to them. In the US Prime Video is served from amazon.com under /gp/video/, so only that path is matched; the rest of amazon.com is never touched. Each service can be switched off on the settings panel, after which the script does nothing on that site beyond one settings read. |
+| `scripting` | Registers the content script for an optional site or a user-added address while the user grants it, and removes it when the grant goes; nothing is injected anywhere else. |
+| Optional host permission `https://letterboxd.com/*` | Letterboxd is off until the user ticks it on the settings panel, which asks for this permission; the same script then reads film names on its posters and draws the badge. Unticking removes the permission. |
+| Optional host permission `https://*/*` | Lets the user add an address of their own under one of the known sites (a country's Amazon store, www.amazon.co.uk/gp/video; a site that moved). The extension never asks for all sites: it requests exactly the address the user typed, inside their click, and registers the content script for that address only. Removing the address removes the permission. |
 
 **Are you using remote code?** No. All code is in the package; `importScripts` loads only packaged files.
 
@@ -158,6 +161,13 @@ Visibility **Public**, all regions, free.
 
 ## Things the reviewer may raise
 
+- **Optional hosts in 1.3.0.** Letterboxd and the catch-all
+  `https://*/*` are under `optional_host_permissions`, so the update
+  shows no warning and disables nothing. The catch-all is requested only
+  as the one address the user types on the settings panel (the browser's
+  dialog names that host), never as a whole; see the justification table.
+  `scripting` registers the content script for a granted address and
+  nothing else.
 - **New sites in 1.0.0.** Apple TV, Disney+, Paramount+ and Tubi were
   added as ordinary content-script sites, so the install warning now lists them
   too, and existing users are asked once to accept them. The extension

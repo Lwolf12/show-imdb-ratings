@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Show IMDb Ratings on Streaming Services",
-  "version": "1.2.5",
+  "version": "1.3.0",
   "description": "Shows the IMDb user rating on title cards while you browse Netflix, Prime Video, Hulu, HBO Max and more.",
   "icons": {
     "16": "icons/icon16.png",
@@ -9,8 +9,9 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "unlimitedStorage", "alarms", "offscreen"],
+  "permissions": ["storage", "unlimitedStorage", "alarms", "offscreen", "scripting"],
   "host_permissions": ["https://www.omdbapi.com/", "https://datasets.imdbws.com/"],
+  "optional_host_permissions": ["https://letterboxd.com/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
   },

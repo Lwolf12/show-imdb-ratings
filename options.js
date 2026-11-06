@@ -1,8 +1,9 @@
 // The settings page: the database's build and status (refreshStats, which
-// also fills the languages section in options-languages.js), the sites,
+// also fills the languages section in options-languages.js), the sites
+// list (sites-list.js has the table),
 // the badges, OMDb, Advanced and the one-time update note. The texts are
 // in options-text.js; options.html loads compat.js, options-text.js,
-// options-languages.js and this file, in that order, into one global
+// options-languages.js and this file, in that order (sites-list.js before them), into one global
 // scope.
 
 // ------------------------------------------------------------ database
@@ -283,71 +284,193 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // --------------------------------------------------------------- sites
 
-// Which services the content script runs on. Stored as one object keyed by
-// the adapter's name; a missing key means on, so new sites default to on.
-// Opt-in sites (data-origins, see OPTIONAL_SITES in background.js) are on
-// only while Chrome also grants their host: ticking one asks for it,
-// unticking gives it back.
-const SITE_BOXES = [...document.querySelectorAll('input.site')];
-const originsOf = (box) => (box.dataset.origins ? box.dataset.origins.split(' ') : null);
+// Which sites the content script runs on, and where (sites-list.js). The
+// list shows every site the extension knows and every address the user
+// added under one, ticked rows first, in an order set when the page opens
+// and held while it is open; the add row under the list takes an address
+// and the site whose pages it serves.
+//
+// Stored as one object ("sites") keyed by the adapter's name, a missing
+// key meaning on, plus one key per added address (its own switch, which
+// content.js consults on its pages); the added addresses themselves are
+// in "addresses" (name -> [address]).
+//
+// The eight required sites toggle on and off. An optional site, and
+// every added address, also needs the browser's permission for its
+// address: ticking asks for it, inside the click, the only time the
+// browser allows the question; unticking an optional site gives the
+// permission back, unticking an address keeps it, so ticking again is
+// instant. Firefox treats the required sites the same way: it lets the
+// user withdraw a site's access on about:addons, so a required site there
+// shows unticked while access is withdrawn, ticking asks again (for the
+// content script's own patterns: Firefox accepts exactly what the manifest
+// declares) and unticking keeps the access, the extension just staying
+// idle there.
+const SL = IMDBEXT_SITES;
+const siteRows = []; // [{key, name, address|null, box, label, hint, granted}] in list order
+let knownAddresses = {}; // the "addresses" object as last loaded (the add row checks against it before asking the browser)
 
-// Firefox lets the user withdraw a site's access on about:addons even for
-// sites the manifest asks for, so there every site works like an opt-in
-// one: unticked while access is withdrawn, and ticking it asks Firefox for
-// access again. Unticking keeps the access (data-keep); the extension just
-// stays idle there, as in Chrome. The patterns asked for are the content
-// script's own: Firefox accepts exactly what the manifest declares and
-// rejects anything broader (www.amazon.com/* for www.amazon.com/gp/video/*).
-if (FIREFOX) {
-  for (const cs of chrome.runtime.getManifest().content_scripts || []) {
-    // Firefox reports full URLs (moz-extension://…/sites/netflix.js).
-    const name = ((cs.js || [])[0] || '').match(/(?:^|\/)sites\/(\w+)\.js$/);
-    const box = name && SITE_BOXES.find((b) => b.dataset.site === name[1]);
-    if (!box || box.dataset.origins) continue;
-    box.dataset.origins = cs.matches.join(' ');
-    box.dataset.keep = '1';
-  }
+const patternsOf = (row) => (row.address ? [SL.patternOf(row.address)] : SL.SITES[row.name].addresses.map(SL.patternOf));
+// Whether the browser must grant a row's address(es) before it can be on.
+const needsGrant = (row) => !!row.address || !!SL.SITES[row.name].optional || FIREFOX;
+// Whether unticking keeps the grant.
+const keepGrant = (row) => !!row.address || (FIREFOX && !SL.SITES[row.name].optional);
+// Whether the background registers the row's content script (not the
+// manifest's own sites).
+const registered = (row) => !!row.address || !!SL.SITES[row.name].optional;
+
+function siteHint(row) {
+  if (row.address) return '(' + SL.SITES[row.name].label + (row.granted ? '' : ', not allowed here') + ')';
+  return SL.SITES[row.name].note ? '(' + SL.SITES[row.name].note + ')' : '';
 }
 
-// Each box remembers whether the browser grants its site (data-granted), so
-// ticking a site that already has access neither asks again nor tells the
-// user to reload its tabs: the content script picks the setting up live.
+function siteRow(name, address) {
+  const label = document.createElement('label');
+  label.className = address ? 'check address' : 'check';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.className = 'site';
+  box.dataset.key = address || name;
+  label.appendChild(box);
+  label.appendChild(document.createTextNode(' ' + (address || SL.SITES[name].label) + ' '));
+  const hint = document.createElement('span');
+  hint.className = 'hint';
+  label.appendChild(hint);
+  const row = { key: address || name, name, address: address || null, box, label, hint, granted: false };
+  if (address) {
+    const x = document.createElement('a');
+    x.className = 'x';
+    x.href = '#';
+    x.title = 'Remove this address';
+    x.textContent = '×';
+    x.addEventListener('click', (e) => {
+      e.preventDefault();
+      removeAddress(row);
+    });
+    label.appendChild(x);
+  }
+  box.addEventListener('change', () => siteChanged(row));
+  return row;
+}
+
+// Builds the list: the sites in the table's order, then the added
+// addresses, ticked rows first. A row's tick is its switch, and only
+// while the browser grants its address.
 async function loadSites() {
-  const { sites = {} } = await chrome.storage.sync.get('sites');
-  for (const box of SITE_BOXES) {
-    const origins = originsOf(box);
-    const granted = !origins || (await chrome.permissions.contains({ origins }));
-    box.dataset.granted = granted ? '1' : '';
-    box.checked = granted && sites[box.dataset.site] !== false;
+  const { sites = {}, addresses = {} } = await chrome.storage.sync.get(['sites', 'addresses']);
+  knownAddresses = addresses;
+  const rows = SL.NAMES.map((name) => siteRow(name, null));
+  for (const name of SL.NAMES) for (const a of SL.addedTo(name, addresses)) rows.push(siteRow(name, a));
+  for (const row of rows) {
+    row.granted = !needsGrant(row) || (await chrome.permissions.contains({ origins: patternsOf(row) }));
+    row.box.checked = row.granted && sites[row.key] !== false;
+    row.hint.textContent = siteHint(row);
+  }
+  rows.sort((a, b) => b.box.checked - a.box.checked); // stable: the table's order within each group
+  const list = $('siteList');
+  list.replaceChildren();
+  siteRows.length = 0;
+  for (const row of rows) {
+    list.appendChild(row.label);
+    siteRows.push(row);
   }
 }
 
-for (const box of SITE_BOXES) {
-  box.addEventListener('change', async () => {
-    const label = box.parentElement.textContent.trim().split(' (')[0];
-    const origins = originsOf(box);
-    let note = '';
-    if (origins && box.checked && !box.dataset.granted) {
-      // Must be the first await: the browser only asks during the click.
-      const granted = await chrome.permissions.request({ origins }).catch(() => false);
-      if (!granted) {
-        box.checked = false;
-        say(label + ' stays off: access to the site was not allowed.', 'bad');
-        return;
-      }
-      box.dataset.granted = '1';
-      note = ' Reload any ' + label + ' tab that was already open.';
+// Access granted or withdrawn elsewhere (Site access on chrome://extensions,
+// about:addons): the ticks follow, in place.
+async function refreshGrants() {
+  const { sites = {} } = await chrome.storage.sync.get('sites');
+  for (const row of siteRows) {
+    if (!needsGrant(row)) continue;
+    row.granted = await chrome.permissions.contains({ origins: patternsOf(row) });
+    row.box.checked = row.granted && sites[row.key] !== false;
+    row.hint.textContent = siteHint(row);
+  }
+}
+if (chrome.permissions.onAdded) {
+  chrome.permissions.onAdded.addListener(() => refreshGrants());
+  chrome.permissions.onRemoved.addListener(() => refreshGrants());
+}
+
+async function saveSites() {
+  const sites = {};
+  for (const row of siteRows) sites[row.key] = row.box.checked;
+  await chrome.storage.sync.set({ sites });
+}
+
+async function siteChanged(row) {
+  const { box } = row;
+  const label = row.address || SL.SITES[row.name].label;
+  let note = '';
+  if (box.checked && needsGrant(row) && !row.granted) {
+    // Must be the first await: the browser only asks during the click.
+    const granted = await chrome.permissions.request({ origins: patternsOf(row) }).catch(() => false);
+    if (!granted) {
+      box.checked = false;
+      say(label + ' stays off: access to the site was not allowed.', 'bad');
+      return;
     }
-    const sites = {};
-    for (const b of SITE_BOXES) sites[b.dataset.site] = b.checked;
-    await chrome.storage.sync.set({ sites });
-    if (origins && !box.checked && !box.dataset.keep) {
-      await chrome.permissions.remove({ origins }).catch(() => {});
-      box.dataset.granted = '';
-    }
-    if (origins && !box.dataset.keep) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
-    say(label + (box.checked ? ' on.' : ' off.') + note);
-  });
+    row.granted = true;
+    row.hint.textContent = siteHint(row);
+    note = ' Reload any ' + label + ' tab that was already open.';
+  }
+  await saveSites();
+  if (!box.checked && needsGrant(row) && !keepGrant(row)) {
+    await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});
+    row.granted = false;
+  }
+  if (registered(row)) await chrome.runtime.sendMessage({ type: 'sync-sites' }).catch(() => {});
+  say(label + (box.checked ? ' on.' : ' off.') + note);
+}
+
+// The add row: an address and the site whose pages it serves. The browser
+// is asked for the address itself (the catch-all optional permission lets
+// it be asked for any https address), inside the click, so the checks
+// before it use nothing but what the page already holds.
+for (const name of SL.NAMES) {
+  const o = document.createElement('option');
+  o.value = name;
+  o.textContent = SL.SITES[name].label;
+  $('siteAdapter').appendChild(o);
+}
+$('siteAddress').addEventListener('input', () => {
+  const guess = SL.guessSite(SL.normalizeAddress($('siteAddress').value) || '');
+  if (guess) $('siteAdapter').value = guess;
+});
+$('siteAddress').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('siteAddBtn').click();
+});
+
+$('siteAddBtn').addEventListener('click', async () => {
+  const address = SL.normalizeAddress($('siteAddress').value);
+  const name = $('siteAdapter').value;
+  if (!address) return say('Type an address like www.amazon.co.uk/gp/video: a host, with a path if the site lives under one.', 'bad');
+  const problem = SL.addProblem(name, address, knownAddresses);
+  if (problem) return say('Not added: ' + problem + '.', 'bad');
+  const granted = await chrome.permissions.request({ origins: [SL.patternOf(address)] }).catch(() => false);
+  if (!granted) return say('Not added: access to ' + SL.hostOf(address) + ' was not allowed.', 'bad');
+  const addresses = { ...knownAddresses, [name]: [...(knownAddresses[name] || []), address] };
+  const { sites = {} } = await chrome.storage.sync.get('sites');
+  await chrome.storage.sync.set({ addresses, sites: { ...sites, [address]: true } });
+  $('siteAddress').value = '';
+  await loadSites();
+  const row = siteRows.find((r) => r.address === address);
+  if (row && typeof row.label.scrollIntoView === 'function') row.label.scrollIntoView({ block: 'nearest' });
+  const own = SL.SITES[name].addresses.find((o) => SL.covers(address, o));
+  say('Added ' + address + ' under ' + SL.SITES[name].label + (own ? ' (its own pages under ' + own + ' keep its tick)' : '') + '. Reload any tab there.');
+});
+
+// The cross on an added address: the row goes, with its switch and its grant.
+async function removeAddress(row) {
+  const { addresses = {}, sites = {} } = await chrome.storage.sync.get(['addresses', 'sites']);
+  const rest = (addresses[row.name] || []).filter((a) => a !== row.address);
+  if (rest.length) addresses[row.name] = rest;
+  else delete addresses[row.name];
+  delete sites[row.address];
+  await chrome.storage.sync.set({ addresses, sites });
+  await chrome.permissions.remove({ origins: [SL.patternOf(row.address)] }).catch(() => {});
+  await loadSites();
+  say(row.address + ' removed.');
 }
 
 // -------------------------------------------------------------- badges
@@ -623,14 +746,21 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
   });
 }
 
-// Every setting back to its default: all sites on, badges always with the
-// star label, no extras, OMDb lookups on if there is a key, the local
-// database with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
+// Every setting back to its default: the required sites on and the
+// optional ones off, no added addresses, badges always with the star
+// label, no extras, OMDb lookups on if there is a key, the local database
+// with the default refresh. The key and the database stay.
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;
   const { omdbKey = '' } = await chrome.storage.sync.get('omdbKey');
+  // Optional sites and added addresses give their grants back: after the
+  // reset nothing optional is on, and nothing is allowed that the list
+  // no longer shows.
+  for (const row of siteRows) {
+    if (row.granted && needsGrant(row) && (row.address || !keepGrant(row))) await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});
+  }
   await chrome.storage.sync.remove(SETTING_KEYS);
   // The languages seen on streaming pages (languages.js notePageLang)
   // pre-tick the language list; after a reset nothing should come pre-ticked.
@@ -649,6 +779,7 @@ $('resetSettings').addEventListener('click', async () => {
 // first time the page opens, for versions with something the user may have
 // wondered about; shown once, then forgotten.
 const UPDATE_NOTES = {
+  '1.3.0': 'Updated to 1.3.0. New under Sites: Letterboxd (tick it to allow the site), and a row to add an address of your own, such as your country’s Amazon store.',
   '1.2.0': FIREFOX
     ? 'Updated to 1.2.0. HBO Max moved to www.hbomax.com; if HBO Max is unticked under Sites, tick it to allow the new address.'
     : 'Updated to 1.2.0. HBO Max moved to www.hbomax.com, which is why Chrome asked about that site.',

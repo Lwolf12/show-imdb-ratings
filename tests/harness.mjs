@@ -13,8 +13,8 @@ const read = (f) => readFileSync(new URL(f, root), 'utf8');
 
 // The load order of the background scripts, as store/firefox-manifest.mjs
 // lists them and background.js imports them.
-export const BACKGROUND_SCRIPTS = ['compat.js', 'db.js', 'omdb.js', 'lookup.js', 'languages.js', 'refresh.js', 'build.js', 'background.js'];
-export const OPTIONS_SCRIPTS = ['compat.js', 'options-text.js', 'options-languages.js', 'options.js'];
+export const BACKGROUND_SCRIPTS = ['compat.js', 'sites-list.js', 'db.js', 'omdb.js', 'lookup.js', 'languages.js', 'refresh.js', 'build.js', 'background.js'];
+export const OPTIONS_SCRIPTS = ['compat.js', 'sites-list.js', 'options-text.js', 'options-languages.js', 'options.js'];
 
 // chrome.storage fires onChanged after the write, not during it.
 export const settle = (ms = 30) => new Promise((r) => setTimeout(r, ms));
@@ -56,6 +56,52 @@ export function makeStorage(init = {}) {
   return { areas, sync: area('sync'), local: area('local'), session: area('session'), onChanged: { addListener: (fn) => listeners.push(fn) } };
 }
 
+// The browser's host permission grants, as both contexts see them: a set
+// of match patterns; request() grants when allow is true. onAdded and
+// onRemoved fire in every context that listens (after the call, like the
+// browser).
+export function makeGrants(initial = [], { allow = true } = {}) {
+  const set = new Set(initial);
+  const added = [];
+  const removed = [];
+  const fire = (list) => { for (const fn of list) setTimeout(fn, 0); };
+  const has = (origins) => (origins || []).every((o) => set.has(o));
+  const grants = {
+    set, allow, asked: [],
+    api: () => ({
+      contains: async ({ origins }) => has(origins),
+      request: async ({ origins }) => {
+        grants.asked.push(origins);
+        if (!grants.allow) return false;
+        for (const o of origins) set.add(o);
+        fire(added);
+        return true;
+      },
+      remove: async ({ origins }) => {
+        for (const o of origins) set.delete(o);
+        fire(removed);
+        return true;
+      },
+      onAdded: { addListener: (fn) => added.push(fn) },
+      onRemoved: { addListener: (fn) => removed.push(fn) },
+    }),
+  };
+  return grants;
+}
+
+// chrome.scripting as the background uses it: the registered scripts by id.
+export function makeScripting() {
+  const scripts = new Map();
+  return {
+    scripts,
+    api: {
+      getRegisteredContentScripts: async () => [...scripts.values()],
+      registerContentScripts: async (list) => { for (const s of list) { if (scripts.has(s.id)) throw new Error('registered twice: ' + s.id); scripts.set(s.id, s); } },
+      unregisterContentScripts: async ({ ids }) => { for (const id of ids) scripts.delete(id); },
+    },
+  };
+}
+
 const events = () => {
   const listeners = {};
   const ev = (name) => ({ addListener(fn) { (listeners[name] ||= []).push(fn); } });
@@ -84,7 +130,7 @@ export function builtMeta(over = {}) {
   return { format: DB.FORMAT, built: '2026-11-01', builtAt: Date.now() - 3 * day, titles: 420000, episodes: 7000000, minVotes: 25, unknown: 0, langs: [], ...over };
 }
 
-export function loadBackground({ storage, meta = null, file = null, languages = ['en-US'] } = {}) {
+export function loadBackground({ storage, meta = null, file = null, languages = ['en-US'], grants = null, scripting = null } = {}) {
   const { listeners, ev } = events();
   const sent = []; // runtime.sendMessage calls (to the build page)
   const db = { meta, file, log: [] };
@@ -99,7 +145,8 @@ export function loadBackground({ storage, meta = null, file = null, languages = 
     },
     action: { onClicked: ev('clicked'), setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {}, setBadgeTextColor: async () => {}, setTitle: async () => {} },
     alarms: { create: () => {}, onAlarm: ev('alarm') },
-    permissions: { contains: async () => true, onAdded: ev('permAdded'), onRemoved: ev('permRemoved') },
+    permissions: grants ? grants.api() : { contains: async () => true, onAdded: ev('permAdded'), onRemoved: ev('permRemoved') },
+    ...(scripting ? { scripting: scripting.api } : {}),
     windows: { create: async () => ({ id: 1 }), update: async () => {} },
     offscreen: { hasDocument: async () => false, createDocument: async () => {}, closeDocument: async () => {} },
   };
@@ -173,14 +220,15 @@ function makeDocument() {
       },
       querySelectorAll(sel) { return descendants(e).filter((d) => matches(d, sel)); },
       querySelector(sel) { return e.querySelectorAll(sel)[0] || null; },
-      focus() {}, select() {},
+      replaceChildren() { for (const c of e.children) c.parentElement = null; e.children = []; e.childNodes = []; },
+      focus() {}, select() {}, scrollIntoView() {},
     };
     return e;
   }
   const document = {
     getElementById(id) {
       if (!byId.has(id)) {
-        const e = el(id === 'langList' ? 'div' : 'input');
+        const e = el(id === 'langList' || id === 'siteList' ? 'div' : id === 'siteAdapter' ? 'select' : id === 'siteAddBtn' ? 'button' : 'input');
         e.id = id;
         e.parentElement = el('label');
         byId.set(id, e);
@@ -194,13 +242,13 @@ function makeDocument() {
   return document;
 }
 
-export function loadOptions({ storage, background, version = '0.0.0' }) {
+export function loadOptions({ storage, background, version = '0.0.0', grants = null }) {
   const document = makeDocument();
   const chrome = {
     storage: { sync: storage.sync, local: storage.local, session: storage.session, onChanged: storage.onChanged },
     runtime: { sendMessage: (m) => background.message(m), getManifest: () => ({ version, content_scripts: [] }) },
     tabs: { getCurrent: (cb) => cb(null) },
-    permissions: { contains: async () => true, request: async () => true, remove: async () => {} },
+    permissions: grants ? grants.api() : { contains: async () => true, request: async () => true, remove: async () => {} },
   };
   const ctx = vm.createContext({
     chrome, document, console, setTimeout, clearTimeout, confirm: () => true,
@@ -211,5 +259,7 @@ export function loadOptions({ storage, background, version = '0.0.0' }) {
   // The language list's row for a code, once renderLanguages has built it.
   const langRow = (code) => $('langList').querySelectorAll('input').find((i) => i.value === code) || null;
   const ticked = () => $('langList').querySelectorAll('input:checked').map((i) => i.value);
-  return { ctx, document, $, langRow, ticked, call: (expr) => vm.runInContext(expr, ctx) };
+  // The Sites list's rows: [{key, checked, hint}] in list order.
+  const siteRows = () => $('siteList').children.map((label) => ({ key: label.querySelector('input').dataset.key, checked: label.querySelector('input').checked, hint: label.querySelector('span').textContent, label }));
+  return { ctx, document, $, langRow, ticked, siteRows, call: (expr) => vm.runInContext(expr, ctx) };
 }

@@ -38,7 +38,7 @@
 // compat.js, checked by omdbRequest). Firefox's manifest is generated from
 // Chrome's by store/build-zip.ps1.
 
-if (typeof importScripts === 'function') importScripts('compat.js', 'db.js', 'omdb.js', 'lookup.js', 'languages.js', 'refresh.js', 'build.js');
+if (typeof importScripts === 'function') importScripts('compat.js', 'sites-list.js', 'db.js', 'omdb.js', 'lookup.js', 'languages.js', 'refresh.js', 'build.js');
 
 const DB_CHECK_MINUTES = 360; // how often the alarm looks at what is due
 
@@ -165,21 +165,21 @@ chrome.runtime.onStartup.addListener(() => {
   maybeRefresh();
 });
 
-// Opt-in sites, for when the extension has users to protect. Adding a
+// Optional sites and the user's own addresses (sites-list.js). Adding a
 // required host to an update makes Chrome switch the extension off for
-// everyone until they accept the new permission, so a site added later can
-// be made optional instead: the settings ask for access when the user
-// ticks it (its checkbox carries data-origins), and while access is granted
-// its content script is registered here. Granting or removing access
-// anywhere (the settings, or Site access on chrome://extensions) lands in
-// permissions.onAdded/onRemoved; checked again whenever the worker starts.
-// Needs "scripting" in the manifest's permissions and the host under
-// optional_host_permissions. Empty for now: Apple TV, Disney+ and Tubi
-// arrived while the store version had only a handful of users, so they are
-// ordinary sites in the manifest. An entry looks like
-//   appletv: { matches: ['https://tv.apple.com/*'], js: ['sites/appletv.js', 'content.js'] },
-const OPTIONAL_SITES = {};
-
+// everyone until they accept the new permission, so every site since 1.3
+// is optional instead: the settings ask the browser for access when the
+// user ticks it, and while access is granted its content script is
+// registered here, one registration per address (id name@address). The
+// addresses the user added under a site (sync storage "addresses") are
+// registered the same way; one wider than the site's own address
+// (www.amazon.com over www.amazon.com/gp/video) excludes the site's own
+// patterns, which the manifest's script already covers, so no page gets
+// the content script twice. Granting or removing access anywhere (the
+// settings, or Site access on chrome://extensions) lands in
+// permissions.onAdded/onRemoved; checked again whenever the worker starts
+// and whenever the addresses change. Needs "scripting" in the manifest's
+// permissions and the hosts under optional_host_permissions.
 let siteSync = Promise.resolve();
 
 function syncOptionalSites() {
@@ -187,24 +187,46 @@ function syncOptionalSites() {
   return siteSync;
 }
 
-async function registerOptionalSites() {
-  if (!Object.keys(OPTIONAL_SITES).length || !chrome.scripting) return;
-  const registered = new Set((await chrome.scripting.getRegisteredContentScripts()).map((s) => s.id));
-  for (const [id, site] of Object.entries(OPTIONAL_SITES)) {
-    const granted = await chrome.permissions.contains({ origins: site.matches });
-    if (granted && !registered.has(id)) {
-      await chrome.scripting.registerContentScripts([
-        { id, matches: site.matches, js: site.js, css: ['badge.css'], runAt: 'document_idle' },
-      ]);
-    } else if (!granted && registered.has(id)) {
-      await chrome.scripting.unregisterContentScripts({ ids: [id] });
+// Every registration wanted now: [{id, matches, excludeMatches?, js}].
+async function wantedScripts() {
+  const S = IMDBEXT_SITES;
+  const { addresses = {} } = await chrome.storage.sync.get('addresses');
+  const want = [];
+  for (const name of S.NAMES) {
+    const site = S.SITES[name];
+    const js = [S.adapterFile(name), 'content.js'];
+    const own = site.addresses.map(S.patternOf);
+    if (site.optional) for (const a of site.addresses) want.push({ id: S.scriptId(name, a), matches: [S.patternOf(a)], js });
+    for (const a of S.addedTo(name, addresses)) {
+      const excludeMatches = own.filter((p) => p.startsWith('https://' + S.hostOf(a) + '/'));
+      want.push({ id: S.scriptId(name, a), matches: [S.patternOf(a)], ...(excludeMatches.length ? { excludeMatches } : {}), js });
     }
   }
+  return want;
+}
+
+async function registerOptionalSites() {
+  if (!chrome.scripting) return;
+  const registered = new Set((await chrome.scripting.getRegisteredContentScripts()).map((s) => s.id));
+  const want = await wantedScripts();
+  const keep = new Set();
+  const add = [];
+  for (const script of want) {
+    if (!(await chrome.permissions.contains({ origins: script.matches }))) continue;
+    keep.add(script.id);
+    if (!registered.has(script.id)) add.push({ ...script, css: ['badge.css'], runAt: 'document_idle' });
+  }
+  const stale = [...registered].filter((id) => !keep.has(id));
+  if (stale.length) await chrome.scripting.unregisterContentScripts({ ids: stale });
+  if (add.length) await chrome.scripting.registerContentScripts(add);
 }
 
 syncOptionalSites();
 chrome.permissions.onAdded.addListener(() => syncOptionalSites());
 chrome.permissions.onRemoved.addListener(() => syncOptionalSites());
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.addresses) syncOptionalSites();
+});
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'db-refresh') maybeRefresh();

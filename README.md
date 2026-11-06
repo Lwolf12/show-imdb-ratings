@@ -20,6 +20,7 @@ is a small adapter file, so more services can be added.
 | Disney+ | top-right of each poster and Continue Watching tile | none (no hover preview); in the home page banner, a chip in the rating / year / genre line; on a title's own page, a chip under the "1998 – 2005 • 8 Seasons" line | in the Episodes tab, after each episode title | titles from the poster art's alt text or the tile's label (badges, "Hulu Original Series" and network names stripped); year from "Released 2006" where the row gives it; live sports, playlists and collections skipped |
 | Paramount+ (includes Showtime) | top-right of each tile | none (no hover preview); in the home page banner, a chip under the title; on a show's own page, a chip under the genre / year / seasons line | on a show page, after each episode's "41M · Nov 13, 2022" line | movie/series type from the link path (/movies/video/, /shows/); a show page's year is the first season's; movies open straight into the player, so they are rated on tiles only; live-game rows, brand and collection tiles skipped |
 | Tubi | top-right of each poster, and of each thumbnail in a title page's "You May Also Like" list | Tubi's own banner already shows an IMDb score; on a title's own page, a chip in the "Crime · 2003 · 16 Seasons" line | on a series page, in each episode's "1 hr 40 min" line | movie/series type from the link path; year passed only for movies (a series' year is a recent season's) |
+| Letterboxd (optional since 1.3) | top-right of each poster on browse grids, lists, watchlists, diaries and profiles; posters under 60 px wide are left alone | none (Letterboxd's own hover shows its rating); on a film's own page, a chip under the credits | none (films only) | films only, so the year on every poster makes the match exact; off until ticked under Sites, which asks the browser to allow letterboxd.com |
 
 ## Setup
 
@@ -58,10 +59,16 @@ is a small adapter file, so more services can be added.
    score Metacritic (the title's page when OMDb knows it, else that site's
    search); the rest of the badge opens IMDb. Until the key works those
    boxes are greyed out.
-4. Optional: every service is on from the start, and the extension does
-   nothing on a site you don't visit. To stop seeing ratings on one, untick
-   it under **Sites** on the same panel; the extension then stays idle
-   there. Changes apply to open tabs at once.
+4. Optional: the eight streaming services are on from the start, and the
+   extension does nothing on a site you don't visit. To stop seeing ratings
+   on one, untick it under **Sites** on the same panel; the extension then
+   stays idle there. A site marked new (Letterboxd) is off until you tick
+   it, and the browser then asks you to allow it. The row under the list
+   adds an address of your own, for a country's store or a site that
+   moved (`www.amazon.co.uk/gp/video`, say, with Prime Video picked as the
+   site whose pages it serves): the browser asks to allow that address,
+   and it gets a row and a tick of its own. Changes apply to open tabs at
+   once; a site just allowed needs its tab reloaded.
 5. Optional: under **Badges on title cards**, show card badges always,
    only when the mouse is over a card, or not at all (previews, banners
    and title pages keep their rating either way); show the grey "n/a"
@@ -175,10 +182,11 @@ rebuild learns later still wins.
 
 | File | Role |
 | --- | --- |
-| `manifest.json` | Manifest V3. One content-script entry per site, each loading that site's adapter and then `content.js`; host permissions for datasets.imdbws.com (the dumps) and omdbapi.com only. |
-| `sites/netflix.js`, `sites/primevideo.js`, `sites/hulu.js`, `sites/hbomax.js`, `sites/appletv.js`, `sites/disneyplus.js`, `sites/paramountplus.js`, `sites/tubi.js` | Site adapters: which elements are title cards and hover previews, how to read the title (and movie/series type where available), and where the badge goes. |
+| `manifest.json` | Manifest V3. One content-script entry per required site, each loading that site's adapter and then `content.js`; host permissions for datasets.imdbws.com (the dumps) and omdbapi.com; optional host permissions for the optional sites and a catch-all for addresses the user adds. |
+| `sites-list.js` | The table of sites: adapter name, label, addresses, required or optional. Shared by the background (registrations), the settings page (the Sites list) and the tests (which check the manifest against it); also the address checks for the add row. |
+| `sites/netflix.js`, `sites/primevideo.js`, `sites/hulu.js`, `sites/hbomax.js`, `sites/appletv.js`, `sites/disneyplus.js`, `sites/paramountplus.js`, `sites/tubi.js`, `sites/letterboxd.js` | Site adapters: which elements are title cards and hover previews, how to read the title (and movie/series type where available), and where the badge goes. |
 | `content.js` | Generic: watches the page, looks up titles as cards come near the viewport, draws badges, refreshes stale ones in the background. |
-| `background.js` | The background's shell (a service worker; an event page in Firefox, see below): the event listeners, the message router for the content scripts and the settings page, the settings window, the status report. |
+| `background.js` | The background's shell (a service worker; an event page in Firefox, see below): the event listeners, the message router for the content scripts and the settings page, the settings window, the status report, and the content-script registrations for optional sites and added addresses while the browser grants them. |
 | `lookup.js`, `omdb.js` | Answering the content scripts: remembered answers in `chrome.storage.local` first, then the local database, then OMDb (with a concurrency limit, a daily request count and a pause after a limit error). |
 | `refresh.js`, `languages.js`, `build.js` | The automatic refresh (what is due and when), the languages chosen for titles in other languages, and the database build as the background drives it (its state, the hidden page, cancel). |
 | `db.js` | The local ratings database in IndexedDB, shared by the service worker (lookups), the build (writes) and the settings (status). Ratings live in a table by IMDb ID that the weekly pass rewrites. |
@@ -211,24 +219,32 @@ What differs:
   asks Firefox for access again. The same goes for datasets.imdbws.com,
   where the build reads IMDb's files: Update now, Update ratings only and
   Get titles ask for it first, so a temporary add-on (which starts with
-  no site access at all) can build too.
+  no site access at all) can build too. The optional sites and the
+  catch-all for added addresses are ordinary host permissions in the
+  Firefox manifest (Firefox treats every host permission as optional),
+  asked for one address at a time, as in Chrome.
 
 To try it without the store: build the ZIPs, open `about:debugging`, click
 **This Firefox → Load Temporary Add-on…** and pick
 `dist/imdb-ratings-v<version>-firefox.zip`. It stays until Firefox
 restarts.
 
-## Adding another streaming site
+## Adding another site
 
 Create `sites/<name>.js` defining `window.IMDBEXT_SITE` in the same shape as
 the existing adapters: a `targets` list where each entry has a `kind`
 (`card` or `detail`), a `selector`, `titleOf(el)` (a title, or a list of
 candidates tried in order), `host(el)`, and
 optionally `typeOf(el)` (returns `movie` or `series`), `yearOf(el)` (a
-four-digit release year) and `place(host, badge)`. Add a `content_scripts` entry in the manifest matching
-that site's URLs that loads the adapter before `content.js`, and put any
-site-specific badge positioning in `badge.css`. The existing adapters'
-header comments record what each site's markup looks like.
+four-digit release year) and `place(host, badge)`. Add the site to the
+table in `sites-list.js` as an optional one, with its addresses, and its
+match patterns under `optional_host_permissions` in the manifest (the
+tests check the two agree). No content-script entry: the eight required
+sites keep theirs, and every site since is optional, so that an update
+never makes Chrome switch the extension off for its users to accept a new
+site. Put any site-specific badge positioning in `badge.css`. The
+existing adapters' header comments record what each site's markup looks
+like.
 
 Or point Claude Code at this folder, paste the site's URL, and say "add
 this one."
