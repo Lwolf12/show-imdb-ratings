@@ -24,9 +24,15 @@
 // the shop's search results are <div data-component-type="s-search-result">
 // cards with the product name in an <h2>; a film or show among them says
 // "Prime Video" as its format, or "Starring:" / "Directed by:" lines, or
-// is a disc with "[Blu-ray]", "[DVD]" or "(4K UHD + Digital)" on its name.
-// Books and everything else are left alone. The image box
-// (.s-product-image-container, position: relative) hosts the badge.
+// is a disc with "[Blu-ray]", "[DVD]" or "(4K UHD + Digital)" on its name,
+// or an unbracketed tail ("Tenet 4K UHD + Blu-ray – Christopher Nolan
+// Sci-Fi Action Thriller – 2-Disc Region Free"), which is cut from its
+// first format word. Books and everything else are left alone. The image
+// box (.s-product-image-container, position: relative) hosts the badge.
+// The sponsored "Recently bought and rated" grid
+// ([data-component-type="s-searchgrid-carousel"]) lays its cards out the
+// same way inside li.a-carousel-card, so it is covered too; sponsored
+// brand carousels (hashed class names, no format marker) are not.
 
 (() => {
   const SUFFIXES = [
@@ -38,6 +44,8 @@
     // A disc's format tag: "[Blu-ray]", "(4K UHD + Blu-ray + Digital)", "[DVD] [2019]".
     /\s*[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd|digital|steelbook|edition)\b[^\)\]]*[\)\]]\s*$/i,
     /\s*\[\d{4}\]\s*$/, // "[2021]" after a disc tag; "(2021)" stays, the lookup reads it as the year
+    // An unbracketed format tail: everything from the first format word on.
+    /(?:^|\s)[-–:,]?\s*(4k(\s+ultra\s*hd|\s+uhd)?|uhd|ultra\s*hd|blu-?ray|dvd|steelbook|\d+-disc)\b.*$/i, // after a space, so a bracketed tag is left to the rule above
     /\s*[-–:,]?\s*the\s+complete\s+(series|collection)\s*$/i,
   ];
 
@@ -143,11 +151,15 @@
         // The shop's search results (www.amazon.com added as an address):
         // films and shows only, told by their format or credits.
         kind: 'card',
-        selector: '[data-component-type="s-search-result"]',
+        selector: '[data-component-type="s-search-result"], [data-component-type="s-searchgrid-carousel"] li.a-carousel-card',
         titleOf(el) {
           if (!isVideoResult(el)) return null;
           const h2 = el.querySelector('h2');
-          return cleanTitle(h2 ? h2.textContent : '');
+          const name = cleanTitle(h2 ? h2.textContent : '');
+          if (!name) return null;
+          // A boxed set ("Doctor Who: The Matt Smith Collection") is not a
+          // title; the part before the colon usually is.
+          return /\bcollection\b/i.test(name) && name.includes(':') ? [name, name.split(':')[0].trim()] : name;
         },
         typeOf(el) {
           const h2 = el.querySelector('h2');
