@@ -79,7 +79,9 @@
     .sites label.check { margin: 1px 0; white-space: nowrap; }
     .sites label.address { grid-column: 1 / -1; }
     .sites .hint { color: #777; font-size: 11px; }
-    .sites .x { margin-left: auto; padding: 0 4px; color: #999; text-decoration: none; font-size: 15px; line-height: 1; }
+    /* The cross that removes an added address: dark enough to be seen as a
+       button, red on hover, with the row's right edge to itself. */
+    .sites .x { margin-left: auto; padding: 0 6px; color: #555; text-decoration: none; font-size: 16px; font-weight: 600; line-height: 1; }
     .sites .x:hover { color: #c33; }
     #siteAdd { margin: 2px 0 0; flex-wrap: nowrap; }
     #siteAdd input, #siteAdd select, #siteAdd button { font-size: 13px; padding: 3px 8px; }
