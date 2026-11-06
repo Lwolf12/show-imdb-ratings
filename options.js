@@ -466,6 +466,10 @@ for (const name of SL.NAMES) {
   o.textContent = SL.SITES[name].label;
   $('siteAdapter').appendChild(o);
 }
+// Prime Video is the one most people would add an address for (another
+// country's Amazon store, or www.amazon.com for the shop's own pages), so
+// it is the choice until an address says otherwise.
+$('siteAdapter').value = 'primevideo';
 $('siteAddress').addEventListener('input', () => {
   const guess = SL.guessSite(SL.normalizeAddress($('siteAddress').value) || '');
   if (guess) $('siteAdapter').value = guess;
