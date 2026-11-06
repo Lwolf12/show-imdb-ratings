@@ -14,6 +14,10 @@
 
   const site = window.IMDBEXT_SITE;
   if (!site || !Array.isArray(site.targets)) return;
+  // With card badges on hover only, the badge waits longer on a site whose
+  // own preview opens over the card (the adapter says: hoverPreview), so it
+  // never flashes up under the preview; elsewhere it comes at once.
+  document.documentElement.classList.toggle('imdbext-preview-site', !!site.hoverPreview);
 
   const PROCESSED = 'data-imdbext-title';
   // A title's own badge, not the episode badges an episode list inside the

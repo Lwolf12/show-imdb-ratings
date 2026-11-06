@@ -249,6 +249,14 @@ html.imdbext-cards-hover .imdbext-badge--card {
 html.imdbext-cards-hover :hover > .imdbext-badge--card,
 html.imdbext-cards-hover [data-imdbext-title]:hover .imdbext-badge--card {
   opacity: 1;
+  transition-delay: 0.2s;
+}
+
+/* Netflix, Hulu, Prime Video open a preview over the hovered card after
+   about half a second; the badge waits past that (content.js sets the
+   class from the adapter's hoverPreview). */
+html.imdbext-cards-hover.imdbext-preview-site :hover > .imdbext-badge--card,
+html.imdbext-cards-hover.imdbext-preview-site [data-imdbext-title]:hover .imdbext-badge--card {
   transition-delay: 0.7s;
 }
 

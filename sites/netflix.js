@@ -327,6 +327,7 @@ function modalTitle(el) {
 
 window.IMDBEXT_SITE = {
   name: 'netflix',
+  hoverPreview: true, // the site opens its own preview over a hovered card (badge.css: the badge waits for it)
 
   targets: [
     {

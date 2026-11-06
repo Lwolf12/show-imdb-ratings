@@ -80,6 +80,7 @@
 
   window.IMDBEXT_SITE = {
     name: 'hulu',
+    hoverPreview: true, // the site opens its own preview over a hovered card (badge.css: the badge waits for it)
 
     targets: [
       {
