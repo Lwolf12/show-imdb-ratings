@@ -149,6 +149,10 @@ test('a tick stays ticked when an earlier save stored the site as off (the grant
   // the browser's onAdded for the page's own request then arrives before
   // the tick is saved, and must not untick it from the stored value.
   const { options, storage, grants } = await page({ sync: { sites: { hulu: false, letterboxd: false } } });
+  // A browser's storage write takes an IPC round trip; the grant event
+  // beats it. The stand-in writes at once, so hold it back.
+  const set = storage.sync.set;
+  storage.sync.set = async (obj) => { await settle(10); return set(obj); };
   const row = options.siteRows().find((r) => r.key === 'letterboxd');
   row.label.querySelector('input').checked = true;
   await row.label.querySelector('input').dispatch('change');
