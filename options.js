@@ -383,21 +383,25 @@ async function loadSites() {
 
 // Access granted or withdrawn elsewhere (Site access on chrome://extensions,
 // about:addons): the ticks follow, in place. The browser fires the same
-// event for the page's own request, before the tick that asked has been
-// saved; a row whose change is still in hand is left alone, or the old
-// stored value would untick it.
-async function refreshGrants() {
+// events for the page's own request, before the tick that asked has been
+// saved, and Firefox's contains() can still say no for a moment after
+// its own prompt was allowed; so an added event only ever ticks (rows the
+// browser now grants), a removed event only ever unticks (rows it no
+// longer grants), and a row whose change is still in hand is left alone.
+async function refreshGrants(added) {
   const { sites = {} } = await chrome.storage.sync.get('sites');
   for (const row of siteRows) {
     if (!needsGrant(row) || row.busy) continue;
-    row.granted = await chrome.permissions.contains({ origins: patternsOf(row) });
-    row.box.checked = row.granted && sites[row.key] !== false;
+    const granted = await chrome.permissions.contains({ origins: patternsOf(row) });
+    if (granted !== added) continue;
+    row.granted = granted;
+    row.box.checked = granted && sites[row.key] !== false;
     row.hint.textContent = siteHint(row);
   }
 }
 if (chrome.permissions.onAdded) {
-  chrome.permissions.onAdded.addListener(() => refreshGrants());
-  chrome.permissions.onRemoved.addListener(() => refreshGrants());
+  chrome.permissions.onAdded.addListener(() => refreshGrants(true));
+  chrome.permissions.onRemoved.addListener(() => refreshGrants(false));
 }
 
 async function saveSites() {
@@ -423,6 +427,7 @@ async function siteChanged(row) {
       row.granted = true;
       row.hint.textContent = siteHint(row);
       note = ' Reload any ' + label + ' tab that was already open.';
+      box.checked = true; // whatever an event handler did meanwhile
     }
     await saveSites();
     if (!box.checked && needsGrant(row) && !keepGrant(row)) {
