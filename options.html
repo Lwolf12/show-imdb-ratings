@@ -70,12 +70,13 @@
        a row (where a scroll often lands) toggles nothing. */
     .langs label { display: inline-flex; justify-self: start; align-items: center; gap: 4px; white-space: nowrap; }
     .langs .hint { color: #777; font-size: 11px; }
-    /* The Sites list: two columns like the languages list, scrolling after
-       six rows, so the eight sites on from the start are all in view with
-       room for the new ones and any added address (a full-width row).
-       Ticked rows first, ordered once when the page opens, so a tick
-       moves nothing; the section's height never changes either. */
-    .sites { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; max-height: 120px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 2px 8px; margin: 2px 0 0; font-size: 13px; }
+    /* The Sites list: two columns like the languages list, seven rows
+       tall whatever it holds, so the nine sites (five rows) leave room for
+       two added addresses (full-width rows) before it scrolls, and adding
+       one moves nothing below. Ticked rows first, ordered once when the
+       page opens, so a tick moves nothing either. The settings window
+       (background.js SETTINGS_WINDOW) is sized for this. */
+    .sites { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; height: 153px; align-content: start; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 2px 8px; margin: 2px 0 0; font-size: 13px; }
     .sites label.check { margin: 1px 0; white-space: nowrap; }
     .sites label.address { grid-column: 1 / -1; }
     .sites .hint { color: #777; font-size: 11px; }
