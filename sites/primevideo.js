@@ -31,8 +31,12 @@
 // box (.s-product-image-container, position: relative) hosts the badge.
 // The sponsored "Recently bought and rated" grid
 // ([data-component-type="s-searchgrid-carousel"]) lays its cards out the
-// same way inside li.a-carousel-card, so it is covered too; sponsored
-// brand carousels (hashed class names, no format marker) are not.
+// same way inside li.a-carousel-card, so it is covered too. Sponsored
+// brand carousels ("Enter a World of Action", hashed class names) have no
+// heading, but their names (image alt, or the name link) say the format
+// too ("Constantine (4K Ultra + Digital)"), so any carousel card on a
+// search page with such a name is taken; the badge goes in the nearest
+// positioned box around its image.
 //
 // A product's own page (/dp/<ASIN>), when the shop's nav says it is in
 // Movies & TV (#nav-subnav data-category="movies-tv", or the breadcrumb):
@@ -56,6 +60,8 @@
     // A disc's format tag: "[Blu-ray]", "(4K UHD + Blu-ray + Digital)", "[DVD] [2019]".
     /\s*[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd|digital|steelbook|edition)\b[^\)\]]*[\)\]]\s*$/i,
     /\s*\[\d{4}\]\s*$/, // "[2021]" after a disc tag; "(2021)" stays, the lookup reads it as the year
+    // A shop's marketing tag: "(Repackage)", "(Bilingual)", "(Remastered)".
+    /\s*[\(\[](repackage[d]?|reissue|re-?release|remastered|restored|bilingual|widescreen|full ?screen|collector'?s|limited|anniversary|special)[^\)\]]*[\)\]]\s*$/i,
     // An unbracketed format tail: everything from the first format word on.
     /(?:^|\s)[-–:,]?\s*(4k(\s+ultra\s*hd|\s+uhd)?|uhd|ultra\s*hd|blu-?ray|dvd|steelbook|\d+-disc)\b.*$/i, // after a space, so a bracketed tag is left to the rule above
     /\s*[-–:,]?\s*the\s+complete\s+(series|collection)\s*$/i,
@@ -69,6 +75,7 @@
       for (const re of SUFFIXES) t = t.replace(re, '');
       t = t.trim();
     } while (t !== prev && t);
+    t = t.replace(/^(.*\S),\s+(the|a|an)$/i, '$2 $1'); // "Goonies, The"
     // Promo banners ("Subscribe to CNN to stream 24/7 live news.") are not
     // titles; a long string ending in a full stop is almost always one.
     if (t.length > 40 && /[.!?]$/.test(t)) return null;
@@ -101,9 +108,19 @@
 
   // A search result that is a film or show: its format reads Prime Video or
   // a disc, or it has the credits lines. The text is scanned once per card.
-  function isVideoResult(el) {
+  // A result card's product name: its heading, else its image's alt, else
+  // the first link with a name's worth of text (sponsored brand rows).
+  function cardName(el) {
     const h2 = el.querySelector('h2');
-    if (h2 && /[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd)\b/i.test(h2.textContent)) return true;
+    if (h2) return h2.textContent;
+    const img = el.querySelector('img[alt]');
+    if (img && img.alt.trim().length > 2) return img.alt;
+    const a = [...el.querySelectorAll('a')].find((x) => x.textContent.trim().length > 8);
+    return a ? a.textContent : '';
+  }
+
+  function isVideoResult(el) {
+    if (/[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd)\b/i.test(cardName(el))) return true;
     return [...el.querySelectorAll('span, a')].some((e) => {
       const t = (e.textContent || '').trim();
       return t === 'Prime Video' || t === 'DVD' || t === 'Blu-ray' || /^(Starring|Directed by):/.test(t);
@@ -184,18 +201,26 @@
         // The shop's search results (www.amazon.com added as an address):
         // films and shows only, told by their format or credits.
         kind: 'card',
-        selector: '[data-component-type="s-search-result"], [data-component-type="s-searchgrid-carousel"] li.a-carousel-card',
+        selector: '[data-component-type="s-search-result"], li.a-carousel-card',
         titleOf(el) {
+          // Carousel cards on a product page are the .p13n-asin target's.
+          if (el.tagName === 'LI' && location.pathname !== '/s') return null;
           if (!isVideoResult(el)) return null;
-          const h2 = el.querySelector('h2');
-          return productTitles(h2 ? h2.textContent : '');
+          return productTitles(cardName(el));
         },
         typeOf(el) {
-          const h2 = el.querySelector('h2');
-          return productType(h2 && h2.textContent);
+          return productType(cardName(el));
         },
         host(el) {
-          return el.querySelector('.s-product-image-container') || null;
+          const box = el.querySelector('.s-product-image-container');
+          if (box) return box;
+          const img = el.querySelector('img');
+          if (!img) return null;
+          for (let e = img.parentElement; e && e !== el; e = e.parentElement) {
+            if (getComputedStyle(e).position !== 'static') return e;
+          }
+          img.parentElement.style.position = 'relative';
+          return img.parentElement;
         },
       },
       {
