@@ -250,7 +250,7 @@ $('buildRatings').addEventListener('click', async () => {
 
 $('auto').addEventListener('change', async () => {
   await chrome.storage.sync.set({ autoRefresh: $('auto').checked });
-  say($('auto').checked ? 'Automatic refresh on; the intervals are under Advanced.' : 'Automatic refresh off; use Update now when you want.');
+  say($('auto').checked ? 'Automatic refresh on; the intervals are under Advanced.' : 'Automatic refresh off; click Update now to rebuild the database.');
   refreshStats();
 });
 
