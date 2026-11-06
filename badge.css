@@ -34,7 +34,8 @@ a[data-uia="progress-card"],
   color: #888;
 }
 
-html.imdbext-label-imdb .imdbext-badge::before {
+html.imdbext-label-imdb .imdbext-badge::before,
+.imdbext-badge.imdbext-sample-imdb::before { /* the settings page's sample of the tag */
   content: "IMDb";
   font-size: 9px;
   font-weight: 800;
@@ -50,14 +51,51 @@ html.imdbext-label-imdb .imdbext-badge::before {
   cursor: default;
 }
 
-/* Card corner badge. Top-right: Netflix puts its own "Top 10" tag top-left. */
+/* Card corner badge. Top-right: Netflix puts its own "Top 10" tag top-left.
+   Its size, ground and spacing are variables, set by the badge size the
+   settings chose (a class on <html>, below), by Letterboxd's posters
+   (always small) and by the settings page's own samples. The defaults
+   are the large size. */
 .imdbext-badge--card {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: var(--imdbext-corner, 6px);
+  right: var(--imdbext-corner, 6px);
   z-index: 20;
-  padding: 2px 6px 2px 5px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  gap: var(--imdbext-gap, 5px);
+  padding: var(--imdbext-pad, 2px 6px 2px 5px);
+  font-size: var(--imdbext-size, 12px);
+  border-radius: var(--imdbext-radius, 4px);
+  background: rgba(0, 0, 0, var(--imdbext-ground, 0.78));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, var(--imdbext-shadow, 0.5));
+}
+
+.imdbext-badge--card::before {
+  font-size: var(--imdbext-star, 12px);
+}
+
+html.imdbext-label-imdb .imdbext-badge--card::before,
+.imdbext-badge--card.imdbext-sample-imdb::before {
+  font-size: var(--imdbext-tag, 9px);
+  padding: 0 var(--imdbext-tag-pad, 3px);
+}
+
+/* Badge size (settings: Small, Medium, Large). Small is Letterboxd's look:
+   two sizes down, tight, on a ground that lets the artwork through.
+   Medium, the default, is a step up: the rating is there when looked
+   for, not the first thing on the page. Large is the solid badge that
+   reads best on bright art. */
+html.imdbext-size-small {
+  --imdbext-size: 9px; --imdbext-star: 8px; --imdbext-tag: 7px; --imdbext-tag-pad: 2px;
+  --imdbext-pad: 0 2px; --imdbext-gap: 2px; --imdbext-corner: 3px; --imdbext-radius: 3px;
+  --imdbext-ground: 0.5; --imdbext-shadow: 0.4;
+  --imdbext-extras: 8px; --imdbext-extras-gap: 2px; --imdbext-mc-pad: 2px;
+}
+
+html.imdbext-size-medium {
+  --imdbext-size: 10px; --imdbext-star: 9px; --imdbext-tag: 8px; --imdbext-tag-pad: 2px;
+  --imdbext-pad: 1px 4px 1px 3px; --imdbext-gap: 3px; --imdbext-corner: 4px; --imdbext-radius: 3px;
+  --imdbext-ground: 0.6; --imdbext-shadow: 0.4;
+  --imdbext-extras: 9px; --imdbext-extras-gap: 3px; --imdbext-mc-pad: 2px;
 }
 
 /* Detail line inside the hover preview / detail modal. */
@@ -423,56 +461,23 @@ html.imdbext-label-imdb .imdbext-rt::before {
    the card; content.js fitCardExtras sheds the scores that do not fit. */
 .imdbext-badge--card .imdbext-extras {
   order: -1;
-  gap: 5px;
+  gap: var(--imdbext-extras-gap, 5px);
   margin-right: 2px;
-  font-size: 11px;
+  font-size: var(--imdbext-extras, 11px);
 }
 
 .imdbext-badge--card .imdbext-mc {
-  padding: 0 3px;
+  padding: 0 var(--imdbext-mc-pad, 3px);
 }
 
-/* Compact card badges, two ways in: Letterboxd's posters always (150 px
-   wide in most grids, 90 px slices in the stacked list previews), and
-   every site with the settings' "Compact badges" tick, on by default
-   (content.js puts imdbext-compact on <html>). Two sizes smaller, tight, and on a lighter
-   ground that lets the artwork show through; with the short scores on
-   ("On cards too") a tomato fits beside the score on a slice. Episode
-   badges and the chips in previews and banners are not affected. */
-html.imdbext-compact .imdbext-badge--card,
+/* Letterboxd: posters are 150 px wide in most grids and 90 px slices in
+   the stacked list previews, so its badges are always the small size,
+   whatever the settings chose. */
 .film-poster > .imdbext-badge--card {
-  top: 3px;
-  right: 3px;
-  gap: 2px;
-  padding: 0 2px;
-  font-size: 9px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.55);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
-html.imdbext-compact .imdbext-badge--card::before,
-.film-poster > .imdbext-badge--card::before {
-  font-size: 8px;
-}
-
-html.imdbext-compact .imdbext-badge--card .imdbext-extras,
-.film-poster > .imdbext-badge--card .imdbext-extras {
-  gap: 2px;
-  margin-right: 1px;
-  font-size: 8px;
-}
-
-html.imdbext-compact .imdbext-badge--card .imdbext-mc,
-.film-poster > .imdbext-badge--card .imdbext-mc {
-  padding: 0 2px;
-}
-
-/* The IMDb tag label (settings: Label before the rating) at the compact size. */
-html.imdbext-compact.imdbext-label-imdb .imdbext-badge--card::before,
-html.imdbext-label-imdb .film-poster > .imdbext-badge--card::before {
-  font-size: 7px;
-  padding: 0 2px;
+  --imdbext-size: 9px; --imdbext-star: 8px; --imdbext-tag: 7px; --imdbext-tag-pad: 2px;
+  --imdbext-pad: 0 2px; --imdbext-gap: 2px; --imdbext-corner: 3px; --imdbext-radius: 3px;
+  --imdbext-ground: 0.5; --imdbext-shadow: 0.4;
+  --imdbext-extras: 8px; --imdbext-extras-gap: 2px; --imdbext-mc-pad: 2px;
 }
 
 /* Letterboxd's smallest posters (under 100 px: a member's favourites at

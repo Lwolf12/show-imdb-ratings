@@ -545,12 +545,21 @@ const MODE_SAID = {
 // badgeLabel: 'star' (default) or 'imdb', the tag shown before the score.
 const LABEL_BOXES = [...document.querySelectorAll('input[name=badgeLabel]')];
 
+// The card badge's size (content.js applyBadgePrefs): the samples on this
+// page are real badges, so the page carries the same class.
+const SIZE_BOXES = [...document.querySelectorAll('input[name=badgeSize]')];
+const SIZES = ['small', 'medium', 'large'];
+function showSize(size) {
+  for (const box of SIZE_BOXES) box.checked = box.value === size;
+  for (const s of SIZES) document.documentElement.classList.toggle('imdbext-size-' + s, s === size);
+}
+
 async function loadBadges() {
-  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star', compactBadges = true } =
-    await chrome.storage.sync.get(['cardBadges', 'hideNA', 'badgeLabel', 'compactBadges']);
+  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star', badgeSize = 'medium' } =
+    await chrome.storage.sync.get(['cardBadges', 'hideNA', 'badgeLabel', 'badgeSize']);
   for (const box of MODE_BOXES) box.checked = box.value === cardBadges;
   $('hideNA').checked = hideNA;
-  $('compactBadges').checked = compactBadges !== false;
+  showSize(SIZES.includes(badgeSize) ? badgeSize : 'medium');
   for (const box of LABEL_BOXES) box.checked = box.value === badgeLabel;
 }
 
@@ -575,14 +584,18 @@ $('hideNA').addEventListener('change', async () => {
   say($('hideNA').checked ? '“n/a” badges hidden on cards.' : '“n/a” badges shown on cards.');
 });
 
-// Smaller, see-through card badges everywhere (content.js applyBadgePrefs),
-// the default: the rating should be there when looked for, not the first
-// thing on the page. Unticked, the full-size solid badge, which reads
-// better on bright art.
-$('compactBadges').addEventListener('change', async () => {
-  await chrome.storage.sync.set({ compactBadges: $('compactBadges').checked });
-  say($('compactBadges').checked ? 'Compact card badges.' : 'Full-size card badges.');
-});
+// Medium, the default, keeps the rating there when looked for rather than
+// the first thing on the page; Large is the solid badge that reads best on
+// bright art; Small is Letterboxd's.
+const SIZE_SAID = { small: 'Small card badges.', medium: 'Medium card badges.', large: 'Large card badges.' };
+for (const box of SIZE_BOXES) {
+  box.addEventListener('change', async () => {
+    if (!box.checked) return;
+    showSize(box.value);
+    await chrome.storage.sync.set({ badgeSize: box.value });
+    say(SIZE_SAID[box.value]);
+  });
+}
 
 // ---------------------------------------------------------------- OMDb
 
@@ -817,7 +830,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
 // optional ones off, no added addresses, badges always with the star
 // label, no extras, OMDb lookups on if there is a key, the local database
 // with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'compactBadges', 'omdbFallback', 'extraRatings'];
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'badgeSize', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;

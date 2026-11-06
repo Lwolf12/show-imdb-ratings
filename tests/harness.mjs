@@ -225,7 +225,12 @@ function makeDocument() {
     };
     return e;
   }
+  // Radio groups the page reads with querySelectorAll('input[name=…]').
+  const RADIOS = { badgeSize: ['small', 'medium', 'large'] };
+  const radios = {};
+  const documentElement = el('html');
   const document = {
+    documentElement,
     getElementById(id) {
       if (!byId.has(id)) {
         const e = el(id === 'langList' || id === 'siteList' ? 'div' : id === 'siteAdapter' ? 'select' : id === 'siteAddBtn' ? 'button' : 'input');
@@ -235,7 +240,14 @@ function makeDocument() {
       }
       return byId.get(id);
     },
-    querySelectorAll() { return []; }, // the site, badge and extras boxes: none in the fake page
+    querySelectorAll(sel) {
+      const m = sel.match(/^input\[name=(\w+)\]$/);
+      if (m && RADIOS[m[1]]) {
+        radios[m[1]] ||= RADIOS[m[1]].map((v) => { const e = el('input'); e.value = v; e.name = m[1]; return e; });
+        return radios[m[1]];
+      }
+      return []; // the site, mode, label and extras boxes: none in the fake page
+    },
     createElement: (tag) => el(tag),
     createTextNode: (text) => ({ textContent: text }),
   };
