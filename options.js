@@ -585,8 +585,8 @@ $('hideNA').addEventListener('change', async () => {
 });
 
 // Medium, the default, keeps the rating there when looked for rather than
-// the first thing on the page; Large is the solid badge that reads best on
-// bright art; Small is Letterboxd's.
+// the first thing on the page; Large the size of before; all three on the
+// same half-black ground. Small is Letterboxd’s.
 const SIZE_SAID = { small: 'Small card badges.', medium: 'Medium card badges.', large: 'Large card badges.' };
 for (const box of SIZE_BOXES) {
   box.addEventListener('change', async () => {

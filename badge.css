@@ -65,8 +65,8 @@ html.imdbext-label-imdb .imdbext-badge::before,
   padding: var(--imdbext-pad, 2px 6px 2px 5px);
   font-size: var(--imdbext-size, 12px);
   border-radius: var(--imdbext-radius, 4px);
-  background: rgba(0, 0, 0, var(--imdbext-ground, 0.78));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, var(--imdbext-shadow, 0.5));
+  background: rgba(0, 0, 0, var(--imdbext-ground, 0.5));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, var(--imdbext-shadow, 0.4));
 }
 
 .imdbext-badge--card::before {
@@ -79,22 +79,20 @@ html.imdbext-label-imdb .imdbext-badge--card::before,
   padding: 0 var(--imdbext-tag-pad, 3px);
 }
 
-/* Badge size (settings: Small, Medium, Large). Small is Letterboxd's look:
-   two sizes down, tight, on a ground that lets the artwork through.
-   Medium, the default, is a step up: the rating is there when looked
-   for, not the first thing on the page. Large is the solid badge that
-   reads best on bright art. */
+/* Badge size (settings: Small, Medium, Large), all on the same ground,
+   half black, that lets the artwork through. Small is Letterboxd's look,
+   two sizes down and tight; Medium, the default, a step up: the rating
+   is there when looked for, not the first thing on the page; Large the
+   size of 1.3.0. */
 html.imdbext-size-small {
   --imdbext-size: 9px; --imdbext-star: 8px; --imdbext-tag: 7px; --imdbext-tag-pad: 2px;
   --imdbext-pad: 0 2px; --imdbext-gap: 2px; --imdbext-corner: 3px; --imdbext-radius: 3px;
-  --imdbext-ground: 0.5; --imdbext-shadow: 0.4;
   --imdbext-extras: 8px; --imdbext-extras-gap: 2px; --imdbext-mc-pad: 2px;
 }
 
 html.imdbext-size-medium {
   --imdbext-size: 10px; --imdbext-star: 9px; --imdbext-tag: 8px; --imdbext-tag-pad: 2px;
   --imdbext-pad: 1px 4px 1px 3px; --imdbext-gap: 3px; --imdbext-corner: 4px; --imdbext-radius: 3px;
-  --imdbext-ground: 0.6; --imdbext-shadow: 0.4;
   --imdbext-extras: 9px; --imdbext-extras-gap: 3px; --imdbext-mc-pad: 2px;
 }
 
@@ -476,7 +474,6 @@ html.imdbext-label-imdb .imdbext-rt::before {
 .film-poster > .imdbext-badge--card {
   --imdbext-size: 9px; --imdbext-star: 8px; --imdbext-tag: 7px; --imdbext-tag-pad: 2px;
   --imdbext-pad: 0 2px; --imdbext-gap: 2px; --imdbext-corner: 3px; --imdbext-radius: 3px;
-  --imdbext-ground: 0.5; --imdbext-shadow: 0.4;
   --imdbext-extras: 8px; --imdbext-extras-gap: 2px; --imdbext-mc-pad: 2px;
 }
 
