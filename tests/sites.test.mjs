@@ -106,12 +106,12 @@ test('the background registers optional sites and added addresses while granted,
 });
 
 // The settings page over the background, with the browser's grants shared.
-async function page({ sync = {}, granted = [], allow = true } = {}) {
+async function page({ sync = {}, granted = [], allow = true, firefox = false } = {}) {
   const storage = makeStorage({ sync });
   const grants = makeGrants(granted, { allow });
   const scripting = makeScripting();
   const background = loadBackground({ storage, grants, scripting });
-  const options = loadOptions({ storage, background, grants });
+  const options = loadOptions({ storage, background, grants, firefox });
   await settle();
   return { storage, grants, scripting, background, options };
 }
@@ -248,6 +248,38 @@ test('adding an address: checked, asked for, stored under its site with its own 
   assert.ok(!grants.set.has('https://www.amazon.co.uk/gp/video/*'));
   assert.ok(!scripting.scripts.has('primevideo@www.amazon.co.uk/gp/video'));
   assert.ok(!options.siteRows().some((r) => r.key === 'www.amazon.co.uk/gp/video'));
+});
+
+test('Firefox: removing an address wider than a site\'s own keeps the grant, so the site stays allowed', async () => {
+  // Firefox grants every host; removing www.amazon.com/* would take
+  // www.amazon.com/gp/video/* (Prime Video's own) with it. The stand-in
+  // removes exactly what it is given, so the point here is that nothing
+  // is removed at all.
+  const own = ['https://www.amazon.com/gp/video/*', 'https://www.primevideo.com/*'];
+  const { options, grants, storage } = await page({ firefox: true, granted: [...own, 'https://www.netflix.com/*'] });
+  const $ = options.$;
+  $('siteAddress').value = 'www.amazon.com';
+  $('siteAdapter').value = 'primevideo';
+  await $('siteAddBtn').dispatch('click');
+  await settle();
+  assert.ok(grants.set.has('https://www.amazon.com/*'));
+  const row = options.siteRows().find((r) => r.key === 'www.amazon.com');
+  await row.label.querySelector('a').dispatch('click');
+  await settle();
+  assert.ok(grants.set.has('https://www.amazon.com/*'), 'kept in Firefox');
+  for (const o of own) assert.ok(grants.set.has(o));
+  assert.equal(options.siteRows().find((r) => r.key === 'primevideo').checked, true, 'Prime Video stays ticked');
+  assert.deepEqual(storage.areas.sync.addresses, {});
+  assert.match($('status').textContent, /removed\. Firefox keeps the access to www.amazon.com, which Prime Video uses\./);
+});
+
+test('Chrome: removing a wider address gives its grant back (a required permission cannot go)', async () => {
+  const { options, grants } = await page({ sync: { addresses: { primevideo: ['www.amazon.com'] } }, granted: ['https://www.amazon.com/*'] });
+  const row = options.siteRows().find((r) => r.key === 'www.amazon.com');
+  await row.label.querySelector('a').dispatch('click');
+  await settle();
+  assert.ok(!grants.set.has('https://www.amazon.com/*'));
+  assert.equal(options.siteRows().find((r) => r.key === 'primevideo').checked, true);
 });
 
 test('an address synced from another device shows unticked as not allowed here; ticking asks', async () => {

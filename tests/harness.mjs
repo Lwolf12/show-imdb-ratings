@@ -242,7 +242,8 @@ function makeDocument() {
   return document;
 }
 
-export function loadOptions({ storage, background, version = '0.0.0', grants = null }) {
+// firefox: the page runs as in Firefox (compat.js FIREFOX).
+export function loadOptions({ storage, background, version = '0.0.0', grants = null, firefox = false }) {
   const document = makeDocument();
   const chrome = {
     storage: { sync: storage.sync, local: storage.local, session: storage.session, onChanged: storage.onChanged },
@@ -253,6 +254,7 @@ export function loadOptions({ storage, background, version = '0.0.0', grants = n
   const ctx = vm.createContext({
     chrome, document, console, setTimeout, clearTimeout, confirm: () => true,
     navigator: { storage: { estimate: async () => ({ usage: 300 * 1048576 }) } },
+    ...(firefox ? { browser: { runtime: { getBrowserInfo: async () => ({ name: 'Firefox' }) }, permissions: chrome.permissions } } : {}),
   });
   for (const f of OPTIONS_SCRIPTS) vm.runInContext(read(f), ctx, { filename: f });
   const $ = (id) => document.getElementById(id);

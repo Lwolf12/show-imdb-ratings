@@ -494,6 +494,14 @@ $('siteAddBtn').addEventListener('click', async () => {
   say('Added ' + address + ' under ' + SL.SITES[name].label + (own ? ' (pages under ' + SL.pathOf(own) + ' keep its tick)' : '') + '. Reload any tab there.');
 });
 
+// Whether giving an added address's grant back would take a site's own
+// grant with it: in Firefox every host permission is a grant, and removing
+// www.amazon.com/* removes www.amazon.com/gp/video/* too, Prime Video's
+// own. Chrome never lets a required permission go. Such a grant is kept.
+function grantCoversOwn(address) {
+  return FIREFOX && SL.NAMES.some((n) => SL.SITES[n].addresses.some((o) => SL.covers(address, o)));
+}
+
 // The cross on an added address: the row goes, with its switch and its grant.
 async function removeAddress(row) {
   const { addresses = {}, sites = {} } = await chrome.storage.sync.get(['addresses', 'sites']);
@@ -502,9 +510,10 @@ async function removeAddress(row) {
   else delete addresses[row.name];
   delete sites[row.address];
   await chrome.storage.sync.set({ addresses, sites });
-  await chrome.permissions.remove({ origins: [SL.patternOf(row.address)] }).catch(() => {});
+  const keep = grantCoversOwn(row.address);
+  if (!keep) await chrome.permissions.remove({ origins: [SL.patternOf(row.address)] }).catch(() => {});
   await loadSites();
-  say(row.address + ' removed.');
+  say(row.address + ' removed.' + (keep ? ' Firefox keeps the access to ' + SL.hostOf(row.address) + ', which ' + SL.SITES[row.name].label + ' uses.' : ''));
 }
 
 // -------------------------------------------------------------- badges
@@ -793,6 +802,7 @@ $('resetSettings').addEventListener('click', async () => {
   // reset nothing optional is on, and nothing is allowed that the list
   // no longer shows.
   for (const row of siteRows) {
+    if (row.address && grantCoversOwn(row.address)) continue;
     if (row.granted && needsGrant(row) && (row.address || !keepGrant(row))) await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});
   }
   await chrome.storage.sync.remove(SETTING_KEYS);
