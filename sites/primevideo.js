@@ -112,19 +112,35 @@
   // the first link with a name's worth of text (sponsored brand rows).
   function cardName(el) {
     const h2 = el.querySelector('h2');
-    if (h2) return h2.textContent;
-    const img = el.querySelector('img[alt]');
-    if (img && img.alt.trim().length > 2) return img.alt;
-    const a = [...el.querySelectorAll('a')].find((x) => x.textContent.trim().length > 8);
-    return a ? a.textContent : '';
+    let name = '';
+    if (h2) name = h2.textContent;
+    else {
+      const img = el.querySelector('img[alt]');
+      if (img && img.alt.trim().length > 2) name = img.alt;
+      else {
+        const a = [...el.querySelectorAll('a')].find((x) => x.textContent.trim().length > 8);
+        name = a ? a.textContent : '';
+      }
+    }
+    return name.replace(/^\s*sponsored ad\s*[-\u2013]\s*/i, ''); // a sponsored image's alt
   }
 
+  // The verdict is kept on the card with the length of its text, so the
+  // scans a mutating results page keeps triggering do not rescan every
+  // card's spans; a card that fills in later (its format line, say)
+  // changes length and is judged again.
   function isVideoResult(el) {
-    if (/[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd)\b/i.test(cardName(el))) return true;
-    return [...el.querySelectorAll('span, a')].some((e) => {
+    const sig = String(el.textContent.length);
+    if (el.dataset.imdbextSig === sig) return el.dataset.imdbextVideo === '1';
+    // A format in the name, bracketed or in the open, or a format line
+    // or credits among the card's spans.
+    const video = /[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd)\b|\s(dvd|blu-?ray|4k|uhd)\b/i.test(cardName(el)) || [...el.querySelectorAll('span, a')].some((e) => {
       const t = (e.textContent || '').trim();
       return t === 'Prime Video' || t === 'DVD' || t === 'Blu-ray' || /^(Starring|Directed by):/.test(t);
     });
+    el.dataset.imdbextSig = sig;
+    el.dataset.imdbextVideo = video ? '1' : '';
+    return video;
   }
 
   // Whether a product page is a film or show: the shop's nav or breadcrumb
@@ -145,7 +161,10 @@
     if (!name) return null;
     return /\bcollection\b/i.test(name) && name.includes(':') ? [name, name.split(':')[0].trim()] : name;
   }
-  const productType = (raw) => (/\b(season|complete series|episodes?|series \d)\b/i.test(raw || '') ? 'series' : null);
+  // A series when the name says a season or the complete run ("Season 2",
+  // "The Complete First Season", "The Complete Series"), not merely for a
+  // word like Season in a film's title ("Season of the Witch").
+  const productType = (raw) => (/\bseasons?\s*\d|\bcomplete\s+(?:\w+\s+)?(?:season|series)\b|\bseries\s*\d|\bepisodes?\s*\d|\ss\d{1,2}\b/i.test(raw || '') ? 'series' : null);
 
   function ariaOrAltTitle(el) {
     const a = el.querySelector('a[aria-label]');

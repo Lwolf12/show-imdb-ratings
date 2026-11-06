@@ -64,6 +64,7 @@ test('addProblem: shipped addresses are refused, wider is allowed, overlaps with
   assert.equal(S.addProblem('primevideo', 'www.amazon.de/gp/video', added), null);
   assert.equal(S.guessSite('www.amazon.de/gp/video'), 'primevideo');
   assert.equal(S.guessSite('www.hulu.jp'), 'hulu');
+  assert.equal(S.guessSite('tv.apple.com'), 'appletv');
   assert.equal(S.guessSite('example.org'), null);
 });
 
@@ -293,6 +294,17 @@ test('an address synced from another device shows unticked as not allowed here; 
   assert.deepEqual(grants.asked, [['https://www.amazon.de/gp/video/*']]);
   assert.equal(options.siteRows().find((r) => r.key === 'www.amazon.de/gp/video').hint, '(Prime Video)');
   assert.equal(storage.areas.sync.sites['www.amazon.de/gp/video'], true);
+});
+
+test('a save keeps the stored switch of a row this browser does not grant (the switches sync, the grants do not)', async () => {
+  const { options, storage } = await page({ sync: { addresses: { primevideo: ['www.amazon.de/gp/video'] }, sites: { 'www.amazon.de/gp/video': true, hulu: true } } });
+  const hulu = options.siteRows().find((r) => r.key === 'hulu').label.querySelector('input');
+  hulu.checked = false;
+  await hulu.dispatch('change');
+  await settle();
+  assert.equal(storage.areas.sync.sites.hulu, false);
+  assert.equal(storage.areas.sync.sites['www.amazon.de/gp/video'], true, 'not written as off from a browser that cannot grant it');
+  assert.equal(storage.areas.sync.sites.letterboxd, undefined, 'never stored: stays on by default once granted');
 });
 
 test('Reset settings drops the addresses and gives back the optional grants', async () => {

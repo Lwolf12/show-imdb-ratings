@@ -118,12 +118,15 @@ const IMDBEXT_SITES = (() => {
     return null;
   }
 
-  // The site whose name appears in a host, for pre-selecting the adapter:
-  // an amazon address is Prime Video.
+  // The site a host names, for pre-selecting the adapter: an amazon
+  // address is Prime Video, tv.apple.com is Apple TV.
+  const HOST_WORDS = {
+    netflix: /netflix/, primevideo: /amazon|primevideo/, hulu: /hulu/, hbomax: /hbo/, appletv: /apple/,
+    disneyplus: /disney/, paramountplus: /paramount|showtime/, tubi: /tubi/, letterboxd: /letterboxd/,
+  };
   function guessSite(address) {
     const host = hostOf(address || '');
-    if (/amazon|primevideo/.test(host)) return 'primevideo';
-    return NAMES.find((n) => host.includes(n.replace(/plus$/, ''))) || null;
+    return NAMES.find((n) => HOST_WORDS[n] && HOST_WORDS[n].test(host)) || null;
   }
 
   return { SITES, NAMES, REQUIRED, OPTIONAL, ANY_SITE, adapterFile, normalizeAddress, patternOf, hostOf, pathOf, scriptId, covers, overlap, addedTo, addProblem, guessSite };

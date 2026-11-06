@@ -167,7 +167,7 @@ async function handleBuildMessage(msg) {
     const pct = Math.round((msg.pct || 0) * 100);
     if (pct !== badgePct) {
       badgePct = pct;
-      updateBadge();
+      buildBadge(pct);
     }
   } else if (msg.type === 'usable') {
     // A full build's titles are live; the episodes are still streaming.

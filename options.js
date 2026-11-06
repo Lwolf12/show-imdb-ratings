@@ -410,9 +410,19 @@ if (chrome.permissions.onAdded) {
   chrome.permissions.onRemoved.addListener(() => refreshGrants(false));
 }
 
+// A row this browser does not grant shows unticked whatever was chosen
+// elsewhere (the switches sync, the grants do not), so its stored switch
+// is kept rather than overwritten with off.
 async function saveSites() {
+  const { sites: stored = {} } = await chrome.storage.sync.get('sites');
   const sites = {};
-  for (const row of siteRows) sites[row.key] = row.box.checked;
+  for (const row of siteRows) {
+    if (needsGrant(row) && !row.granted) {
+      if (row.key in stored) sites[row.key] = stored[row.key];
+      continue;
+    }
+    sites[row.key] = row.box.checked;
+  }
   await chrome.storage.sync.set({ sites });
 }
 

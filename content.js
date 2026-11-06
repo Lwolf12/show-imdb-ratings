@@ -95,7 +95,7 @@
         // every card) may still carry the previous title's badge: drop it.
         if (el.hasAttribute(PROCESSED)) {
           el.removeAttribute(PROCESSED);
-          (host || el).querySelector(OWN_BADGE)?.remove();
+          dropBadge((host || el).querySelector(OWN_BADGE));
         }
         continue;
       }
@@ -104,7 +104,7 @@
       // re-badge whenever the title or the host changed under us.
       if (el.getAttribute(PROCESSED) === title && host.querySelector(OWN_BADGE)) continue;
       el.setAttribute(PROCESSED, title);
-      host.querySelector(OWN_BADGE)?.remove();
+      dropBadge(host.querySelector(OWN_BADGE));
       if (target.kind === 'card') io.observe(el);
       else decorate(el, target);
     }
@@ -152,7 +152,7 @@
 
     const host = target.host(el);
     if (!host) return;
-    host.querySelector(OWN_BADGE)?.remove();
+    dropBadge(host.querySelector(OWN_BADGE));
     const badge = document.createElement('span');
     badge.className = 'imdbext-badge imdbext-badge--' + target.kind;
     badge.addEventListener('click', (e) => {
@@ -255,25 +255,30 @@
   // puts the short scores before it), and sheds those scores, last first,
   // while the badge is wider than the room it has: wider than its host, or
   // lying under a neighbour, as in a stack of overlapping posters. A badge
-  // outside the viewport is measured when it comes into view, since what
-  // lies over it cannot be told until then.
+  // not wholly in the viewport is measured again once it is (threshold 1:
+  // the observer reports only that, so a badge straddling an edge is not
+  // re-observed in a loop), since what lies over it cannot be told until
+  // then. Badges leave the observer when they are dropped (dropBadge, stop).
   const fitWhenVisible = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
+      if (entry.intersectionRatio < 1) continue;
       fitWhenVisible.unobserve(entry.target);
-      fitCardExtras(entry.target);
+      fitCardExtras(entry.target, true);
     }
-  });
+  }, { threshold: 1 });
 
-  function fitCardExtras(badge) {
+  function dropBadge(b) {
+    if (!b) return;
+    fitWhenVisible.unobserve(b);
+    b.remove();
+  }
+
+  function fitCardExtras(badge, wholly) {
     const wrap = badge.querySelector('.imdbext-extras');
     const host = badge.parentElement;
     if (!wrap || !host) return;
     const b = badge.getBoundingClientRect();
-    const inView = b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth;
-    if (!inView && b.width > 0) {
-      fitWhenVisible.observe(badge);
-    }
+    const inView = wholly || (b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth);
     const crowded = () => {
       const r = badge.getBoundingClientRect();
       if (r.left < host.getBoundingClientRect().left + 2) return true;
@@ -285,7 +290,11 @@
       return !!over && !badge.contains(over) && !!rightOver && badge.contains(rightOver);
     };
     while (wrap.lastElementChild && crowded()) wrap.lastElementChild.remove();
-    if (!wrap.childElementCount) wrap.remove();
+    if (!wrap.childElementCount) {
+      wrap.remove();
+      return;
+    }
+    if (!inView && b.width > 0) fitWhenVisible.observe(badge);
   }
 
   // Episode lists (target kind 'episodes'): the adapter names the show
@@ -586,6 +595,7 @@
       pending = null;
     }
     io.disconnect();
+    fitWhenVisible.disconnect();
     removeNotice();
     setupChecked = false;
     for (const b of document.querySelectorAll('.imdbext-badge')) b.remove();

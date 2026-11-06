@@ -133,6 +133,13 @@ async function setupStatus() {
   return { needed, building: state.status === 'running' };
 }
 
+// The percentage alone, from build.js on every whole percent of a build:
+// no reads, the state is the caller's.
+async function buildBadge(pct) {
+  await chrome.action.setBadgeText({ text: pct + '%' });
+  await chrome.action.setTitle({ title: 'IMDb Ratings: building the database, ' + pct + '%' });
+}
+
 // A language change has its own listener in languages.js.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
