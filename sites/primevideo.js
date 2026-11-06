@@ -33,6 +33,18 @@
 // ([data-component-type="s-searchgrid-carousel"]) lays its cards out the
 // same way inside li.a-carousel-card, so it is covered too; sponsored
 // brand carousels (hashed class names, no format marker) are not.
+//
+// A product's own page (/dp/<ASIN>), when the shop's nav says it is in
+// Movies & TV (#nav-subnav data-category="movies-tv", or the breadcrumb):
+// the name in #productTitle gets a chip under the title (h1#title in
+// #titleSection); the sponsored carousels ("4 stars and above", "Products
+// related to this item") are div.p13n-asin cards, 160 px wide and
+// position: relative, with the name in .sponsored-products-truncator-*
+// and the image's alt; "Customers also bought" and the other
+// recommendation widgets name each product in the alt of an
+// img.p13n-sc-dynamic-image (140 px, hashed classes around it), whose
+// parent hosts the badge. Pages outside Movies & TV get nothing: their
+// carousels are headsets and such, not worth a lookup each.
 
 (() => {
   const SUFFIXES = [
@@ -98,6 +110,26 @@
     });
   }
 
+  // Whether a product page is a film or show: the shop's nav or breadcrumb
+  // says Movies & TV.
+  function moviesTvPage() {
+    if (!/^\/(dp|gp\/product|gp\/aw\/d)\//.test(location.pathname) && !/\/dp\//.test(location.pathname)) return false;
+    const nav = document.getElementById('nav-subnav');
+    if (nav && nav.getAttribute('data-category') === 'movies-tv') return true;
+    const crumbs = document.getElementById('wayfinding-breadcrumbs_feature_div');
+    return !!crumbs && /movies\s*&\s*tv/i.test(crumbs.textContent);
+  }
+
+  // A product's name as the title(s) to look up: the format tags off
+  // (cleanTitle); a boxed set ("Doctor Who: The Matt Smith Collection") is
+  // not a title, so the part before the colon is tried too.
+  function productTitles(raw) {
+    const name = cleanTitle(raw);
+    if (!name) return null;
+    return /\bcollection\b/i.test(name) && name.includes(':') ? [name, name.split(':')[0].trim()] : name;
+  }
+  const productType = (raw) => (/\b(season|complete series|episodes?|series \d)\b/i.test(raw || '') ? 'series' : null);
+
   function ariaOrAltTitle(el) {
     const a = el.querySelector('a[aria-label]');
     const img = el.querySelector('img[alt]');
@@ -155,20 +187,67 @@
         titleOf(el) {
           if (!isVideoResult(el)) return null;
           const h2 = el.querySelector('h2');
-          const name = cleanTitle(h2 ? h2.textContent : '');
-          if (!name) return null;
-          // A boxed set ("Doctor Who: The Matt Smith Collection") is not a
-          // title; the part before the colon usually is.
-          return /\bcollection\b/i.test(name) && name.includes(':') ? [name, name.split(':')[0].trim()] : name;
+          return productTitles(h2 ? h2.textContent : '');
         },
         typeOf(el) {
           const h2 = el.querySelector('h2');
-          const name = (h2 && h2.textContent) || '';
-          if (/\b(season|complete series|episodes?)\b/i.test(name)) return 'series';
-          return null;
+          return productType(h2 && h2.textContent);
         },
         host(el) {
           return el.querySelector('.s-product-image-container') || null;
+        },
+      },
+      {
+        // A product page's sponsored carousels (Movies & TV pages only).
+        kind: 'card',
+        selector: '.p13n-asin',
+        titleOf(el) {
+          if (!moviesTvPage()) return null;
+          const name = el.querySelector('[class*="sponsored-products-truncator"]');
+          const img = el.querySelector('img[alt]');
+          return productTitles((name && name.textContent) || (img && img.alt) || '');
+        },
+        typeOf(el) {
+          const name = el.querySelector('[class*="sponsored-products-truncator"]');
+          const img = el.querySelector('img[alt]');
+          return productType((name && name.textContent) || (img && img.alt));
+        },
+        host(el) {
+          if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+          return el;
+        },
+      },
+      {
+        // A product page's recommendation widgets ("Customers also bought"):
+        // the image names the product; its parent box takes the badge.
+        kind: 'card',
+        selector: 'img.p13n-sc-dynamic-image[alt]',
+        titleOf(el) {
+          if (!moviesTvPage() || el.closest('.p13n-asin')) return null;
+          return productTitles(el.alt);
+        },
+        typeOf(el) {
+          return productType(el.alt);
+        },
+        host(el) {
+          const box = el.parentElement;
+          if (!box) return null;
+          if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+          return box;
+        },
+      },
+      {
+        // The product itself: a chip under its name.
+        kind: 'detail',
+        selector: '#productTitle',
+        titleOf(el) {
+          return moviesTvPage() ? productTitles(el.textContent) : null;
+        },
+        typeOf(el) {
+          return productType(el.textContent);
+        },
+        host(el) {
+          return document.getElementById('titleSection') || el.parentElement;
         },
       },
       {
