@@ -410,8 +410,16 @@ async function saveSites() {
   await chrome.storage.sync.set({ sites });
 }
 
+// Firefox toggles the box back and fires a second change while its prompt
+// for the first is open; that second run is dropped and the box put back
+// to what the click asked, which the first run then settles.
 async function siteChanged(row) {
   const { box } = row;
+  if (row.busy) {
+    box.checked = row.want;
+    return;
+  }
+  row.want = box.checked;
   const label = row.address || SL.SITES[row.name].label;
   let note = '';
   row.busy = true;
@@ -420,6 +428,7 @@ async function siteChanged(row) {
       // Must be the first await: the browser only asks during the click.
       const granted = await chrome.permissions.request({ origins: patternsOf(row) }).catch(() => false);
       if (!granted) {
+        row.want = false;
         box.checked = false;
         say(label + ' stays off: access to the site was not allowed.', 'bad');
         return;
@@ -427,8 +436,8 @@ async function siteChanged(row) {
       row.granted = true;
       row.hint.textContent = siteHint(row);
       note = ' Reload any ' + label + ' tab that was already open.';
-      box.checked = true; // whatever an event handler did meanwhile
     }
+    box.checked = row.want; // whatever ran meanwhile
     await saveSites();
     if (!box.checked && needsGrant(row) && !keepGrant(row)) {
       await chrome.permissions.remove({ origins: patternsOf(row) }).catch(() => {});

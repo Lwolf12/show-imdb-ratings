@@ -162,6 +162,25 @@ test('a tick stays ticked when an earlier save stored the site as off (the grant
   assert.ok(grants.set.has('https://letterboxd.com/*'));
 });
 
+test('a second change while the prompt is open (Firefox toggles the box back) is dropped; the click wins', async () => {
+  const { options, storage } = await page();
+  options.call('chrome.permissions.request = () => new Promise((r) => { globalThis.__answer = r; })');
+  const input = options.siteRows().find((r) => r.key === 'letterboxd').label.querySelector('input');
+  input.checked = true;
+  const first = input.dispatch('change'); // waits on the prompt
+  await settle();
+  input.checked = false;
+  await input.dispatch('change'); // Firefox's second event, box toggled back
+  assert.equal(input.checked, true, 'put back at once');
+  assert.equal(storage.areas.sync.sites, undefined, 'nothing saved by the second run');
+  options.call('__answer(true)');
+  await first;
+  await settle();
+  assert.equal(input.checked, true);
+  assert.equal(storage.areas.sync.sites.letterboxd, true);
+  assert.match(options.$('status').textContent, /Letterboxd on\./);
+});
+
 test('a refused grant leaves the site off and says so', async () => {
   const { options, storage, grants } = await page({ allow: false });
   const row = options.siteRows().find((r) => r.key === 'letterboxd');
