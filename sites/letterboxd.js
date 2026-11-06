@@ -19,6 +19,11 @@
 // for the smallest badge that is still legible, score only. Letterboxd's
 // own hover shows its rating (the frame's title), which is left alone.
 //
+// The home page's Video Store shelf (section.videostore-shelf) uses plain
+// poster boxes (div.poster, position: relative, 230 px) with the film's
+// name in the image's alt, "Feature image for Coyote vs. Acme", and no
+// year.
+//
 // A film's own page (/film/<slug>/): a masthead whose .details holds
 // <h1 class="headline-1 primaryname">, a .releasedate span with the year
 // and the director credits; the chip goes at the end of .details.
@@ -61,6 +66,22 @@
         },
         host(el) {
           el.classList.toggle('imdbext-tiny', el.getBoundingClientRect().width < TINY_WIDTH);
+          return el;
+        },
+      },
+      {
+        // The Video Store shelf on the home page.
+        kind: 'card',
+        selector: '.videostore-shelf .poster:not(.film-poster)',
+        titleOf(el) {
+          const img = el.querySelector('img[alt]');
+          return img ? clean(img.alt).replace(/^feature image fors+/i, '') || null : null;
+        },
+        typeOf() {
+          return 'movie';
+        },
+        host(el) {
+          if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
           return el;
         },
       },
