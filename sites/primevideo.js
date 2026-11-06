@@ -37,7 +37,8 @@
     /\s*[\(\[](4k|uhd|4k uhd|ultra hd|hd|unrated|extended|director'?s cut)[\)\]]\s*$/i,
     // A disc's format tag: "[Blu-ray]", "(4K UHD + Blu-ray + Digital)", "[DVD] [2019]".
     /\s*[\(\[][^\)\]]*\b(dvd|blu-?ray|4k|uhd|digital|steelbook|edition)\b[^\)\]]*[\)\]]\s*$/i,
-    /\s*[\(\[]\d{4}[\)\]]\s*$/,
+    /\s*\[\d{4}\]\s*$/, // "[2021]" after a disc tag; "(2021)" stays, the lookup reads it as the year
+    /\s*[-–:,]?\s*the\s+complete\s+(series|collection)\s*$/i,
   ];
 
   function cleanTitle(raw) {
