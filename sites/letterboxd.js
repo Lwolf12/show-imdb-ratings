@@ -14,9 +14,10 @@
 //       <span class="frame-title">Interstellar (2014)</span> ...
 // position: relative, rendered late by a React component (an empty 0x0
 // div until the page's scripts run). They come in sizes from 35 px wide
-// (activity feeds) to 230 px; the small ones are skipped, a badge would
-// cover them. Letterboxd's own hover shows its rating (the frame's
-// title), which is left alone.
+// (activity feeds, the members page's favourites at 41 px) to 230 px; a
+// poster under 100 px gets the class imdbext-tiny, which badge.css reads
+// for the smallest badge that is still legible, score only. Letterboxd's
+// own hover shows its rating (the frame's title), which is left alone.
 //
 // A film's own page (/film/<slug>/): a masthead whose .details holds
 // <h1 class="headline-1 primaryname">, a .releasedate span with the year
@@ -26,7 +27,8 @@
   const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
   // "Poster for Interstellar (2014)" / "Interstellar (2014)" -> name, year
   const NAMED = /^(?:poster for\s+)?(.+?)\s*\((\d{4})\)\s*$/i;
-  const MIN_WIDTH = 60;
+  const MIN_WIDTH = 36;
+  const TINY_WIDTH = 100;
 
   function posterName(el) {
     const frame = el.querySelector('.frame-title');
@@ -58,6 +60,7 @@
           return parse(posterName(el)).year;
         },
         host(el) {
+          el.classList.toggle('imdbext-tiny', el.getBoundingClientRect().width < TINY_WIDTH);
           return el;
         },
       },

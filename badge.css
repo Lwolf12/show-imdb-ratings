@@ -453,3 +453,23 @@ html.imdbext-label-imdb .imdbext-rt::before {
 .film-poster > .imdbext-badge--card .imdbext-mc {
   padding: 0 2px;
 }
+
+/* Letterboxd's smallest posters (under 100 px: a member's favourites at
+   41 px, activity feeds): the smallest badge still legible, the score
+   alone, in the top-right corner. */
+.film-poster.imdbext-tiny > .imdbext-badge--card {
+  top: 2px;
+  right: 2px;
+  gap: 1px;
+  padding: 0 2px;
+  font-size: 8px;
+  border-radius: 2px;
+}
+
+.film-poster.imdbext-tiny > .imdbext-badge--card::before {
+  font-size: 7px;
+}
+
+.film-poster.imdbext-tiny > .imdbext-badge--card .imdbext-extras {
+  display: none;
+}
