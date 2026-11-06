@@ -75,7 +75,7 @@
         selector: '.videostore-shelf .poster:not(.film-poster)',
         titleOf(el) {
           const img = el.querySelector('img[alt]');
-          return img ? clean(img.alt).replace(/^feature image fors+/i, '') || null : null;
+          return img ? clean(img.alt).replace(/^feature image for\s+/i, '') || null : null;
         },
         typeOf() {
           return 'movie';
