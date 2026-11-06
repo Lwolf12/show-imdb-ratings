@@ -35,9 +35,14 @@ const CANCELLED = {
   ratings: 'Cancelled; the ratings updated so far stay.',
 };
 
+const PAGE_TITLE = 'IMDb Ratings settings';
+
 function showBuild(build) {
   const btn = $('build');
   const running = !!build && build.status === 'running';
+  // The tab's title carries the percentage, so the progress shows in the
+  // tab strip and the window title while the user is elsewhere.
+  document.title = running ? Math.round((build.pct || 0) * 100) + '% · ' + PAGE_TITLE : PAGE_TITLE;
   btn.title = omdbOnlyMode ? 'Not used with OMDb only' : '';
   btn.disabled = running || omdbOnlyMode;
   $('buildRatings').disabled = running || !ratingsPassOk;

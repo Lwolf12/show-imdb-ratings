@@ -108,13 +108,17 @@ chrome.runtime.onInstalled.addListener((details) => {
 // the panel still sees that it isn't finished. OMDb-only users get no "!".
 updateBadge();
 
+// The toolbar icon's badge: "!" while the database is missing and OMDb
+// cannot stand in, the percentage while a build runs (build.js calls this
+// on every whole percent), nothing otherwise.
 async function updateBadge() {
-  const { needed } = await setupStatus();
-  await chrome.action.setBadgeText({ text: needed ? '!' : '' });
+  const { needed, building } = await setupStatus();
+  const pct = building ? Math.round(((await getBuildState()).pct || 0) * 100) + '%' : '';
+  await chrome.action.setBadgeText({ text: building ? pct : needed ? '!' : '' });
   await chrome.action.setBadgeBackgroundColor({ color: '#f5c518' });
   await chrome.action.setBadgeTextColor({ color: '#000' });
   await chrome.action.setTitle({
-    title: needed ? 'IMDb Ratings: click to build the ratings database' : 'IMDb Ratings: settings',
+    title: building ? 'IMDb Ratings: building the database, ' + pct : needed ? 'IMDb Ratings: click to build the ratings database' : 'IMDb Ratings: settings',
   });
 }
 

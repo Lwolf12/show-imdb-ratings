@@ -29,7 +29,7 @@ const PHASES = {
   writing: 'Saving titles to the database',
   'writing-episodes': 'Saving episodes to the database',
   updating: 'Updating ratings in the database',
-  akas: 'Reading titles in other languages (520 MB pass-through)',
+  akas: 'Reading titles in other languages',
   keying: 'Matching titles in the chosen languages',
   'writing-akas': 'Saving titles in other languages',
 };
@@ -78,10 +78,18 @@ function scheduleText(s) {
 // page. null: the line is the database's (a failure is reported where its
 // retry lives, refreshStats; a cancel beside Update now, showBuild). Two
 // lines at most at the window's width.
+// What a download phase reads in all (the percentage is by bytes), so the
+// line can say how far the file has come; a count for the phases that
+// keep one. The MB figure is the one that visibly moves on a long read.
+const PHASE_MB = { ratings: 9, basics: 280, akas: 520 };
+const PHASE_UNIT = { basics: ' titles', episodes: ' episodes' };
+
 function buildLine(build) {
   if (!build || build.status !== 'running') return null;
-  const unit = { basics: ' titles', episodes: ' episodes' }[build.phase];
-  const detail = unit && build.detail ? ' (' + build.detail.toLocaleString() + unit + ' so far)' : '';
+  const parts = [];
+  if (PHASE_MB[build.phase] && build.pct) parts.push(Math.round(build.pct * PHASE_MB[build.phase]) + ' of ' + PHASE_MB[build.phase] + ' MB');
+  if (PHASE_UNIT[build.phase] && build.detail) parts.push(build.detail.toLocaleString() + PHASE_UNIT[build.phase] + ' so far');
+  const detail = parts.length ? ' (' + parts.join(', ') + ')' : '';
   // A full build's titles go live before the episodes download.
   const usable = build.usable ? 'Ratings now show (reload open streaming tabs). ' : '';
   // Cancel pressed: a download stops at once, a save (builder.js cancel)

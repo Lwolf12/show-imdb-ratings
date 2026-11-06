@@ -157,11 +157,18 @@ function onBuildMessage(msg) {
   buildMessages = buildMessages.then(() => handleBuildMessage(msg)).catch(() => {});
 }
 
+let badgePct = -1; // the whole percent the toolbar badge shows (updateBadge)
+
 async function handleBuildMessage(msg) {
   if (msg.type === 'progress') {
     const state = await getBuildState();
     if (state.status !== 'running') return; // a late update after done/error
     await setBuildState({ ...state, phase: msg.phase, pct: msg.pct, detail: msg.detail });
+    const pct = Math.round((msg.pct || 0) * 100);
+    if (pct !== badgePct) {
+      badgePct = pct;
+      updateBadge();
+    }
   } else if (msg.type === 'usable') {
     // A full build's titles are live; the episodes are still streaming.
     const state = await getBuildState();
