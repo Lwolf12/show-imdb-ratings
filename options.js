@@ -546,10 +546,11 @@ const MODE_SAID = {
 const LABEL_BOXES = [...document.querySelectorAll('input[name=badgeLabel]')];
 
 async function loadBadges() {
-  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star' } =
-    await chrome.storage.sync.get(['cardBadges', 'hideNA', 'badgeLabel']);
+  const { cardBadges = 'always', hideNA = true, badgeLabel = 'star', compactBadges = false } =
+    await chrome.storage.sync.get(['cardBadges', 'hideNA', 'badgeLabel', 'compactBadges']);
   for (const box of MODE_BOXES) box.checked = box.value === cardBadges;
   $('hideNA').checked = hideNA;
+  $('compactBadges').checked = compactBadges === true;
   for (const box of LABEL_BOXES) box.checked = box.value === badgeLabel;
 }
 
@@ -572,6 +573,13 @@ for (const box of MODE_BOXES) {
 $('hideNA').addEventListener('change', async () => {
   await chrome.storage.sync.set({ hideNA: $('hideNA').checked });
   say($('hideNA').checked ? '“n/a” badges hidden on cards.' : '“n/a” badges shown on cards.');
+});
+
+// Smaller, see-through card badges everywhere (content.js applyBadgePrefs);
+// off by default, since the solid badge is the one that reads on bright art.
+$('compactBadges').addEventListener('change', async () => {
+  await chrome.storage.sync.set({ compactBadges: $('compactBadges').checked });
+  say($('compactBadges').checked ? 'Compact card badges.' : 'Full-size card badges.');
 });
 
 // ---------------------------------------------------------------- OMDb
@@ -807,7 +815,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
 // optional ones off, no added addresses, badges always with the star
 // label, no extras, OMDb lookups on if there is a key, the local database
 // with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'omdbFallback', 'extraRatings'];
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'compactBadges', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;

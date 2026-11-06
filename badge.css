@@ -432,11 +432,14 @@ html.imdbext-label-imdb .imdbext-rt::before {
   padding: 0 3px;
 }
 
-/* Letterboxd: posters are 150 px wide in most grids and 90 px slices in
-   the stacked list previews, so the corner badge is two sizes smaller,
-   tight, and on a lighter ground that lets the poster show through;
-   with the short scores on ("On cards too") a tomato fits beside the
-   score on a slice. */
+/* Compact card badges, two ways in: Letterboxd's posters always (150 px
+   wide in most grids, 90 px slices in the stacked list previews), and
+   every site with the settings' "Compact badges" tick (content.js puts
+   imdbext-compact on <html>). Two sizes smaller, tight, and on a lighter
+   ground that lets the artwork show through; with the short scores on
+   ("On cards too") a tomato fits beside the score on a slice. Episode
+   badges and the chips in previews and banners are not affected. */
+html.imdbext-compact .imdbext-badge--card,
 .film-poster > .imdbext-badge--card {
   top: 3px;
   right: 3px;
@@ -448,17 +451,27 @@ html.imdbext-label-imdb .imdbext-rt::before {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
+html.imdbext-compact .imdbext-badge--card::before,
 .film-poster > .imdbext-badge--card::before {
   font-size: 8px;
 }
 
+html.imdbext-compact .imdbext-badge--card .imdbext-extras,
 .film-poster > .imdbext-badge--card .imdbext-extras {
   gap: 2px;
   margin-right: 1px;
   font-size: 8px;
 }
 
+html.imdbext-compact .imdbext-badge--card .imdbext-mc,
 .film-poster > .imdbext-badge--card .imdbext-mc {
+  padding: 0 2px;
+}
+
+/* The IMDb tag label (settings: Label before the rating) at the compact size. */
+html.imdbext-compact.imdbext-label-imdb .imdbext-badge--card::before,
+html.imdbext-label-imdb .film-poster > .imdbext-badge--card::before {
+  font-size: 7px;
   padding: 0 2px;
 }
 

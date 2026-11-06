@@ -634,9 +634,11 @@
   // extraRatings {rt, mc, awards, imdb, cards} (with OMDb lookups on) adds
   // OMDb's extra scores to detail chips; changing it rescans so open chips
   // follow.
-  const PREF_KEYS = ['cardBadges', 'hideNA', 'badgeLabel', 'extraRatings', 'omdbFallback'];
+  // compactBadges: smaller, see-through card badges (the Letterboxd look)
+  // everywhere, pure CSS (badge.css html.imdbext-compact).
+  const PREF_KEYS = ['cardBadges', 'hideNA', 'badgeLabel', 'extraRatings', 'omdbFallback', 'compactBadges'];
 
-  function applyBadgePrefs({ cardBadges, hideNA, badgeLabel, extraRatings, omdbFallback }) {
+  function applyBadgePrefs({ cardBadges, hideNA, badgeLabel, extraRatings, omdbFallback, compactBadges }) {
     cardMode = cardBadges === 'hover' || cardBadges === 'off' ? cardBadges : 'always';
     // Nothing saved yet means the scores and awards on, the IMDb figure off
     // and "n/a" cards hidden (the same defaults as options.js).
@@ -645,6 +647,7 @@
     cl.toggle('imdbext-cards-hover', cardMode === 'hover');
     cl.toggle('imdbext-hide-na', hideNA !== false);
     cl.toggle('imdbext-label-imdb', badgeLabel === 'imdb');
+    cl.toggle('imdbext-compact', compactBadges === true);
   }
 
   chrome.storage.sync.get(['sites', ...PREF_KEYS]).then((prefs) => {
