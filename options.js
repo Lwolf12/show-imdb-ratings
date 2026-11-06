@@ -465,7 +465,8 @@ $('siteAddBtn').addEventListener('click', async () => {
   const row = siteRows.find((r) => r.address === address);
   if (row && typeof row.label.scrollIntoView === 'function') row.label.scrollIntoView({ block: 'nearest' });
   const own = SL.SITES[name].addresses.find((o) => SL.covers(address, o));
-  say('Added ' + address + ' under ' + SL.SITES[name].label + (own ? ' (its own pages under ' + own + ' keep its tick)' : '') + '. Reload any tab there.');
+  // Two lines at most in the status line (options.html #status).
+  say('Added ' + address + ' under ' + SL.SITES[name].label + (own ? ' (pages under ' + SL.pathOf(own) + ' keep its tick)' : '') + '. Reload any tab there.');
 });
 
 // The cross on an added address: the row goes, with its switch and its grant.
