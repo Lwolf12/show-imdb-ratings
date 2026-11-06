@@ -105,6 +105,17 @@ html.imdbext-label-imdb .imdbext-badge::before {
   font-size: 12px;
 }
 
+/* The amazon.com shop (Prime Video with www.amazon.com added as an
+   address): a product page is white, where the detail chip's faint
+   background and light text vanish, so under the product title it takes
+   the dark pill of the card badges. */
+#titleSection > .imdbext-badge--detail {
+  margin: 6px 0 2px;
+  padding: 3px 8px 3px 6px;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.78);
+}
+
 /* HBO Max: the banner's chip joins the Watch / My List button row (14px
    gap). A full-size overlay link covers the banner at z-index 10; the
    buttons sit at 11, so the chip must too or clicks fall through. */
