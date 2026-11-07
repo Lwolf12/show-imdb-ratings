@@ -15,9 +15,10 @@
 // position: relative, rendered late by a React component (an empty 0x0
 // div until the page's scripts run). They come in sizes from 35 px wide
 // (activity feeds, the members page's favourites at 41 px) to 230 px; a
-// poster under 100 px gets the class imdbext-tiny, which badge.css reads
-// for the smallest badge that is still legible, score only; the others
-// follow the size setting a step smaller (badge.css). Letterboxd's
+// poster under 60 px gets the class imdbext-tiny, which badge.css reads
+// for the smallest badge that is still legible, score only; the others,
+// the home page's 70-97 px posters included, follow the size setting a
+// step smaller (badge.css). Letterboxd's
 // own hover shows its rating (the frame's title), which is left alone.
 //
 // The home page's Video Store shelf (section.videostore-shelf) uses plain
@@ -34,7 +35,7 @@
   // "Poster for Interstellar (2014)" / "Interstellar (2014)" -> name, year
   const NAMED = /^(?:poster for\s+)?(.+?)\s*\((\d{4})\)\s*$/i;
   const MIN_WIDTH = 36;
-  const TINY_WIDTH = 100;
+  const TINY_WIDTH = 60;
 
   function posterName(el) {
     const frame = el.querySelector('.frame-title');
