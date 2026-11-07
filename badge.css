@@ -67,6 +67,11 @@ html.imdbext-label-imdb .imdbext-badge::before,
   border-radius: var(--imdbext-radius, 4px);
   background: rgba(0, 0, 0, var(--imdbext-ground, 0.5));
   box-shadow: 0 1px 3px rgba(0, 0, 0, var(--imdbext-shadow, 0.4));
+  /* The artwork behind the badge is blurred and dimmed before the ground
+     goes over it: a white/dark edge or fine detail under the digits evens
+     out, and light or yellow art turns dark enough for the yellow digits.
+     Dark art, most posters, looks the same as with the ground alone. */
+  backdrop-filter: blur(3px) brightness(0.6);
 }
 
 .imdbext-badge--card::before {
@@ -80,7 +85,7 @@ html.imdbext-label-imdb .imdbext-badge--card::before,
 }
 
 /* Badge size (settings: Small, Medium, Large), all on the same ground,
-   half black, that lets the artwork through. Small is 10px, tight;
+   half black over the blurred, dimmed artwork. Small is 10px, tight;
    Medium, the default, is the 12px badge of 1.3.0 (the variables'
    defaults above); Large is 14px. Letterboxd's posters have their own
    smaller size below. */
