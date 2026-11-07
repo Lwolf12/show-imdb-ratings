@@ -589,7 +589,7 @@ $('hideNA').addEventListener('change', async () => {
 
 // Medium, the default, is the size of before on a 75%-black ground;
 // Small a step down, Large a step up; all three on the same ground.
-const SIZE_SAID = { small: 'Small card badges.', medium: 'Medium card badges.', large: 'Large card badges.' };
+const SIZE_SAID = { small: 'Small badges.', medium: 'Medium badges.', large: 'Large badges.' };
 for (const box of SIZE_BOXES) {
   box.addEventListener('change', async () => {
     if (!box.checked) return;

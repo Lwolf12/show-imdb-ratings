@@ -72,11 +72,13 @@ html.imdbext-label-imdb .imdbext-badge::before,
   box-shadow: 0 1px 3px rgba(0, 0, 0, var(--imdbext-shadow, 0.4));
 }
 
-.imdbext-badge--card::before {
+.imdbext-badge--card::before,
+.imdbext-badge--episode::before {
   font-size: var(--imdbext-star, 12px);
 }
 
 html.imdbext-label-imdb .imdbext-badge--card::before,
+html.imdbext-label-imdb .imdbext-badge--episode::before,
 .imdbext-badge--card.imdbext-sample-imdb::before {
   font-size: var(--imdbext-tag, 9px);
   padding: 0 var(--imdbext-tag-pad, 3px);
@@ -304,12 +306,13 @@ html.imdbext-hide-na .imdbext-badge--card.imdbext-badge--none {
 }
 
 /* Episode rating in an episode list row, between the episode title and its
-   duration (Netflix's .titleCardList-title row). */
+   duration (Netflix's .titleCardList-title row). Its text follows the
+   badge size the settings chose, like the card badges (12px at Medium). */
 .imdbext-badge--episode {
   flex: none;
   margin: 0 10px;
   padding: 1px 6px;
-  font-size: 12px;
+  font-size: var(--imdbext-size, 12px);
   vertical-align: middle;
   /* The faint background of the detail chip, not the card badge's black:
      one per row would read as a column of buttons. */
@@ -366,8 +369,11 @@ html.imdbext-hide-na .imdbext-badge--card.imdbext-badge--none {
 .web-attributes__meta > .imdbext-badge--episode {
   margin: 0 8px;
   padding: 1px 6px 1px 5px;
-  font-size: 12px;
   align-self: center;
+}
+
+.web-attributes__meta > .imdbext-badge--detail {
+  font-size: 12px;
 }
 
 /* Paramount+: the banner and show-page header are CSS grids; the chip gets

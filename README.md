@@ -72,10 +72,9 @@ is a small adapter file, so more services can be added.
 5. Optional: under **Badges on title cards**, show card badges always,
    only when the mouse is over a card, or not at all (previews, banners
    and title pages keep their rating either way); show the grey "n/a"
-   badges, hidden by default; pick the card badges' size, Small, Medium
-   (default) or Large; and
-   pick the label before the score, a star (default) or the yellow IMDb
-   tag. The samples beside the label choice are drawn at the chosen size.
+   badges, hidden by default; pick the size of the card and episode
+   badges, Small, Medium (default) or Large; and pick the label before
+   the score, a star (default) or the yellow IMDb tag. The samples beside the label choice are drawn at the chosen size.
    Hovering any badge says it is the IMDb rating and where it came from.
 
 ## Local database

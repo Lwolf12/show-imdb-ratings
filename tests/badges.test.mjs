@@ -25,7 +25,7 @@ test('badge size: medium by default, stored on a click, the page carries the cla
   await large.dispatch('change');
   assert.equal(storage.areas.sync.badgeSize, 'large');
   assert.equal(pageClass(options), 'imdbext-size-large');
-  assert.match(options.$('status').textContent, /Large card badges/);
+  assert.match(options.$('status').textContent, /Large badges/);
 
   const again = await page({ badgeSize: 'small' });
   assert.equal(chosen(again.options), 'small');

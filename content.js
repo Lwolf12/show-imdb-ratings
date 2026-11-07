@@ -634,7 +634,7 @@
   // extraRatings {rt, mc, awards, imdb, cards} (with OMDb lookups on) adds
   // OMDb's extra scores to detail chips; changing it rescans so open chips
   // follow.
-  // badgeSize 'small' | 'medium' (default) | 'large': the card badge's size
+  // badgeSize 'small' | 'medium' (default) | 'large': the card and episode badges' size
   // and ground, pure CSS (badge.css html.imdbext-size-*).
   const SIZES = ['small', 'medium', 'large'];
   const PREF_KEYS = ['cardBadges', 'hideNA', 'badgeLabel', 'extraRatings', 'omdbFallback', 'badgeSize'];
