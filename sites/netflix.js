@@ -355,14 +355,15 @@ window.IMDBEXT_SITE = {
       // with the title in its aria-label and the image in .boxart-container
       // (already position: relative). Its "Coming This Week", "Coming Next
       // Week" and "Worth the Wait" rows ([data-list-context=
-      // "windowedComingSoon"]) list titles not out yet, often sharing a name
-      // with an older film ("Inside", "Champions"); with no year on the
-      // card, those would show the older film's rating, so they get none.
-      // Their hover preview has a year and is handled as usual.
+      // "windowedComingSoon"]) list titles not out yet, often returning
+      // seasons of rated shows (Heartland), sometimes a new title sharing
+      // a name with an older film ("Inside", "Champions"); with no year on
+      // the card the latter can show the older film's rating until the
+      // hover preview, which has the year, corrects it (content.js
+      // syncCards). Rated since 1.3.2; they were skipped before.
       kind: 'card',
       selector: '[data-uia="title-card-container"]',
       titleOf(el) {
-        if (el.closest('[data-list-context="windowedComingSoon"]')) return null;
         const a = el.querySelector('a.slider-refocus');
         return englishFirst(jbvOf(a?.getAttribute('href')), (a?.getAttribute('aria-label') || '').trim() || null);
       },
