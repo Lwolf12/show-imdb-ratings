@@ -98,11 +98,12 @@
     .done[hidden] { display: none; }
     .done > div { flex: 1; }
     .done button { padding: 5px 12px; white-space: nowrap; }
-    /* The label samples are real card badges (badge.css is loaded here)
-       on a scrap of dark card, so they show the size, ground and label
-       the current choices give, redrawn as the choices change. */
-    .sample-card { position: relative; display: inline-block; width: 72px; height: 24px; border-radius: 4px; --imdbext-corner: 3px; background: linear-gradient(120deg, #4f6075 0%, #b7c4d2 38%, #ffffff 52%, #b7c4d2 66%, #4f6075 100%); vertical-align: middle; overflow: hidden; } /* a soft white band crossing under the badge, slate either side, so the band shows through the badge as artwork does on a real card */
-    .sample-card .imdbext-badge { cursor: default; }
+    /* The label samples are real card badges (badge.css is loaded here),
+       laid inline on the page's own white: the size, ground and label the
+       current choices give, nothing drawn behind them, redrawn as the
+       choices change. */
+    .sample-card { display: inline-flex; align-items: center; vertical-align: middle; min-height: 24px; }
+    .sample-card .imdbext-badge--card { position: static; cursor: default; }
     #labelRow { margin: 2px 0; }
     #sizeRow { margin: 6px 0; }
     .credit { margin: auto 0 0; padding-top: 10px; color: #888; font-size: 12px; }   /* pinned to the bottom */
