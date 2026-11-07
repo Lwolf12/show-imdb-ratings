@@ -587,7 +587,7 @@ $('hideNA').addEventListener('change', async () => {
   say($('hideNA').checked ? '“n/a” badges hidden on cards.' : '“n/a” badges shown on cards.');
 });
 
-// Medium, the default, is the size of before on a half-black ground;
+// Medium, the default, is the size of before on a 75%-black ground;
 // Small a step down, Large a step up; all three on the same ground.
 const SIZE_SAID = { small: 'Small card badges.', medium: 'Medium card badges.', large: 'Large card badges.' };
 for (const box of SIZE_BOXES) {
