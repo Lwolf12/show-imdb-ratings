@@ -16,7 +16,8 @@
 // div until the page's scripts run). They come in sizes from 35 px wide
 // (activity feeds, the members page's favourites at 41 px) to 230 px; a
 // poster under 100 px gets the class imdbext-tiny, which badge.css reads
-// for the smallest badge that is still legible, score only. Letterboxd's
+// for the smallest badge that is still legible, score only; the others
+// follow the size setting a step smaller (badge.css). Letterboxd's
 // own hover shows its rating (the frame's title), which is left alone.
 //
 // The home page's Video Store shelf (section.videostore-shelf) uses plain

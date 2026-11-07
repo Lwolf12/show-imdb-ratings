@@ -478,12 +478,25 @@ html.imdbext-label-imdb .imdbext-rt::before {
 }
 
 /* Letterboxd: posters are 150 px wide in most grids and 90 px slices in
-   the stacked list previews, so its badges are always this smaller size,
-   whatever the settings chose. */
+   the stacked list previews, so its badges follow the size setting one
+   step smaller than elsewhere: 8, 9 (Medium) and 11 px. The tiny posters
+   below keep their own fixed size. */
 .film-poster > .imdbext-badge--card {
   --imdbext-size: 9px; --imdbext-star: 8px; --imdbext-tag: 7px; --imdbext-tag-pad: 2px;
   --imdbext-pad: 0 2px; --imdbext-gap: 2px; --imdbext-corner: 3px; --imdbext-radius: 3px;
   --imdbext-extras: 8px; --imdbext-extras-gap: 2px; --imdbext-mc-pad: 2px;
+}
+
+html.imdbext-size-small .film-poster > .imdbext-badge--card {
+  --imdbext-size: 8px; --imdbext-star: 7px; --imdbext-tag: 6px; --imdbext-tag-pad: 1px;
+  --imdbext-pad: 0 2px; --imdbext-gap: 1px; --imdbext-corner: 3px; --imdbext-radius: 2px;
+  --imdbext-extras: 7px; --imdbext-extras-gap: 2px; --imdbext-mc-pad: 1px;
+}
+
+html.imdbext-size-large .film-poster > .imdbext-badge--card {
+  --imdbext-size: 11px; --imdbext-star: 10px; --imdbext-tag: 8px; --imdbext-tag-pad: 2px;
+  --imdbext-pad: 1px 4px 1px 3px; --imdbext-gap: 3px; --imdbext-corner: 4px; --imdbext-radius: 3px;
+  --imdbext-extras: 9px; --imdbext-extras-gap: 3px; --imdbext-mc-pad: 2px;
 }
 
 /* Letterboxd's smallest posters (under 100 px: a member's favourites at
