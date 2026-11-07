@@ -584,9 +584,8 @@ $('hideNA').addEventListener('change', async () => {
   say($('hideNA').checked ? '“n/a” badges hidden on cards.' : '“n/a” badges shown on cards.');
 });
 
-// Medium, the default, keeps the rating there when looked for rather than
-// the first thing on the page; Large the size of before; all three on the
-// same half-black ground. Small is Letterboxd’s.
+// Medium, the default, is the size of before on a half-black ground;
+// Small a step down, Large a step up; all three on the same ground.
 const SIZE_SAID = { small: 'Small card badges.', medium: 'Medium card badges.', large: 'Large card badges.' };
 for (const box of SIZE_BOXES) {
   box.addEventListener('change', async () => {
