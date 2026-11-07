@@ -41,8 +41,8 @@ The Chrome listing is in `LISTING.md`.
 > with a link to the title's page. Banners and title pages get a rating
 > chip too. A show's episode list also gets a rating next to every episode,
 > so the standout episodes and seasons are easy to spot. Prefer a cleaner
-> look? Card badges can show only when the mouse is over a card, or not at
-> all.
+> look? Badges come in three sizes, and card badges can show only when the
+> mouse is over a card, or not at all.
 >
 > HOW IT WORKS
 > Two ways to get ratings, chosen in the settings:
@@ -65,6 +65,8 @@ The Chrome listing is in `LISTING.md`.
 > any point and leaves nothing half done. Later, the extension's toolbar
 > button opens them. Every service is on from the start; any of them can
 > be switched off in the settings if you'd rather not see ratings there.
+> Another address that uses a supported site's layout, such as a
+> streaming service's site in another country, can be added there too.
 >
 > OPTIONAL: NEW RELEASES
 > Brand-new titles are not in the public data yet. To cover those, get a

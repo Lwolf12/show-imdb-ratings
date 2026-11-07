@@ -18,12 +18,13 @@ with `store/build-zip.ps1` and lands in `dist/`.
 
 > See IMDb ratings without leaving the streaming site. Works on Netflix,
 > Prime Video, Disney+, HBO Max and four more major streaming services
-> (the full list is on the project page below). While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's
+> (the full list is on the project page below), and on Letterboxd if you
+> switch it on. While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's
 > own preview, with a link to the title's page. Banners and title pages get
 > a rating chip too. A show's episode list also gets a rating next to every
 > episode, so the standout episodes and seasons are easy to spot. Prefer a
-> cleaner look? Card badges can show only when the mouse is
-> over a card, or not at all.
+> cleaner look? Badges come in three sizes, and card badges can show only
+> when the mouse is over a card, or not at all.
 >
 > HOW IT WORKS
 > Two ways to get ratings, chosen in the settings:
@@ -48,6 +49,8 @@ with `store/build-zip.ps1` and lands in `dist/`.
 > puzzle-piece menu opens them (pin it to
 > keep it in the toolbar). Every service is on from the start; any of them
 > can be switched off in the settings if you'd rather not see ratings there.
+> Another address that uses a supported site's layout, such as a
+> streaming service's site in another country, can be added there too.
 >
 > OPTIONAL: NEW RELEASES
 > Brand-new titles are not in the public data yet. To cover those, get a
@@ -107,7 +110,8 @@ Size a Chrome window to 1280×800 (DevTools → device toolbar → Responsive �
 anything personal in the frame (profile name, continue-watching row).
 
 **Small promo tile** (440×280, optional; it makes the listing eligible for
-featuring): skip for the first submission.
+featuring): `store/screenshots/v133/promo-tile-440x280.png` since 1.3.5
+(abstract cards with real badges, no streaming artwork). Marquee: skipped.
 
 **Official URL / Homepage:** https://github.com/Lwolf12/show-imdb-ratings
 **Support URL:** https://github.com/Lwolf12/show-imdb-ratings/issues/new/choose (lands on the issue-form chooser, not the empty issue list)
