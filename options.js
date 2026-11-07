@@ -332,6 +332,9 @@ function siteHint(row) {
 function siteRow(name, address) {
   const label = document.createElement('label');
   label.className = address ? 'check address' : 'check';
+  // Hovering a site says where it runs; an added address, which site it
+  // was added under.
+  label.title = address ? 'Added under ' + SL.SITES[name].label : SL.SITES[name].addresses.join(', ');
   const box = document.createElement('input');
   box.type = 'checkbox';
   box.className = 'site';
