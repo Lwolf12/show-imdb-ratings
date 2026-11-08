@@ -27,7 +27,7 @@ The Chrome listing is in `LISTING.md`.
 
 **Summary** (250 characters max):
 
-> Shows the IMDb user rating on title cards while you browse Netflix,
+> Shows the IMDb rating on title cards while you browse Netflix,
 > Prime Video, Hulu, HBO Max and more. Ratings are looked up on your own
 > device from IMDb's public data, with no tracking.
 

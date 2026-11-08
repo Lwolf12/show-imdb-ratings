@@ -10,7 +10,7 @@ with `store/build-zip.ps1` and lands in `dist/`.
 
 **Summary** (132 characters max):
 
-> Shows the IMDb user rating on title cards while you browse Netflix, Prime Video, Hulu, HBO Max and more. Free and open source.
+> Shows the IMDb rating on title cards while you browse Netflix, Prime Video, Hulu, HBO Max and more. Free and open source.
 
 **Category:** Entertainment · **Language:** English
 
