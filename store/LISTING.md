@@ -113,8 +113,13 @@ anything personal in the frame (profile name, continue-watching row).
 featuring): `store/screenshots/v133/promo-tile-440x280.png` since 1.3.5
 (abstract cards with real badges, no streaming artwork). Marquee: skipped.
 
-**Official URL / Homepage:** https://github.com/Lwolf12/show-imdb-ratings
-**Support URL:** https://github.com/Lwolf12/show-imdb-ratings/issues/new/choose (lands on the issue-form chooser, not the empty issue list)
+**Official URL / Homepage:** https://lwolf12.github.io/show-imdb-ratings/
+**Support URL:** https://lwolf12.github.io/show-imdb-ratings/
+
+Both on GitHub Pages since 1.3.6 (2026-11-08): the submit check timed out on
+github.com repo pages, which returned 504 to signed-out visitors that day.
+The issue form (https://github.com/Lwolf12/show-imdb-ratings/issues/new/choose)
+can go back in as the Support URL once github.com answers again.
 
 ## Privacy practices tab
 
@@ -156,8 +161,9 @@ featuring): `store/screenshots/v133/promo-tile-440x280.png` since 1.3.5
   creditworthiness or for lending.
 
 **Privacy policy URL:**
-https://github.com/Lwolf12/show-imdb-ratings/blob/main/PRIVACY.md
-(the file must be committed and pushed before the reviewer can open it).
+https://lwolf12.github.io/show-imdb-ratings/PRIVACY
+(GitHub Pages, built from PRIVACY.md on main; a change shows there a minute
+or two after the push).
 
 ## Distribution tab
 
