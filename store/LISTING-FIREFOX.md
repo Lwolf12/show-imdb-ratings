@@ -33,70 +33,32 @@ The Chrome listing is in `LISTING.md`.
 
 **Description:**
 
-> See IMDb ratings without leaving the streaming site. Works on eight of
-> the major streaming services (the full list is on the project page
-> below), and on Letterboxd if you switch it on. While you browse, every
-> title card gets a small rating badge.
-> Hovering a title adds the year and vote count to the site's own preview,
-> with a link to the title's page. Banners and title pages get a rating
-> chip too. A show's episode list also gets a rating next to every episode,
-> so the standout episodes and seasons are easy to spot. Prefer a cleaner
-> look? Badges come in three sizes, and card badges can show only when the
-> mouse is over a card, or not at all.
+> See IMDb ratings without leaving the streaming site. Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd. While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's own preview, with a link to the title's page. Banners and title pages get a rating chip too. A show's episode list also gets a rating next to every episode, so the standout episodes and seasons are easy to spot. Prefer a cleaner look? Badges come in three sizes, and card badges can show only when the mouse is over a card, or not at all.
 >
 > HOW IT WORKS
-> Two ways to get ratings, chosen in the settings:
+> No account and no key needed. By default the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes, with ratings showing before it has even finished. From then on every lookup happens on your device: instant, unlimited, and without sending the titles you browse to anyone. Each week only the small ratings file (about 9 MB) is re-read; the full title list, which brings in new titles, is rebuilt monthly, and both can be set to run less often, or only when you click, for metered connections.
 >
-> Local database (default). Built once in your browser from IMDb's public
-> data, about 280 MB and a few minutes, with ratings showing before it has
-> even finished. From then on every lookup happens on your device: instant,
-> unlimited, and without sending the titles you browse to anyone. Each week
-> only the small ratings file (about 9 MB) is re-read; the full title list
-> is rebuilt monthly, and both can be set to run less often, or only when
-> you click, for metered connections.
+> Nothing downloads until you click Update now in the settings, which open in a small window right after installing. A build can be cancelled at any point and leaves nothing half done. Later, the extension's toolbar button opens them. Every service is on from the start; any of them can be switched off in the settings if you'd rather not see ratings there. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
-> OMDb only. No database. With a free key from omdbapi.com, every title is
-> looked up at OMDb as you browse. Nothing to build, but 1,000 lookups a
-> day, badges that fill in a moment after the page shows, and the titles
-> you browse are sent to OMDb (Firefox asks you first).
+> OPTIONAL: AN OMDb KEY
+> A free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the database or replace it; Firefox asks you before any title names are sent:
 >
-> Nothing downloads until you click Update now in the settings, which open
-> in a small window right after installing. A build can be cancelled at
-> any point and leaves nothing half done. Later, the extension's toolbar
-> button opens them. Every service is on from the start; any of them can
-> be switched off in the settings if you'd rather not see ratings there.
-> Another address that uses a supported site's layout, such as a
-> streaming service's site in another country, can be added there too.
+> Database plus key. Hover previews, banners and title pages add Rotten Tomatoes and Metacritic scores (mostly for films) and awards, and title cards can show the scores too. A title that came out since the last rebuild is looked up at OMDb until the database has it. Only these lookups send title names to OMDb.
 >
-> OPTIONAL: NEW RELEASES
-> Brand-new titles are not in the public data yet. To cover those, get a
-> free API key from omdbapi.com (1,000 lookups a day) and paste it into the
-> settings. Firefox then asks you to allow sending title names to that
-> service, and only titles the local database does not have are sent.
-> With a key, previews and title pages can also show Rotten Tomatoes and
-> Metacritic scores and awards. One box, Use OMDb, switches all of that
-> off again and keeps the key.
+> OMDb only. Nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: episode ratings come without vote counts, OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server, and title names are sent to OMDb. With the database alone, lookups never leave your device.
+>
+> One box, Use OMDb, switches the key off again and keeps it.
 >
 > OPTIONAL: TITLES IN OTHER LANGUAGES
-> A streaming site in another language shows translated titles, which the
-> database knows only by their English and original names. Tick Match
-> titles in other languages in the settings, tick the languages you use
-> (from Polish to Korean, Japanese and Chinese),
-> and click Get titles: the extension reads IMDb's list of titles by
-> country once (520 MB, nothing saved as a file) and keeps the useful
-> part, about 50 MB, in the database. Ticking another language later
-> takes seconds. Not needed with an English browser on English pages.
+> A streaming site in another language shows translated titles, which the database knows only by their English and original names. Tick Match titles in other languages in the settings, tick the languages you use (from Polish to Korean, Japanese and Chinese), and click Get titles: the extension reads IMDb's list of titles by country once (520 MB, nothing saved as a file) and keeps the useful part, about 50 MB, in the database. Ticking another language later takes seconds. Not needed with an English browser on English pages.
 >
 > PRIVACY
-> No accounts, no analytics, no server. The extension reads only the title
-> names on the cards it decorates and sends nothing about you anywhere.
-> Full policy: https://github.com/Lwolf12/show-imdb-ratings/blob/main/PRIVACY.md
+> No accounts, no analytics, no server. The extension reads only the title names on the cards it decorates and sends nothing about you anywhere. Full policy: https://lwolf12.github.io/show-imdb-ratings/PRIVACY
 >
 > OPEN SOURCE
 > https://github.com/Lwolf12/show-imdb-ratings
 >
-> Independent project, not affiliated with or endorsed by IMDb or any
-> streaming service.
+> Independent project, not affiliated with or endorsed by IMDb or any streaming service.
 
 The same keyword rule as the Chrome listing applies (see LISTING.md): no
 lists of brand names beyond four.
