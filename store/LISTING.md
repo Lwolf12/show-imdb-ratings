@@ -30,8 +30,6 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > If you choose OMDb only instead, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server being accessible, and title names are sent to OMDb. With the database alone, lookups would never leave your device.
 >
-> One box, Use OMDb, switches the key off again and keeps it.
->
 > OPTIONAL: TITLES IN OTHER LANGUAGES
 > A streaming site in another language shows translated titles, which the database knows only by their English and original names. Tick Match titles in other languages in the settings, tick the languages you use (from Polish to Korean, Japanese and Chinese), and click Get titles: the extension reads IMDb's list of titles by country once (520 MB, nothing saved as a file) and keeps the useful part, about 50 MB, in the database. Ticking another language later takes seconds. Not needed with an English browser on English pages.
 >
