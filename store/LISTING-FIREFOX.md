@@ -46,7 +46,7 @@ The Chrome listing is in `LISTING.md`.
 >
 > Without the local database selected, titles in other languages are not matched, badges depend on OMDb's server being accessible, and the IMDb rating is not always current.
 >
-> Local database only lookups don't leave your device.
+> Local database only (Use OMDb not checked) lookups don't leave your device.
 >
 > The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
