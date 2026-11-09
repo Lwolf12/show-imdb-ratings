@@ -25,8 +25,7 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > Nothing downloads until you click Update now in the settings, which open in a small window right after installing. Later, the extension's icon (a poster with a gold star) in Chrome's puzzle-piece menu opens them (pin it to keep it in the toolbar). The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
-> OPTIONAL: AN OMDb KEY
-> A free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it:
+> Use OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it:
 >
 > With the database and a key, a title that came out since the last monthly update is looked up at OMDb until the database has it. Only these lookups send title names to OMDb; the extra scores are asked for by IMDb ID.
 >
