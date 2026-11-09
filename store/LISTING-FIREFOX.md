@@ -27,9 +27,9 @@ The Chrome listing is in `LISTING.md`.
 
 **Summary** (250 characters max):
 
-> Shows the IMDb rating on title cards while you browse Netflix,
-> Prime Video, Hulu, HBO Max and more. Ratings are looked up on your own
-> device from IMDb's public data, with no tracking.
+> Free and open source. Shows the IMDb rating on title cards while you
+> browse Netflix, Prime Video, Hulu, HBO Max and more. Ratings are looked up
+> on your own device from IMDb's public data, with no tracking.
 
 **Description:**
 
@@ -69,7 +69,7 @@ Other).
 
 **Tags:** fixed list on AMO; only `streaming` fits
 
-**Support website:** https://github.com/Lwolf12/show-imdb-ratings/issues/new/choose (lands on the issue-form chooser, not the empty issue list)
+**Support website:** https://lwolf12.github.io/show-imdb-ratings/ (since 2026-11-08; github.com repo pages were timing out for signed-out visitors that day)
 
 **Homepage:** https://github.com/Lwolf12/show-imdb-ratings
 
