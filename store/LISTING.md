@@ -27,7 +27,9 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. The OMDb option also allows Rotten Tomatoes, Metacritic and awards to be optionally shown with the IMDb rating.
 >
-> Without the local database selected, titles in other languages are not matched, badges depend on OMDb's server being accessible, and the IMDb rating is not always current. Local database only lookups don't leave your device.
+> Without the local database selected, titles in other languages are not matched, badges depend on OMDb's server being accessible, and the IMDb rating is not always current.
+>
+> Local database only lookups don't leave your device.
 >
 > The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
