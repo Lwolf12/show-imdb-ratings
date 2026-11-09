@@ -167,6 +167,26 @@
     if (target.kind === 'detail' && kind) syncCards(title, result);
     addExtras(badge, target.kind);
 
+    // A name shared by a well-known film and series (db.js lookup
+    // ambiguous) on a card that gave no type: a site that can find the
+    // type out later (typeLater, a promise of 'movie' | 'series' | null)
+    // gets the card asked again with it.
+    if (!kind && result.ambiguous && typeof target.typeLater === 'function') {
+      Promise.resolve(target.typeLater(el)).then(async (later) => {
+        if (!later || !badge.isConnected || el.getAttribute(PROCESSED) !== key) return;
+        let typed;
+        try {
+          typed = await chrome.runtime.sendMessage({ type: 'rating', title, kind: later, year, lang: pageLang() });
+        } catch (e) {
+          return;
+        }
+        if (typed && !typed.error && typed.rating != null && badge.isConnected && el.getAttribute(PROCESSED) === key) {
+          render(badge, title, typed, target.kind);
+          addExtras(badge, target.kind);
+        }
+      }, () => {});
+    }
+
     // Stored answer was old: show it now, refresh quietly, update if changed.
     if (result.stale) {
       let fresh;

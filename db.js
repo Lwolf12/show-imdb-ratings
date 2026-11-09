@@ -345,6 +345,17 @@ const RatingsDB = (() => {
 
   const ratingsDate = (m) => m.ratingsBuilt || m.built;
 
+  // Whether a name's entries (most-voted first) hold both a film and a
+  // series, the less-voted of their two leaders having at least a fifth of
+  // the other's votes: Hannibal (the 2001 film, the 2013 series) is; Dark
+  // (the 2017 series and a little-seen film) is not.
+  const AMBIGUOUS_SHARE = 0.2;
+  function ambiguousName(entries) {
+    const film = entries.find((e) => e[1] === 'm');
+    const series = entries.find((e) => e[1] === 's');
+    return !!film && !!series && Math.min(film[4], series[4]) >= AMBIGUOUS_SHARE * Math.max(film[4], series[4]);
+  }
+
   // Same result shape as the OMDb path, plus source: 'local'. Null when the
   // title is not in the database.
   // kind ('movie' | 'series' | null) filters; year (string | null) prefers
@@ -353,6 +364,11 @@ const RatingsDB = (() => {
   // are most-voted first, so without a year match the popular one wins.
   // akas: whether titles in other languages (the akas store) count too;
   // the background passes the user's choice (languages.js).
+  // ambiguous: true when the name belongs to both a film and a series and
+  // the less-voted of the two has at least AMBIGUOUS_SHARE of the other's
+  // votes (Hannibal: the 2001 film and the 2013 series), so a site that can
+  // find out the type (Netflix, sites/netflix.js typeLater) asks again with
+  // it. A property of the name, so typed answers carry it too.
   async function lookup(title, kind, year, akas = true) {
     const m = await getMeta();
     if (!m) return null;
@@ -382,6 +398,7 @@ const RatingsDB = (() => {
     if (!hit) return null;
     const [imdbID, type, startYear, rating, votes, primaryTitle] = hit;
     const cur = await getCurrent(db, imdbID);
+    const ambiguous = ambiguousName(rec.e);
     return {
       rating: cur ? cur[0] : rating,
       votes: (cur ? cur[1] : votes).toLocaleString('en-US'),
@@ -392,6 +409,7 @@ const RatingsDB = (() => {
       source: 'local',
       built: cur ? ratingsDate(m) : m.built,
       ...(aka ? { aka: true } : {}),
+      ...(ambiguous ? { ambiguous: true } : {}),
     };
   }
 
@@ -702,5 +720,5 @@ const RatingsDB = (() => {
     await complete(tx);
   }
 
-  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
+  return { FORMAT, LANGUAGES, LANGUAGE_ALIASES, languageOf, AKAS_DAYS, AKAS_FORMAT, AKAS_NEEDS, akasStale, akasCovers, scriptLanguages, extractRow, keyRowWanted, normalise, normaliseAny, ambiguousName, open, getMeta, status, lookup, lookupById, lookupEpisodes, writeTitles, clearSpare, writeEpisodes, readEntries, writeAkas, putFile, getFile, clearAkas, updateRatings, clear };
 })();

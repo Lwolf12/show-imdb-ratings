@@ -1,6 +1,6 @@
 # Privacy policy: Show IMDb Ratings on Streaming Services
 
-Last updated: 2026-11-05
+Last updated: 2026-11-09
 
 This extension shows IMDb user ratings on title cards while you browse
 Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+, Paramount+ and Tubi,
@@ -62,8 +62,11 @@ IndexedDB, and is removed when you uninstall the extension:
   and name from it. On a profile in a language written in another script
   (Korean, say), it asks the same public page once for each title whose
   name on the card is in that script, to read the title's English name,
-  which IMDb is far more likely to know. That is the same page anyone can
-  open; it tells Netflix nothing beyond what browsing Netflix already does.
+  which IMDb is far more likely to know. When a card's name belongs to both
+  a well-known film and a well-known series (Hannibal, say), it asks the
+  same public page once to read whether that title is a film or a series.
+  That is the same page anyone can open; it tells Netflix nothing beyond
+  what browsing Netflix already does.
 
 Nothing else is sent anywhere. The extension does not send your browsing
 activity, your watch history, the pages you visit or anything you type to

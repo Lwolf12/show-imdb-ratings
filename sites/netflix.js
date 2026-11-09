@@ -90,13 +90,24 @@ function isEpisodeView(modal) {
 // language, as it does outside the US). Until it is known the card's own
 // name is looked up; the rescan after the read tries the English one.
 
+// The same page also says whether a title is a film or a series (its
+// JSON-LD "@type": "Movie" or "TVSeries", just before the <h1>). Cards give
+// no type, so a name shared by a well-known film and series (Hannibal) is
+// looked up untyped first and gets the most-voted one; when the database
+// says the name is ambiguous, content.js asks typeLater, which reads the
+// page once (storage.local nfTypes: id -> 'movie' | 'series') and the card
+// is asked again with the type. typeOf hands the stored type to the cards
+// from then on. The episode and English reads note the type on the way.
+
 const nf = {
   shows: {}, // Netflix show id -> name, as the cards and modals name it
   episodes: {}, // Netflix episode id -> show id
   english: {}, // Netflix id -> English name from its public page ('' when it gave none)
-  pending: new Set(), // 'ep:<id>' or 'en:<id>' reads under way
+  types: {}, // Netflix id -> 'movie' | 'series' from its public page
+  typeWaiters: {}, // id -> [resolve] while a type read is under way
+  pending: new Set(), // 'ep:<id>', 'en:<id>' or 'ty:<id>' reads under way
   failed: {}, // id -> time of the last failed attempt
-  queue: [], // [{ id, kind: 'episode' | 'english' }]
+  queue: [], // [{ id, kind: 'episode' | 'english' | 'type' }]
   active: 0,
   lastEpisodeCard: null, // { id, label } of the episode card last hovered
 };
@@ -123,11 +134,12 @@ function nfSave() {
   nfSaveTimer = setTimeout(async () => {
     nfSaveTimer = null;
     try {
-      const cur = await chrome.storage.local.get(['nfShows', 'nfEpisodes', 'nfEnglish']);
+      const cur = await chrome.storage.local.get(['nfShows', 'nfEpisodes', 'nfEnglish', 'nfTypes']);
       await chrome.storage.local.set({
         nfShows: { ...(cur.nfShows || {}), ...nf.shows },
         nfEpisodes: { ...(cur.nfEpisodes || {}), ...nf.episodes },
         nfEnglish: { ...(cur.nfEnglish || {}), ...nf.english },
+        nfTypes: { ...(cur.nfTypes || {}), ...nf.types },
       });
     } catch (e) {
       /* extension reloaded; the next page load starts over */
@@ -191,8 +203,34 @@ function pageIdOf(name) {
   return pageIds.get(name) || null;
 }
 
+// A card's type once its page has been read, else null.
+function typeOfId(id) {
+  return (id && nf.types[id]) || null;
+}
+
+// A promise of the title's type, reading its public page if need be;
+// null when the page can't say.
+function typeLaterOf(id) {
+  if (!id) return Promise.resolve(null);
+  if (nf.types[id]) return Promise.resolve(nf.types[id]);
+  return new Promise((resolve) => {
+    (nf.typeWaiters[id] = nf.typeWaiters[id] || []).push(resolve);
+    queueRead(id, 'type');
+    // queueRead skips an id that failed lately: answer at once then.
+    if (!nf.pending.has('ty:' + id)) settleType(id);
+  });
+}
+
+function settleType(id) {
+  const waiters = nf.typeWaiters[id] || [];
+  delete nf.typeWaiters[id];
+  for (const resolve of waiters) resolve(nf.types[id] || null);
+}
+
+const READ_PREFIX = { episode: 'ep:', english: 'en:', type: 'ty:' };
+
 function queueRead(id, kind) {
-  const key = (kind === 'english' ? 'en:' : 'ep:') + id;
+  const key = READ_PREFIX[kind] + id;
   if (nf.pending.has(key) || Date.now() - (nf.failed[id] || 0) < RETRY_FAILED_MS) return;
   nf.pending.add(key);
   nf.queue.push({ id, kind });
@@ -203,18 +241,21 @@ function nfPump() {
   while (nf.active < 2 && nf.queue.length) {
     const { id, kind } = nf.queue.shift();
     nf.active++;
-    (kind === 'english' ? resolveEnglish(id) : resolveEpisode(id)).finally(() => {
+    const read = kind === 'english' ? resolveEnglish(id) : kind === 'type' ? resolveType(id) : resolveEpisode(id);
+    read.finally(() => {
       nf.active--;
-      nf.pending.delete((kind === 'english' ? 'en:' : 'ep:') + id);
+      nf.pending.delete(READ_PREFIX[kind] + id);
+      if (kind === 'type') settleType(id);
       nfPump();
     });
   }
 }
 
-// Netflix's public page of a title, signed out: { showId, name }, the id
-// it lands on (an episode's page redirects to its show's) and the name in
-// its <h1>, about 600 KB in, so the page is read only up to there. Throws
-// when there is no such page.
+// Netflix's public page of a title, signed out: { showId, name, type }, the
+// id it lands on (an episode's page redirects to its show's), the name in
+// its <h1>, about 600 KB in, so the page is read only up to there, and the
+// type from the JSON-LD "@type" a little before it ('movie' | 'series' |
+// null). Throws when there is no such page.
 async function readTitlePage(id) {
   const ctrl = new AbortController();
   try {
@@ -226,11 +267,16 @@ async function readTitlePage(id) {
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '';
     let name = null;
+    let type = null;
     for (let read = 0; read < 3e6; ) {
       const { done, value } = await reader.read();
       if (done) break;
       read += value.length;
       buf += value;
+      if (!type) {
+        const t = buf.match(/"@type":"(Movie|TVSeries)"/);
+        if (t) type = t[1] === 'Movie' ? 'movie' : 'series';
+      }
       const m = buf.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
       if (m) {
         name = new DOMParser().parseFromString(m[1], 'text/html').body.textContent.trim() || null;
@@ -238,7 +284,7 @@ async function readTitlePage(id) {
       }
       buf = buf.slice(-8192); // an <h1> split across chunks still matches next time
     }
-    return { showId, name };
+    return { showId, name, type };
   } finally {
     ctrl.abort(); // stop downloading the rest of the page
   }
@@ -257,6 +303,7 @@ async function resolveEpisode(episodeId) {
   try {
     const { showId, name } = await readTitlePage(episodeId);
     nf.episodes[episodeId] = showId;
+    nf.types[showId] = 'series';
     if (name) noteEnglish(showId, name);
     if (!nf.shows[showId] && name) nf.shows[showId] = name;
     if (!nf.shows[showId]) throw new Error('no name');
@@ -269,7 +316,8 @@ async function resolveEpisode(episodeId) {
 
 async function resolveEnglish(id) {
   try {
-    const { showId, name } = await readTitlePage(id);
+    const { showId, name, type } = await readTitlePage(id);
+    if (type) nf.types[showId] = nf.types[id] = type;
     noteEnglish(id, name);
     if (showId !== id) noteEnglish(showId, name);
     nfSave();
@@ -279,11 +327,23 @@ async function resolveEnglish(id) {
   }
 }
 
-chrome.storage.local.get(['nfShows', 'nfEpisodes', 'nfEnglish']).then(
-  ({ nfShows, nfEpisodes, nfEnglish }) => {
+async function resolveType(id) {
+  try {
+    const { showId, type } = await readTitlePage(id);
+    if (!type) throw new Error('no type on the title page');
+    nf.types[id] = nf.types[showId] = type;
+    nfSave();
+  } catch (e) {
+    nf.failed[id] = Date.now();
+  }
+}
+
+chrome.storage.local.get(['nfShows', 'nfEpisodes', 'nfEnglish', 'nfTypes']).then(
+  ({ nfShows, nfEpisodes, nfEnglish, nfTypes }) => {
     nf.shows = { ...(nfShows || {}), ...nf.shows };
     nf.episodes = { ...(nfEpisodes || {}), ...nf.episodes };
     nf.english = { ...(nfEnglish || {}), ...nf.english };
+    nf.types = { ...(nfTypes || {}), ...nf.types };
     nfRescan();
   },
   () => {}
@@ -345,6 +405,12 @@ window.IMDBEXT_SITE = {
         rememberShow(id, name);
         return englishFirst(id, name);
       },
+      typeOf(el) {
+        return typeOfId(jbvOf(el.getAttribute('href')));
+      },
+      typeLater(el) {
+        return typeLaterOf(jbvOf(el.getAttribute('href')));
+      },
       host(el) {
         return el;
       },
@@ -366,6 +432,12 @@ window.IMDBEXT_SITE = {
       titleOf(el) {
         const a = el.querySelector('a.slider-refocus');
         return englishFirst(jbvOf(a?.getAttribute('href')), (a?.getAttribute('aria-label') || '').trim() || null);
+      },
+      typeOf(el) {
+        return typeOfId(jbvOf(el.querySelector('a.slider-refocus')?.getAttribute('href')));
+      },
+      typeLater(el) {
+        return typeLaterOf(jbvOf(el.querySelector('a.slider-refocus')?.getAttribute('href')));
       },
       host(el) {
         return el.querySelector('.boxart-container');
