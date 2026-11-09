@@ -43,11 +43,11 @@ The Chrome listing is in `LISTING.md`.
 > Nothing downloads until you click Update now in the settings, which open in a small window right after installing. Later, the extension's toolbar button opens them. The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
 > OPTIONAL: AN OMDb KEY
-> A free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the database or replace it; Firefox asks you before any title names are sent:
+> A free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it; Firefox asks you before any title names are sent:
 >
-> With the database and a key, hover previews, banners and title pages add Rotten Tomatoes and Metacritic scores (mostly for films) and awards, and title cards can show the scores too. A title that came out since the last monthly update is looked up at OMDb until the database has it. Only these lookups send title names to OMDb.
+> With the database and a key, a title that came out since the last monthly update is looked up at OMDb until the database has it. Only these lookups send title names to OMDb; the extra scores are asked for by IMDb ID.
 >
-> If you choose OMDb only instead, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server being accessible, and title names are sent to OMDb. With the database alone, lookups would never leave your device.
+> If you choose OMDb only instead, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server being accessible, and title names are sent to OMDb. Database-only lookups are local and don't leave your device.
 >
 > OPTIONAL: TITLES IN OTHER LANGUAGES
 > On a streaming site in another language, the extension can look up IMDb ratings by the titles shown in that language: tick Match titles in other languages in the settings, pick your languages (from Polish to Korean, Japanese and Chinese) and click Get titles, a one-time download of about 520 MB (about 40 MB of it is kept). Not needed on English pages.
