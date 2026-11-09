@@ -38,7 +38,7 @@ The Chrome listing is in `LISTING.md`.
 > HOW IT WORKS
 > No account and no key needed. By default the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes, with ratings showing before it has even finished. From then on every lookup happens on your device: instant, unlimited, and without sending the titles you browse to anyone. Each week only the small ratings file (about 9 MB) is re-read; the full title list, which brings in new titles, is rebuilt monthly, and both can be set to run less often, or only when you click, for metered connections.
 >
-> Nothing downloads until you click Update now in the settings, which open in a small window right after installing. A build can be cancelled at any point and leaves nothing half done. Later, the extension's toolbar button opens them. Every service is on from the start; any of them can be switched off in the settings if you'd rather not see ratings there. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
+> Nothing downloads until you click Update now in the settings, which open in a small window right after installing. A build can be cancelled at any point and leaves nothing half done. Later, the extension's toolbar button opens them. The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
 > OPTIONAL: AN OMDb KEY
 > A free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the database or replace it; Firefox asks you before any title names are sent:
