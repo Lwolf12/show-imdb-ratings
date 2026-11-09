@@ -42,7 +42,7 @@ The Chrome listing is in `LISTING.md`.
 >
 > OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it; Firefox asks you before anything is sent to OMDb.
 >
-> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server being accessible, and title names are sent to OMDb. Database-only lookups are local and don't leave your device.
+> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. Without the local database selected, titles in other languages are not matched, badges depend on OMDb's server being accessible, and the IMDb rating is not always current. Database-only lookups are local and don't leave your device.
 >
 > The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
