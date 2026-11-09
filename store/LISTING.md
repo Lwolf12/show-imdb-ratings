@@ -28,7 +28,7 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > Database plus key. Hover previews, banners and title pages add Rotten Tomatoes and Metacritic scores (mostly for films) and awards, and title cards can show the scores too. A title that came out since the last rebuild is looked up at OMDb until the database has it. Only these lookups send title names to OMDb.
 >
-> OMDb only. Nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: episode ratings come without vote counts, OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server, and title names are sent to OMDb. With the database alone, lookups never leave your device.
+> OMDb only. Nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: OMDb has no vote counts for episodes, its copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server, and title names are sent to OMDb. With the database alone, lookups never leave your device.
 >
 > One box, Use OMDb, switches the key off again and keeps it.
 >
