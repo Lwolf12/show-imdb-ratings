@@ -42,7 +42,7 @@ The Chrome listing is in `LISTING.md`.
 >
 > Nothing downloads until you click Update now in the settings, which open in a small window right after installing. Later, the extension's toolbar button opens them. The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
-> Use OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it; Firefox asks you before anything is sent to OMDb:
+> OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it; Firefox asks you before anything is sent to OMDb:
 >
 > With the database and a key, a title that came out since the last monthly update is looked up at OMDb until the database has it. Only these lookups send title names to OMDb; the extra scores are asked for by IMDb ID.
 >
