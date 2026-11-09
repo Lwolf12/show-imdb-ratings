@@ -92,6 +92,13 @@ function isLearned(entry) {
     (entry.learned === true || entry.source === 'omdb');
 }
 
+// A database answer stored before 1.3.7 lacks the ambiguous flag (db.js
+// lookup), so a card could keep a same-named film's rating for a month; it
+// is asked of the database again (no request leaves the browser).
+function predatesAmbiguous(entry) {
+  return !!entry && entry.source === 'local' && !entry.learned && entry.rating != null && !('ambiguous' in entry);
+}
+
 function isStale(entry) {
   const window = entry.rating == null ? MISS_REFRESH_MS : isLearned(entry) ? LEARNED_REFRESH_MS : HIT_REFRESH_MS;
   return Date.now() - (entry.ts || 0) > window;
@@ -117,7 +124,7 @@ async function lookup(title, kind, refresh, year) {
   if (kind) broaderKeys.push(storeKey(title, null, null));
 
   const stored = (await chrome.storage.local.get(key))[key];
-  const fresh = stored && (!refresh || !isStale(stored));
+  const fresh = stored && (!refresh || !isStale(stored)) && !predatesAmbiguous(stored);
   if (fresh && stored.rating != null) {
     return { ...stored, stale: isStale(stored) };
   }

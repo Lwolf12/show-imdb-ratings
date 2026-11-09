@@ -364,11 +364,13 @@ const RatingsDB = (() => {
   // are most-voted first, so without a year match the popular one wins.
   // akas: whether titles in other languages (the akas store) count too;
   // the background passes the user's choice (languages.js).
-  // ambiguous: true when the name belongs to both a film and a series and
-  // the less-voted of the two has at least AMBIGUOUS_SHARE of the other's
-  // votes (Hannibal: the 2001 film and the 2013 series), so a site that can
-  // find out the type (Netflix, sites/netflix.js typeLater) asks again with
-  // it. A property of the name, so typed answers carry it too.
+  // ambiguous (always present, true or false; lookup.js re-asks a stored
+  // answer that predates it): true when the name belongs to both a film
+  // and a series and the less-voted of the two has at least
+  // AMBIGUOUS_SHARE of the other's votes (Hannibal: the 2001 film and the
+  // 2013 series), so a site that can find out the type (Netflix,
+  // sites/netflix.js typeLater) asks again with it. A property of the
+  // name, so typed answers carry it too.
   async function lookup(title, kind, year, akas = true) {
     const m = await getMeta();
     if (!m) return null;
@@ -398,7 +400,6 @@ const RatingsDB = (() => {
     if (!hit) return null;
     const [imdbID, type, startYear, rating, votes, primaryTitle] = hit;
     const cur = await getCurrent(db, imdbID);
-    const ambiguous = ambiguousName(rec.e);
     return {
       rating: cur ? cur[0] : rating,
       votes: (cur ? cur[1] : votes).toLocaleString('en-US'),
@@ -409,7 +410,7 @@ const RatingsDB = (() => {
       source: 'local',
       built: cur ? ratingsDate(m) : m.built,
       ...(aka ? { aka: true } : {}),
-      ...(ambiguous ? { ambiguous: true } : {}),
+      ambiguous: ambiguousName(rec.e),
     };
   }
 
