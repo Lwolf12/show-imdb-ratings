@@ -23,9 +23,9 @@ with `store/build-zip.ps1` and lands in `dist/`.
 > HOW IT WORKS
 > Local database option: the settings default to a local database for the IMDb ratings. With this option, the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes. From then on lookups happen on your device. The database can optionally be refreshed automatically, with a small download each week and a bigger one each month, and/or it can be refreshed manually by clicking Update now in the settings.
 >
-> OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the local database or replace it.
+> OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the local database or replace it. The OMDb option also allows Rotten Tomatoes, Metacritic and awards to be optionally shown with the IMDb rating.
 >
-> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. The OMDb option also allows Rotten Tomatoes, Metacritic and awards to be optionally shown with the IMDb rating.
+> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days.
 >
 > Without the local database selected, titles in other languages are not matched, badges depend on OMDb's server being accessible, and the IMDb rating is not always current.
 >
