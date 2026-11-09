@@ -23,13 +23,13 @@ with `store/build-zip.ps1` and lands in `dist/`.
 > HOW IT WORKS
 > Local database option: the settings default to a local database for the IMDb ratings. With this option, the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes. From then on lookups happen on your device. The database can optionally be refreshed automatically, with a small download each week and a bigger one each month, and/or it can be refreshed manually by clicking Update now in the settings.
 >
-> Nothing downloads until you click Update now in the settings, which open in a small window right after installing. Later, the extension's icon (a poster with a gold star) in Chrome's puzzle-piece menu opens them (pin it to keep it in the toolbar). The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
->
 > OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, adds Rotten Tomatoes and Metacritic scores (mostly for films) and awards to hover previews, banners and title pages, and title cards can show the scores too. The key can work with the database or replace it:
 >
 > With the database and a key, a title that came out since the last monthly update is looked up at OMDb until the database has it. Only these lookups send title names to OMDb; the extra scores are asked for by IMDb ID.
 >
 > If you choose OMDb only instead, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day, and each answer is remembered for 30 days. What you give up: OMDb's copy of a rating is not always current, titles in other languages are not matched, badges depend on OMDb's server being accessible, and title names are sent to OMDb. Database-only lookups are local and don't leave your device.
+>
+> The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
 >
 > OPTIONAL: TITLES IN OTHER LANGUAGES
 > On a streaming site in another language, the extension can look up IMDb ratings by the titles shown in that language: tick Match titles in other languages in the settings, pick your languages (from Polish to Korean, Japanese and Chinese) and click Get titles, a one-time download of about 520 MB (about 40 MB of it is kept). Not needed on English pages.
