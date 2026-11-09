@@ -35,7 +35,7 @@ The Chrome listing is in `LISTING.md`.
 
 > See IMDb ratings without leaving the streaming site. Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
 >
-> While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's own preview, with a link to the title's IMDb page. Banners and title pages get a rating chip too. A show's episode list also gets a rating next to every episode, so the standout episodes and seasons are easy to spot. Prefer a cleaner look? Badges come in three sizes, and card badges can show only when the mouse is over a card, or not at all.
+> While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's own preview, with a link to the title's IMDb page. Banners and title pages get a rating chip too. A show's episode list also gets a rating next to every episode. Badges come in three sizes, and card badges can show only when the mouse is over a card, or not at all.
 >
 > HOW IT WORKS
 > Local database option: the settings default to a local database for the IMDb ratings. With this option, the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes. From then on lookups happen on your device. The database can optionally be refreshed automatically, with a small download each week and a bigger one each month, and/or it can be refreshed manually by clicking Update now in the settings.
