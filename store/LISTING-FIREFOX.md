@@ -33,7 +33,9 @@ The Chrome listing is in `LISTING.md`.
 
 **Description:**
 
-> See IMDb ratings without leaving the streaming site. Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd. While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's own preview, with a link to the title's IMDb page. Banners and title pages get a rating chip too. A show's episode list also gets a rating next to every episode, so the standout episodes and seasons are easy to spot. Prefer a cleaner look? Badges come in three sizes, and card badges can show only when the mouse is over a card, or not at all.
+> See IMDb ratings without leaving the streaming site. Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
+>
+> While you browse, every title card gets a small rating badge. Hovering a title adds the year and vote count to the site's own preview, with a link to the title's IMDb page. Banners and title pages get a rating chip too. A show's episode list also gets a rating next to every episode, so the standout episodes and seasons are easy to spot. Prefer a cleaner look? Badges come in three sizes, and card badges can show only when the mouse is over a card, or not at all.
 >
 > HOW IT WORKS
 > No account and no key needed. By default the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes. From then on every lookup happens on your device: instant, unlimited, and without sending the titles you browse to anyone. It refreshes itself with a small download each week and a bigger one each month; untick Refresh automatically in the settings and it updates only when you click Update now.
@@ -53,7 +55,7 @@ The Chrome listing is in `LISTING.md`.
 > PRIVACY
 > No accounts, no analytics, no server. The extension reads only the title names on the cards it decorates and sends nothing about you anywhere. Full policy: https://lwolf12.github.io/show-imdb-ratings/PRIVACY
 >
-> OPEN SOURCE
+> FREE AND OPEN SOURCE
 > https://github.com/Lwolf12/show-imdb-ratings
 >
 > Independent project, not affiliated with or endorsed by IMDb or any streaming service.
