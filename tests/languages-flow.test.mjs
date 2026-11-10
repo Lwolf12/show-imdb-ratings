@@ -192,10 +192,10 @@ test('a change made during a build waits for the build to end', async () => {
 });
 
 test('Refresh titles reads a fresh list for the languages matched, the ticks unchanged', async () => {
-  const t = setUp({ sync: { otherLanguages: true, titleLangs: ['pl'] }, meta: keyedMeta(['pl']), file: {} });
+  const t = setUp({ sync: { otherLanguages: true, titleLangs: ['pl'] }, meta: builtMeta({ langs: ['pl'], akasAt: Date.now() - 10 * day, akasFormat: DB.AKAS_FORMAT, akasSize: 50e6, akas: 1000 }), file: {} });
   await settle(100);
   refreshOffered(t);
-  await t.$('downloadLangs').dispatch('click');
+  await t.$('downloadLangs').dispatch('click'); // ten days old: no second click asked
   await settle(600);
   const started = t.builds();
   assert.strictEqual(started.length, 1);
@@ -203,4 +203,19 @@ test('Refresh titles reads a fresh list for the languages matched, the ticks unc
   assert.strictEqual(started[0].fresh, true, 'a fresh file, not the kept one');
   assert.deepEqual([...started[0].langs], ['pl']);
   assert.deepEqual(t.storage.areas.sync.titleLangs, ['pl']);
+});
+
+test('a list read in the last week asks for a second click first, like Update now', async () => {
+  const t = setUp({ sync: { otherLanguages: true, titleLangs: ['pl'] }, meta: keyedMeta(['pl']), file: {} }); // read a day ago
+  await settle(100);
+  await t.$('downloadLangs').dispatch('click');
+  await settle(600);
+  assert.strictEqual(t.builds().length, 0, 'the first click only warns');
+  assert.strictEqual(t.$('langNote').hidden, false);
+  assert.match(t.$('langNote').textContent, /^List read (1 day|2\d hours) ago, so it is current\. Click again to read it anyway \(520 MB\)\.$/);
+  await t.$('downloadLangs').dispatch('click');
+  await settle(600);
+  assert.strictEqual(t.builds().length, 1, 'the second click reads it');
+  assert.strictEqual(t.builds()[0].fresh, true);
+  assert.strictEqual(t.$('langNote').hidden, true);
 });

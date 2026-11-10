@@ -21,7 +21,9 @@
 //   suggest   the languages worth pre-ticking the first time: the
 //             browser's own and those seen on streaming pages
 //   dbPresent, omdbOnly, building   the page's state the section depends on
-const langs = { on: false, chosen: [], keyed: [], draft: null, onHand: () => false, suggest: [], dbPresent: false, omdbOnly: false, building: false };
+//   akasAt    when the kept list was read (0: none), for Refresh titles'
+//             second-click note
+const langs = { on: false, chosen: [], keyed: [], draft: null, onHand: () => false, suggest: [], dbPresent: false, omdbOnly: false, building: false, akasAt: 0 };
 const sameLangs = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 
 // Fills the section from the usage report u and its database status l.
@@ -34,6 +36,7 @@ function refreshLanguages(u, l, building, failed) {
   langs.dbPresent = !!l.present;
   langs.omdbOnly = !!u.omdbOnly;
   langs.building = !!building;
+  langs.akasAt = l.akasAt || 0;
   langs.onHand = (list) => !!l.akasAt && (list || []).every((x) => ((u.langsNeed || {})[x] || 1) <= (l.akasFormat || 1));
   langs.suggest = [...new Set([...(u.langsBrowser || []), ...(u.langsPages || [])])];
   // A draft the store has caught up with (Apply went through) is done.
@@ -202,6 +205,26 @@ $('forgetAka').addEventListener('click', async (e) => {
   refreshStats();
 });
 
+// Refresh titles reads 520 MB whatever the list's age, but one read in the
+// last week is almost certainly current (translations change slowly), so
+// it asks for a second click first, like Update now does for a database
+// built in the last day. The note floats under the row: nothing moves.
+const LANG_RECENT_MS = 7 * 24 * 60 * 60 * 1000;
+let langConfirmUntil = 0;
+
+function showLangNote(text) {
+  $('langNote').textContent = text;
+  $('langNote').hidden = !text;
+}
+
+function sinceList() {
+  const hours = Math.round((Date.now() - langs.akasAt) / 3600000);
+  if (hours < 1) return 'less than an hour ago';
+  if (hours < 24) return hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
+  const days = Math.round(hours / 24);
+  return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+}
+
 // Applies the draft. With the kept list on hand and covering the choice,
 // the background keys it by itself on the write (languages.js
 // applyLanguageChoice); otherwise the build message fetches the 520 MB,
@@ -212,6 +235,14 @@ $('downloadLangs').addEventListener('click', async () => {
   const list = langs.draft !== null ? langs.draft : langs.chosen;
   const refresh = langs.draft === null && list.length > 0 && langs.onHand(list);
   const fetches = refresh || (list.length > 0 && !langs.onHand(list)); // the 520 MB from datasets.imdbws.com
+  if (refresh && Date.now() - langs.akasAt < LANG_RECENT_MS && Date.now() > langConfirmUntil) {
+    langConfirmUntil = Date.now() + 8000;
+    showLangNote('List read ' + sinceList() + ', so it is current. Click again to read it anyway (520 MB).');
+    setTimeout(() => { if (Date.now() >= langConfirmUntil) showLangNote(''); }, 8200);
+    return;
+  }
+  langConfirmUntil = 0;
+  showLangNote('');
   if (fetches && !(await askImdbAccess())) return say(NO_IMDB_ACCESS, 'bad'); // Firefox's prompt, the click's first await
   $('downloadLangs').disabled = true;
   if (langs.draft !== null) {

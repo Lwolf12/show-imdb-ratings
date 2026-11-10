@@ -91,7 +91,7 @@
     /* The "built N minutes ago" note Update now shows for a few seconds
        floats under the button instead of taking a place in its row, so the
        button and everything below it stay where they are. */
-    #buildRow { position: relative; }
+    #buildRow, #langRow { position: relative; }
     .note { position: absolute; left: 0; top: calc(100% + 2px); z-index: 2; box-sizing: border-box; width: 100%; max-width: 420px; padding: 6px 10px; border-radius: 4px; background: #fff4d6; border: 1px solid #e8c56a; color: #5a4300; font-weight: 600; font-size: 13px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
     #refreshSlot { position: relative; }
     .done { position: absolute; left: 0; top: -4px; z-index: 2; box-sizing: border-box; width: 100%; display: flex; gap: 10px; align-items: center; margin: 0; padding: 4px 10px; border-radius: 4px; background: #e6f6ec; border: 1px solid #8fd1a8; color: #1d5e36; font-size: 13px; line-height: 1.35; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); }
@@ -301,7 +301,7 @@
                 aria-label="Streaming sites show titles in your profile's language (Netflix in Polish calls Better Call Saul 'Zadzwoń do Saula'), but the database knows only the English and original names, so translated titles get no rating. Tick this, tick the languages you use, and click Get titles: the extension streams IMDb's list of titles by country once (520 MB pass through, nothing is saved as a file) and keeps only the useful part, about 50 MB in the database, so other languages can be ticked later without reading it again. A full rebuild reads a fresh list every three months (Advanced sets how often), and Refresh titles reads one at once. Not needed with an English browser on English pages. Unticking stops the matching but keeps the list, so it can be turned back on without reading it again; Delete database removes it.">i</span></h2>
         <!-- The button sits by the box, not under the list, which a short
              window cuts off. -->
-        <div id="langRow" class="row"><label class="check"><input id="otherLangs" type="checkbox"> Match titles in other languages</label><button id="downloadLangs" type="button" hidden>Get titles</button></div>
+        <div id="langRow" class="row"><label class="check"><input id="otherLangs" type="checkbox"> Match titles in other languages</label><button id="downloadLangs" type="button" hidden>Get titles</button><span id="langNote" class="note" hidden></span></div>
         <div id="langBox" hidden>
           <p id="otherLangsText" class="muted"></p>
           <div id="langList" class="langs"></div>
