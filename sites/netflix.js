@@ -215,6 +215,9 @@ function typeLaterOf(id) {
   if (nf.types[id]) return Promise.resolve(nf.types[id]);
   return new Promise((resolve) => {
     (nf.typeWaiters[id] = nf.typeWaiters[id] || []).push(resolve);
+    // An English-name read of the same page under way notes the type too:
+    // wait for it rather than fetch the page twice.
+    if (nf.pending.has('en:' + id)) return;
     queueRead(id, 'type');
     // queueRead skips an id that failed lately: answer at once then.
     if (!nf.pending.has('ty:' + id)) settleType(id);
@@ -245,7 +248,7 @@ function nfPump() {
     read.finally(() => {
       nf.active--;
       nf.pending.delete(READ_PREFIX[kind] + id);
-      if (kind === 'type') settleType(id);
+      if (kind === 'type' || kind === 'english') settleType(id);
       nfPump();
     });
   }

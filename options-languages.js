@@ -73,6 +73,12 @@ function refreshLanguages(u, l, building, failed) {
   // Red whenever it is the click that is waited for: a draft not applied
   // yet (Apply or Get titles), or ticked languages the list cannot key.
   btn.classList.toggle('needed', !refresh && (langs.draft !== null || (!apply && langs.chosen.length > 0)));
+  // Refresh titles' "Click again" note belongs to that button: gone once
+  // it is Apply or Get titles, or hidden.
+  if (!refresh || btn.hidden) {
+    langConfirmUntil = 0;
+    showLangNote('');
+  }
 }
 
 // The language list under "Match titles in other languages": every

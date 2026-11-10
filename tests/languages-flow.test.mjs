@@ -219,3 +219,14 @@ test('a list read in the last week asks for a second click first, like Update no
   assert.strictEqual(t.builds()[0].fresh, true);
   assert.strictEqual(t.$('langNote').hidden, true);
 });
+
+test('the second-click note goes as soon as the button is Apply instead', async () => {
+  const t = setUp({ sync: { otherLanguages: true, titleLangs: ['pl'] }, meta: keyedMeta(['pl']), file: {} });
+  await settle(100);
+  await t.$('downloadLangs').dispatch('click');
+  await settle(50);
+  assert.strictEqual(t.$('langNote').hidden, false);
+  await t.tick('de');
+  assert.strictEqual(t.$('downloadLangs').textContent, 'Apply');
+  assert.strictEqual(t.$('langNote').hidden, true);
+});

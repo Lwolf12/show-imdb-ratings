@@ -41,3 +41,16 @@ test('an OMDb answer is not affected', async () => {
   await bg.call('lookup')('Hannibal', null, false, null);
   assert.equal(asked.length, 0);
 });
+
+test('under OMDb only a remembered database answer is used as before, not sent to OMDb', async () => {
+  const storage = makeStorage({ sync: { ratingsSource: 'omdb', omdbKey: 'k' }, local: { 'r:hannibal': { ...film, ts: Date.now() } } });
+  const bg = loadBackground({ storage, meta: builtMeta() });
+  const asked = [];
+  bg.call('RatingsDB').lookup = async () => { asked.push('db'); return null; };
+  const omdb = [];
+  bg.ctx.fetch = async (url) => { omdb.push(url); throw new Error('offline'); };
+  const r = await bg.call('lookup')('Hannibal', null, false, null);
+  assert.equal(r.rating, 6.8);
+  assert.equal(asked.length, 0);
+  assert.equal(omdb.length, 0, 'no OMDb request');
+});

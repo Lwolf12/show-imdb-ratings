@@ -104,3 +104,12 @@ test('no page, or a page without a type, gives null and is not retried at once',
   assert.equal(await s.card.typeLater(card('Something', '2')), null);
   assert.equal(s.fetches.length, 2);
 });
+
+test('a type asked while the English-name read of the same page runs waits for it: one fetch', async () => {
+  const s = sandbox({ 70258489: { h1: 'Hannibal', type: 'TVSeries' } });
+  const el = card('한니발', '70258489');
+  s.card.titleOf(el); // a name in another script: the English-name read starts
+  const type = await s.card.typeLater(el);
+  assert.equal(type, 'series');
+  assert.equal(s.fetches.length, 1);
+});

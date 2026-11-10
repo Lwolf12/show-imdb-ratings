@@ -94,7 +94,9 @@ function isLearned(entry) {
 
 // A database answer stored before 1.3.7 lacks the ambiguous flag (db.js
 // lookup), so a card could keep a same-named film's rating for a month; it
-// is asked of the database again (no request leaves the browser).
+// is asked of the database again (no request leaves the browser). Not
+// under OMDb only, where the database is not asked: there the answer
+// stays until it is due, as before, instead of costing an OMDb lookup.
 function predatesAmbiguous(entry) {
   return !!entry && entry.source === 'local' && !entry.learned && entry.rating != null && !('ambiguous' in entry);
 }
@@ -124,7 +126,7 @@ async function lookup(title, kind, refresh, year) {
   if (kind) broaderKeys.push(storeKey(title, null, null));
 
   const stored = (await chrome.storage.local.get(key))[key];
-  const fresh = stored && (!refresh || !isStale(stored)) && !predatesAmbiguous(stored);
+  const fresh = stored && (!refresh || !isStale(stored)) && !(predatesAmbiguous(stored) && !(await omdbOnly()));
   if (fresh && stored.rating != null) {
     return { ...stored, stale: isStale(stored) };
   }
