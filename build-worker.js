@@ -23,6 +23,8 @@ async function run(data) {
     const info = await run({
       minVotes: data.minVotes,
       langs: Array.isArray(data.langs) ? data.langs : [],
+      akasDays: data.akasDays, // build: how old a kept list may get (db.js akasStale)
+      download: data.fresh === true, // addLanguages: Refresh titles reads a fresh list
       onProgress: (p) => {
         // Byte-level progress fires very often; a few updates a second is plenty.
         const now = Date.now();

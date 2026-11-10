@@ -141,8 +141,10 @@ async function refreshStats() {
   refreshLanguages(u, l, building, failed); // the languages section, options-languages.js
   $('ratingsDays').value = String(u.ratingsDays);
   $('fullDays').value = String(u.fullDays);
+  $('akasDays').value = String(u.akasDays);
   $('ratingsDays').disabled = omdbOnlyMode;
   $('fullDays').disabled = omdbOnlyMode;
+  $('akasDays').disabled = omdbOnlyMode;
   showBuild(u.build);
   // "All set. Titles in Polish matched" is stale once the option was
   // switched off (the kept list is gone) within the box's ten minutes.
@@ -262,7 +264,7 @@ $('auto').addEventListener('change', async () => {
 
 // The intervals (Advanced). A choice applies at the next six-hourly check;
 // the "Next:" line shows what it made due.
-for (const id of ['ratingsDays', 'fullDays']) {
+for (const id of ['ratingsDays', 'fullDays', 'akasDays']) {
   $(id).addEventListener('change', async () => {
     await chrome.storage.sync.set({ [id]: Number($(id).value) });
     say('Refresh schedule saved.');
@@ -832,7 +834,7 @@ for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
 // optional ones off, no added addresses, badges always with the star
 // label, no extras, OMDb lookups on if there is a key, the local database
 // with the default refresh. The key and the database stay.
-const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'badgeSize', 'omdbFallback', 'extraRatings'];
+const SETTING_KEYS = ['autoRefresh', 'ratingsDays', 'fullDays', 'akasDays', 'ratingsSource', 'otherLanguages', 'titleLangs', 'sites', 'addresses', 'cardBadges', 'hideNA', 'badgeLabel', 'badgeSize', 'omdbFallback', 'extraRatings'];
 
 $('resetSettings').addEventListener('click', async () => {
   if (!confirm('Reset every setting to its default? The OMDb key and the ratings database are kept.')) return;

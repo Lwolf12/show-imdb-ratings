@@ -207,18 +207,23 @@ const RatingsDB = (() => {
   const FORMAT = 3;
 
   // How old the akas extract may be before a full build fetches the file
-  // again. Titles get new translations rarely, and the file costs more
-  // than the other three together.
-  const AKAS_DAYS = 90;
+  // again, unless the settings page's Advanced section chose otherwise
+  // (sync akasDays, refresh.js refreshIntervals). Titles get new
+  // translations rarely, and the file costs more than the other three
+  // together.
+  const AKAS_DAYS = 91;
 
-  // Whether the extract on hand is older than AKAS_DAYS, so a full build
-  // that wants any language fetches the file again. A missing extract is
-  // not stale: the 520 MB is only ever the settings page's Get titles
-  // button, or the first build with languages ticked (builder.js), never
-  // a rebuild running by itself. Shared by builder.js and refresh.js
-  // (refreshPlan), which says what the build downloads.
-  function akasStale(meta) {
-    return !!(meta && meta.akasAt) && Date.now() - meta.akasAt > AKAS_DAYS * 24 * 60 * 60 * 1000;
+  // Whether the extract on hand is older than days (the interval in force,
+  // AKAS_DAYS when not given; 0: never, only the Refresh titles button
+  // fetches a fresh one), so a full build that wants any language fetches
+  // the file again. A missing extract is not stale: the 520 MB is only
+  // ever the settings page's Get titles button, or the first build with
+  // languages ticked (builder.js), never a rebuild running by itself.
+  // Shared by builder.js and refresh.js (refreshPlan), which says what the
+  // build downloads.
+  function akasStale(meta, days = AKAS_DAYS) {
+    if (!days) return false;
+    return !!(meta && meta.akasAt) && Date.now() - meta.akasAt > days * 24 * 60 * 60 * 1000;
   }
 
   // Used for both building and lookup. Keep in one place.

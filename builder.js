@@ -300,11 +300,13 @@ const RatingsBuilder = (() => {
   // (addLanguages), so no rebuild downloads the 520 MB by itself.
   // onProgress({ phase: 'ratings'|'basics'|'writing'|'episodes'|'writing-episodes'|'akas'|'keying'|'writing-akas', pct: 0..1, detail })
   // onUsable(info) fires once the titles are live, before the episodes stream.
-  async function build({ minVotes = 25, langs = [], onProgress, onUsable } = {}) {
+  // akasDays: the interval in force (refresh.js refreshIntervals), how old
+  // the kept list may get before this build reads a fresh one.
+  async function build({ minVotes = 25, langs = [], akasDays, onProgress, onUsable } = {}) {
     begin();
     const progress = (phase, pct, detail) => onProgress && onProgress({ phase, pct, detail });
     const meta = await RatingsDB.getMeta();
-    const fetchAkas = langs.length > 0 && (!meta || RatingsDB.akasStale(meta) || !RatingsDB.akasCovers(meta, langs));
+    const fetchAkas = langs.length > 0 && (!meta || RatingsDB.akasStale(meta, akasDays) || !RatingsDB.akasCovers(meta, langs));
 
     // 1. Ratings.
     const ratings = await readRatings(minVotes, progress);

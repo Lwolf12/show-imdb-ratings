@@ -21,6 +21,9 @@ const RATINGS_DAYS = 7;
 const FULL_DAYS = 30;
 const RATINGS_DAYS_CHOICES = [7, 14, 30];
 const FULL_DAYS_CHOICES = [30, 61, 91, 0]; // 0: only by Update now
+// How often a rebuild also reads a fresh list of titles in other
+// languages (520 MB; db.js akasStale). 0: only the Refresh titles button.
+const AKAS_DAYS_CHOICES = [91, 182, 365, 0];
 const UNKNOWN_REBUILD = 10000;
 const DOWNLOAD_MB = { ratings: 9, full: 280, akas: 520 }; // what the settings page says each costs
 
@@ -48,17 +51,19 @@ async function omdbOnly() {
   return ratingsSource === 'omdb';
 }
 
-// The refresh intervals in force: { ratingsDays, fullDays, manual, keyed }.
-// ratingsDays and fullDays are the user's choices from sync storage, or
-// the defaults; a value outside the offered choices counts as unset.
+// The refresh intervals in force: { ratingsDays, fullDays, akasDays,
+// manual, keyed }. ratingsDays, fullDays and akasDays are the user's
+// choices from sync storage, or the defaults; a value outside the offered
+// choices counts as unset.
 // manual: fullDays 0, no full rebuild starts by itself. keyed: OMDb
 // lookups on and the key confirmed, for the texts.
 async function refreshIntervals() {
-  const { ratingsDays, fullDays } = await chrome.storage.sync.get(['ratingsDays', 'fullDays']);
+  const { ratingsDays, fullDays, akasDays } = await chrome.storage.sync.get(['ratingsDays', 'fullDays', 'akasDays']);
   const full = FULL_DAYS_CHOICES.includes(fullDays) ? fullDays : FULL_DAYS;
   return {
     ratingsDays: RATINGS_DAYS_CHOICES.includes(ratingsDays) ? ratingsDays : RATINGS_DAYS,
     fullDays: full,
+    akasDays: AKAS_DAYS_CHOICES.includes(akasDays) ? akasDays : RatingsDB.AKAS_DAYS,
     manual: full === 0,
     keyed: await omdbUsable(),
   };
@@ -85,7 +90,7 @@ async function refreshIntervals() {
 //             scheduler (scheduled: true) skips it and goes on with the
 //             ratings and rebuild schedule, which the wait must not stall.
 // A full plan's mb includes the akas file when the build will fetch it
-// (akas: true: languages chosen and the extract on hand AKAS_DAYS old; a
+// (akas: true: languages chosen and the extract on hand akasDays old; a
 // missing one is Get titles' job, so no rebuild fetches it unasked).
 // With manual set, a full plan is only what Update now would do: format
 // and episodes still come back (the ratings pass cannot run on such a
@@ -97,7 +102,7 @@ async function refreshPlan(meta, { scheduled = false } = {}) {
   const s = await refreshIntervals();
   const langsOn = await otherLanguagesOn();
   const langs = await titleLanguages();
-  const akas = langs.length > 0 && (RatingsDB.akasStale(meta) || !RatingsDB.akasCovers(meta, langs));
+  const akas = langs.length > 0 && (RatingsDB.akasStale(meta, s.akasDays) || !RatingsDB.akasCovers(meta, langs));
   // fullMb and akas ride on every plan: what Update now would download
   // today, and whether that includes a fresh titles list.
   const fullMb = DOWNLOAD_MB.full + (akas ? DOWNLOAD_MB.akas : 0);

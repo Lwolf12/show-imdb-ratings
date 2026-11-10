@@ -276,9 +276,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'build') {
     // Update now is the full rebuild; 'ratings' is Update ratings only
-    // (Advanced), 'akas' the languages' Download button (the chosen
-    // languages, fetching the akas file when there is no extract yet).
-    if (msg.kind === 'akas') titleLanguages().then((langs) => startBuild('manual', 'akas', langs)).then(sendResponse);
+    // (Advanced), 'akas' the languages' button: Get titles (the chosen
+    // languages, fetching the akas file when there is no extract yet) or,
+    // with fresh, Refresh titles (a fresh file even with one kept).
+    if (msg.kind === 'akas') titleLanguages().then((langs) => startBuild('manual', 'akas', langs, { fresh: msg.fresh === true })).then(sendResponse);
     else startBuild('manual', msg.kind === 'ratings' ? 'ratings' : 'full').then(sendResponse);
     return true;
   }
@@ -321,7 +322,7 @@ async function usage() {
   const schedule = await refreshIntervals();
   return {
     day, today: usage.day === day ? usage.count : 0, limitHit: Date.now() < limitPauseUntil, stored, local, next, build, autoRefresh, keyOk,
-    ratingsDays: schedule.ratingsDays, fullDays: schedule.fullDays, schedule,
+    ratingsDays: schedule.ratingsDays, fullDays: schedule.fullDays, akasDays: schedule.akasDays, schedule,
     omdbOnly: await omdbOnly(),
     langs: await titleLanguages(), // in force: the choice while the box is on
     langsChosen: await chosenLanguages(), // the choice, box on or off

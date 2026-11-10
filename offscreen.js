@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((msg) => {
       stop();
     };
     heartbeat = setInterval(() => chrome.runtime.sendMessage({ target: 'background', type: 'heartbeat' }).catch(() => {}), HEARTBEAT_MS);
-    worker.postMessage({ type: 'start', kind: msg.kind, minVotes: msg.minVotes, langs: msg.langs || [] });
+    worker.postMessage({ type: 'start', kind: msg.kind, minVotes: msg.minVotes, langs: msg.langs || [], akasDays: msg.akasDays, fresh: msg.fresh === true });
     if (cancelPending) worker.postMessage({ type: 'cancel' });
     cancelPending = false;
   }

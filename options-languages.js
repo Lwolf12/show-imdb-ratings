@@ -56,17 +56,20 @@ function refreshLanguages(u, l, building, failed) {
   $('otherLangsText').classList.toggle('bad', failedAkas || (langs.on && !langs.omdbOnly && !langs.building && langs.draft === null && langs.chosen.length > 0 && !langs.onHand(langs.chosen)));
   if (langs.on) $('forgetLine').hidden = true; // the offer belongs to the moment of unticking
   // The button applies the ticks: Get titles while the list was never
-  // fetched (the one place the 520 MB is read), Apply once it is on hand
-  // and only the keys change. Shown for a draft, or for languages chosen
-  // but never fetched.
+  // fetched, Apply once it is on hand and only the keys change. Shown for
+  // a draft, or for languages chosen but never fetched. With nothing to
+  // apply it is Refresh titles: a fresh list from IMDb now, whatever the
+  // interval in Advanced (the date of the kept one is in the line above).
   const btn = $('downloadLangs');
-  btn.hidden = !(langs.on && langs.dbPresent && !langs.building && !langs.omdbOnly && (langs.draft !== null || (langs.chosen.length > 0 && !langs.onHand(langs.chosen))));
-  const apply = langs.onHand(langs.draft || langs.chosen);
-  btn.textContent = apply ? 'Apply' : 'Get titles';
-  btn.title = apply ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
+  const waiting = langs.draft !== null || (langs.chosen.length > 0 && !langs.onHand(langs.chosen));
+  const refresh = !waiting && langs.chosen.length > 0;
+  btn.hidden = !(langs.on && langs.dbPresent && !langs.building && !langs.omdbOnly && (waiting || refresh));
+  const apply = !refresh && langs.onHand(langs.draft || langs.chosen);
+  btn.textContent = refresh ? 'Refresh titles' : apply ? 'Apply' : 'Get titles';
+  btn.title = refresh ? 'Reads a fresh list from IMDb now (520 MB)' : apply ? 'From the kept list, no download' : 'Reads 520 MB from IMDb, keeps about 50 MB';
   // Red whenever it is the click that is waited for: a draft not applied
   // yet (Apply or Get titles), or ticked languages the list cannot key.
-  btn.classList.toggle('needed', langs.draft !== null || (!apply && langs.chosen.length > 0));
+  btn.classList.toggle('needed', !refresh && (langs.draft !== null || (!apply && langs.chosen.length > 0)));
 }
 
 // The language list under "Match titles in other languages": every
@@ -202,10 +205,13 @@ $('forgetAka').addEventListener('click', async (e) => {
 // Applies the draft. With the kept list on hand and covering the choice,
 // the background keys it by itself on the write (languages.js
 // applyLanguageChoice); otherwise the build message fetches the 520 MB,
-// which only ever starts from this click.
+// which only ever starts from this click. With no draft and the list on
+// hand, the button is Refresh titles: the build message asks for a fresh
+// file (fresh), keyed for the same languages.
 $('downloadLangs').addEventListener('click', async () => {
   const list = langs.draft !== null ? langs.draft : langs.chosen;
-  const fetches = list.length > 0 && !langs.onHand(list); // Get titles: the 520 MB from datasets.imdbws.com
+  const refresh = langs.draft === null && list.length > 0 && langs.onHand(list);
+  const fetches = refresh || (list.length > 0 && !langs.onHand(list)); // the 520 MB from datasets.imdbws.com
   if (fetches && !(await askImdbAccess())) return say(NO_IMDB_ACCESS, 'bad'); // Firefox's prompt, the click's first await
   $('downloadLangs').disabled = true;
   if (langs.draft !== null) {
@@ -214,7 +220,7 @@ $('downloadLangs').addEventListener('click', async () => {
     langs.draft = null;
   }
   // No language left: the write above clears the keys by itself.
-  if (fetches) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas' }));
+  if (fetches) showBuild(await chrome.runtime.sendMessage({ type: 'build', kind: 'akas', fresh: refresh }));
   $('downloadLangs').disabled = false;
   setTimeout(refreshStats, 500);
 });

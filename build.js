@@ -85,20 +85,26 @@ async function recoverInterruptedBuild() {
 // moment, and both would find the state idle before either wrote it.
 let buildStarting = Promise.resolve();
 
-function startBuild(trigger, kind = 'full', langs = null) {
-  const run = buildStarting.then(() => startBuildNow(trigger, kind, langs));
+// fresh: a languages pass that reads a fresh list from IMDb even though
+// the one kept covers the choice (the Refresh titles button).
+function startBuild(trigger, kind = 'full', langs = null, { fresh = false } = {}) {
+  const run = buildStarting.then(() => startBuildNow(trigger, kind, langs, fresh));
   buildStarting = run.catch(() => {});
   return run;
 }
 
-async function startBuildNow(trigger, kind, langs) {
+async function startBuildNow(trigger, kind, langs, fresh = false) {
   const state = await getBuildState();
   if (state.status === 'running') return state;
   const next = { status: 'running', trigger, kind, phase: 'starting', pct: 0, startedAt: Date.now() };
   await setBuildState(next);
   try {
     await ensureOffscreen();
-    const start = { target: 'offscreen', type: 'build', kind, minVotes: MIN_VOTES, langs: langs || (await titleLanguages()) };
+    const start = {
+      target: 'offscreen', type: 'build', kind, minVotes: MIN_VOTES, langs: langs || (await titleLanguages()),
+      akasDays: (await refreshIntervals()).akasDays, // how old a kept list may get before a rebuild reads a fresh one
+      fresh: fresh === true,
+    };
     try {
       await chrome.runtime.sendMessage(start);
     } catch (e) {

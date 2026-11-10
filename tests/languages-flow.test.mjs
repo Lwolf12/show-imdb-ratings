@@ -32,6 +32,13 @@ function setUp({ sync = {}, meta = null, file = null, languages = ['en-US', 'pl-
   return { storage, bg, page, builds, tick, box, $: page.$ };
 }
 
+// Nothing to apply: the button is Refresh titles (a fresh list on request), not red.
+function refreshOffered(t) {
+  assert.strictEqual(t.$('downloadLangs').hidden, false);
+  assert.strictEqual(t.$('downloadLangs').textContent, 'Refresh titles');
+  assert.strictEqual(t.$('downloadLangs').classList.contains('needed'), false);
+}
+
 test('first time on with a database: the languages seen come pre-ticked as a draft, stored only by Get titles', async () => {
   const t = setUp({ meta: builtMeta() });
   await settle(100);
@@ -53,7 +60,7 @@ test('first time on with a database: the languages seen come pre-ticked as a dra
   await t.bg.finishBuild();
   await settle(600);
   assert.match(t.$('otherLangsText').textContent, /^Matched in Polish\./);
-  assert.strictEqual(t.$('downloadLangs').hidden, true);
+  refreshOffered(t); // nothing to apply: the button offers a fresh list
   assert.strictEqual(t.$('otherLangsText').classList.contains('bad'), false);
 });
 
@@ -79,7 +86,7 @@ test('off and on again: no Apply, no build, the keys and the choice stay, the al
 
   await t.box(true);
   assert.deepEqual(t.page.ticked(), ['pl'], 'the last applied choice shows again');
-  assert.strictEqual(t.$('downloadLangs').hidden, true, 'nothing to apply');
+  refreshOffered(t); // nothing to apply: the button offers a fresh list
   assert.match(t.$('otherLangsText').textContent, /^Matched in Polish\./);
   assert.strictEqual(t.$('status').textContent, 'Titles in Polish match again.');
   assert.strictEqual(t.builds().length, 0);
@@ -115,7 +122,7 @@ test('unticking one language and Apply keys the rest from the kept list, by the 
   assert.deepEqual(t.storage.areas.sync.titleLangs, ['pl', 'de'], 'a draft only');
   // Ticking it back is the way to change one's mind: nothing to apply.
   await t.tick('de', true);
-  assert.strictEqual(t.$('downloadLangs').hidden, true);
+  refreshOffered(t); // nothing to apply: the button offers a fresh list
   await t.tick('de', false);
 
   await t.$('downloadLangs').dispatch('click');
@@ -133,7 +140,7 @@ test('a language the kept list predates needs Get titles, and the others keep ma
   assert.ok(newer, 'db.js AKAS_NEEDS names a language a format-1 extract lacks');
   const t = setUp({ sync: { otherLanguages: true, titleLangs: ['pl'] }, meta: builtMeta({ langs: ['pl'], akasAt: Date.now() - day, akasFormat: 1, akasSize: 50e6, akas: 1000 }), file: {} });
   await settle(100);
-  assert.strictEqual(t.$('downloadLangs').hidden, true);
+  refreshOffered(t); // nothing to apply: the button offers a fresh list
   await t.tick(newer);
   assert.strictEqual(t.$('downloadLangs').textContent, 'Get titles');
   assert.match(t.$('otherLangsText').textContent, /^Not applied yet: click Get titles/);
@@ -182,4 +189,18 @@ test('a change made during a build waits for the build to end', async () => {
   await t.bg.finishBuild({ titles: 420000 });
   await settle(100);
   assert.deepEqual(t.builds().map((b) => [b.kind, b.langs]), [['full', ['pl']], ['akas', ['pl', 'de']]], 'applied once the build is done');
+});
+
+test('Refresh titles reads a fresh list for the languages matched, the ticks unchanged', async () => {
+  const t = setUp({ sync: { otherLanguages: true, titleLangs: ['pl'] }, meta: keyedMeta(['pl']), file: {} });
+  await settle(100);
+  refreshOffered(t);
+  await t.$('downloadLangs').dispatch('click');
+  await settle(600);
+  const started = t.builds();
+  assert.strictEqual(started.length, 1);
+  assert.strictEqual(started[0].kind, 'akas');
+  assert.strictEqual(started[0].fresh, true, 'a fresh file, not the kept one');
+  assert.deepEqual([...started[0].langs], ['pl']);
+  assert.deepEqual(t.storage.areas.sync.titleLangs, ['pl']);
 });

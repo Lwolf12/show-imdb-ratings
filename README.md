@@ -106,7 +106,11 @@ names of the database's titles in every supported language, about 50 MB
 in the browser's database. The languages you ticked are then keyed from
 that as extra names for the same ratings, and ticking another language
 later takes seconds, with no download. The full rebuild fetches a fresh
-list once the kept one is three months old. An English browser on
+list once the kept one is three months old (Advanced: every three or six
+months, yearly, or never by itself), and **Refresh titles**, the same
+button when there is nothing to apply, fetches one at once. Refresh
+automatically switched off stops this too, like every other download
+that would start by itself. An English browser on
 English pages has no use for any of this, which is why it is off.
 Unticking the option stops the matching but keeps the list, so turning
 it back on costs no download; Delete database removes it. The
