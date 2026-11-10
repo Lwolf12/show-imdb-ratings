@@ -25,7 +25,9 @@ with `store/build-zip.ps1` and lands in `dist/`.
 >
 > OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the local database or replace it. The OMDb option also allows Rotten Tomatoes, Metacritic and awards to be optionally shown with the IMDb rating.
 >
-> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day. Each answer is remembered for 30 days, minimizing the number of lookups required. Without the local database (OMDb only option), titles in other languages are not matched. Ratings can be missing for some shows, and ratings may be older and not match the current IMDb rating.
+> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day. Each answer is remembered for 30 days, minimizing the number of lookups required.
+>
+> Without the local database (OMDb only option), titles in other languages are not matched. Ratings can be missing for some shows, and ratings may be older and not match the current IMDb rating.
 >
 > With the local database only (Use OMDb not checked), lookups don't leave your device. However, Rotten Tomatoes, Metacritic and awards will not appear (they come from OMDb).
 >
