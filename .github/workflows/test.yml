@@ -1,0 +1,24 @@
+# Runs the test suite (npm test: tests/*.test.mjs under node --test) on
+# every push and pull request. The tests load the extension's own scripts
+# into Node with stubbed browser APIs, so they need no browser and no
+# dependencies. The README's badge shows the result of the last run.
+
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test

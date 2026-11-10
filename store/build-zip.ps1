@@ -21,6 +21,8 @@ $skipDirs = @('data', 'dist', 'store', 'tests')
 # Docs (every top-level .md: README, PRIVACY, RELEASING, working notes)
 # and packaging output stay out of the package.
 $skipExt = @('.zip', '.crx', '.pem', '.xpi', '.md')
+# The test command's package.json is for developers, not the browser.
+$skipFiles = @('package.json')
 
 $firefoxManifest = (& node (Join-Path $PSScriptRoot 'firefox-manifest.mjs')) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'firefox-manifest.mjs failed' }
@@ -36,7 +38,7 @@ function Build-Zip($out, $manifestText) {
       ForEach-Object { if ($_.PSIsContainer) { Get-ChildItem $_.FullName -Recurse -File } else { $_ } } |
       ForEach-Object {
       $rel = $_.FullName.Substring($src.Length + 1) -replace '\\', '/'
-      if ($_.Extension -in $skipExt) { return }
+      if ($_.Extension -in $skipExt -or $rel -in $skipFiles) { return }
       if ($rel -eq 'manifest.json' -and $manifestText) {
         $entry = $zip.CreateEntry($rel, [IO.Compression.CompressionLevel]::Optimal)
         $w = New-Object IO.StreamWriter($entry.Open(), (New-Object Text.UTF8Encoding($false)))

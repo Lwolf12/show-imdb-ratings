@@ -34,15 +34,15 @@ jobs:
           echo "ver=$ver" >> "$GITHUB_OUTPUT"
 
       # The ZIP holds the extension in a show-imdb-ratings folder, with the
-      # README, privacy policy and LICENSE but not the store material or
-      # this workflow. It ships no ratings data: the extension builds its
+      # README, privacy policy and LICENSE but not the store material, the
+      # tests and their package.json, or the workflows. It ships no ratings data: the extension builds its
       # database in each user's browser from IMDb's dumps, which IMDb
       # licenses for personal use only.
       - name: Zip the extension
         run: |
           git archive --format=zip --prefix=show-imdb-ratings/ \
             -o "show-imdb-ratings-v${{ steps.meta.outputs.ver }}.zip" HEAD -- . \
-            ':!store' ':!tests' ':!.github' ':!.gitignore' ':!RELEASING.md'
+            ':!store' ':!tests' ':!.github' ':!.gitignore' ':!RELEASING.md' ':!package.json'
 
       - name: Create the release with the ZIP attached
         env:

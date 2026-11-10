@@ -1,0 +1,10 @@
+{
+  "name": "show-imdb-ratings",
+  "description": "Browser extension that shows the IMDb rating on streaming services' title cards. No dependencies; this file only names the test command.",
+  "private": true,
+  "license": "MIT",
+  "repository": "github:Lwolf12/show-imdb-ratings",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\""
+  }
+}

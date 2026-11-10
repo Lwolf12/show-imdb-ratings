@@ -1,5 +1,7 @@
 # Show IMDb Ratings on Streaming Services
 
+[![Tests](https://github.com/Lwolf12/show-imdb-ratings/actions/workflows/test.yml/badge.svg)](https://github.com/Lwolf12/show-imdb-ratings/actions/workflows/test.yml)
+
 Chrome extension that overlays the IMDb user rating on every title card
 while browsing Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+,
 Paramount+ and Tubi. Each card gets a small badge with the rating. On
@@ -200,6 +202,7 @@ rebuild learns later still wins.
 | `store/` | Store listing text, screenshots and the scripts that build the store ZIPs and the icons. Not part of the extension. |
 | `badge.css` | Badge styling, including per-site placement tweaks. |
 | `options.html`, `options.js`, `options-text.js`, `options-languages.js` | The settings page: database build and status, per-site on/off, badge options, OMDb key entry and test, usage counter, clearing remembered ratings, deleting the database; its texts and its languages section in the two smaller files. |
+| `tests/`, `package.json` | The tests: `npm test` (Node 22 or later, no dependencies) loads the extension's own scripts into Node with stubbed browser APIs and runs them; GitHub runs the same on every push (the badge above). Not part of the extension. |
 
 ## Firefox
 
