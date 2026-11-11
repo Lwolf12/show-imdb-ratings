@@ -33,33 +33,68 @@ The Chrome listing is in `LISTING.md`.
 
 **Description:**
 
-> See IMDb ratings without leaving the streaming site. Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
+> See IMDb ratings without leaving your streaming site. Free, open source, and no account required.
 >
-> While you browse, every title card gets an optional small rating badge. In settings you choose whether to always show, show only on hover, or not at all. Hovering a title adds the year and vote count to the site's own preview, with a link to the title's IMDb page. Banners and title pages get a rating chip too. A show's episode list also gets a rating next to the episodes. Badges come in three sizes.
+> Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
+>
+> As you browse, IMDb ratings appear on movie and show cards. Choose whether badges are always visible, appear only on hover, or stay hidden. Three badge sizes are available.
+>
+> Hovering over a title also shows its release year, vote count and a link to its IMDb page. Ratings appear on banners, title pages and individual TV episodes too.
 >
 > HOW IT WORKS
-> Local database option: the settings default to a local database for the IMDb ratings. With this option, the extension builds its own ratings database in your browser from IMDb's public data: about 280 MB and a few minutes. From then on lookups happen on your device. The database can optionally be refreshed automatically, with a small download each week and a bigger one each month, and/or it can be refreshed manually by clicking Update now in the settings.
 >
-> OMDb option: a free key from omdbapi.com (1,000 lookups a day), pasted into the settings, can work with the local database or replace it; Firefox asks you before anything is sent to OMDb. The OMDb option also allows Rotten Tomatoes, Metacritic and awards to be optionally shown with the IMDb rating.
+> There are two ways to get ratings: a local IMDb database for private, on-device lookups, or the free OMDb service for additional ratings and awards. You can use either one or both together.
 >
-> If OMDb only is selected, there's nothing to download or keep up to date: ratings come from OMDb as you browse, within the key's 1,000 lookups a day. Each answer is remembered for 30 days, minimizing the number of lookups required.
+> LOCAL IMDb DATABASE (DEFAULT)
 >
-> Without the local database (OMDb only option), titles in other languages are not matched. Ratings can be missing for some shows, and ratings may be older and not match the current IMDb rating.
+> The extension builds its own ratings database in your browser using IMDb's public data. The initial download is about 280 MB and takes a few minutes. After that, ratings are looked up directly on your device without sending title searches to an outside service.
 >
-> With the local database only (Use OMDb not checked), lookups don't leave your device. However, Rotten Tomatoes, Metacritic and awards will not appear (they come from OMDb).
+> The database can be kept current automatically, with a small weekly download and a larger monthly update. Automatic updates are optional and can be disabled. You can also refresh the database manually at any time by clicking Update now in settings.
 >
-> The settings list every supported site: tick the ones you want ratings on and untick the rest. Another address that uses a supported site's layout, such as a streaming service's site in another country, can be added there too.
+> OMDb OPTION
+>
+> A free API key from omdbapi.com provides up to 1,000 lookups per day. Enter the key in settings to use OMDb alongside the local database or instead of it. Firefox asks you before anything is sent to OMDb.
+>
+> OMDb also lets you optionally display Rotten Tomatoes scores, Metacritic scores and awards alongside IMDb ratings.
+>
+> If you use OMDb alone, there's no database to download or maintain. Ratings are retrieved as you browse, and results are cached for 30 days to minimize requests and stay within the daily lookup limit.
+>
+> The main disadvantage of using OMDb alone is that titles in other languages aren't matched, and lookups are limited to 1,000 a day.
+>
+> With the local database alone (Use OMDb unchecked), title lookups remain on your device. Rotten Tomatoes scores, Metacritic scores and awards won't appear because those come from OMDb.
+>
+> SITE SETTINGS
+>
+> Enable ratings only on the sites you want. The settings list every supported site, so you can turn each one on or off independently.
+>
+> You can also add another address that uses a supported site's layout, such as a streaming service's website in another country.
 >
 > OPTIONAL: TITLES IN OTHER LANGUAGES
-> On a streaming site in another language, the extension can look up IMDb ratings by the titles shown in that language: tick Match titles in other languages in the settings, pick your languages (from Polish to Korean, Japanese and Chinese) and click Get titles, a one-time download of about 520 MB (about 40 MB of it is kept). Not needed on English pages.
+>
+> If you browse streaming sites in other languages, the extension can match titles as they appear in those languages.
+>
+> In settings, enable Match titles in other languages, choose your languages (from Polish to Korean, Japanese and Chinese), and click Get titles.
+>
+> This requires a one-time download of approximately 520 MB, of which about 40 MB is retained. It's not needed for English-language pages.
 >
 > PRIVACY
-> No accounts, no analytics, no server. The extension reads only the title names on the cards it decorates and sends nothing about you anywhere. Full policy: https://lwolf12.github.io/show-imdb-ratings/PRIVACY
+>
+> No accounts, no analytics, no tracking, and no developer-operated server.
+>
+> With the local database, title lookups stay on your device. If you enable OMDb, title lookup requests are sent to OMDb. Database updates download public IMDb data.
+>
+> The extension reads title information from the pages it enhances. It does not collect browsing history or send personal information to the developer.
+>
+> Full privacy policy:
+> https://lwolf12.github.io/show-imdb-ratings/PRIVACY
 >
 > FREE AND OPEN SOURCE
+>
+> The extension is completely free. Its source code is publicly available:
+>
 > https://github.com/Lwolf12/show-imdb-ratings
 >
-> Independent project, not affiliated with or endorsed by IMDb or any streaming service.
+> Independent project, not affiliated with or endorsed by IMDb, OMDb, or any streaming service.
 
 The same keyword rule as the Chrome listing applies (see LISTING.md): no
 lists of brand names beyond four.
