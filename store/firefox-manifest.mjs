@@ -3,6 +3,8 @@
 // build-zip.ps1:  node firefox-manifest.mjs > manifest.json
 //
 // What differs in Firefox:
+// - name: addons.mozilla.org allows 50 characters, so the store name
+//   (Chrome's, 56) drops HBO Max; it stays in the summary and description.
 // - background: an event page listing its scripts (the ones the Chrome
 //   service worker loads with importScripts, in the same order, then
 //   background.js itself) instead of a service worker; no "offscreen" permission (the build page goes in a frame of
@@ -21,6 +23,7 @@ import { readFileSync } from 'node:fs';
 const src = new URL('../manifest.json', import.meta.url);
 const m = JSON.parse(readFileSync(src, 'utf8'));
 
+m.name = 'IMDb Ratings on Netflix, Prime, Hulu and others';
 m.background = { scripts: ['compat.js', 'sites-list.js', 'db.js', 'omdb.js', 'lookup.js', 'languages.js', 'refresh.js', 'build.js', 'background.js'] };
 m.permissions = m.permissions.filter((p) => p !== 'offscreen');
 m.host_permissions = m.host_permissions.concat(m.optional_host_permissions || []);

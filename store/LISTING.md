@@ -6,7 +6,13 @@ with `store/build-zip.ps1` and lands in `dist/`.
 
 ## Store listing tab
 
-**Name** (from the manifest): Show IMDb Ratings on Streaming Services
+**Name** (from the manifest): IMDb Ratings on Netflix, Prime, Hulu, HBO Max and others
+
+Since 1.3.8 (2026-11-11); before it was "Show IMDb Ratings on Streaming
+Services", which stays the project's name (README, settings page, privacy
+policy). Store search weighs the name most, and the old one had none of
+the services people search for. Four names, the most that has passed
+review in any field; 56 of 75 characters.
 
 **Summary** (132 characters max):
 
