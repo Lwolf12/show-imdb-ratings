@@ -26,9 +26,9 @@ eight. 121 characters.
 
 **Description:**
 
-> See IMDb ratings without leaving your streaming site. No account required.
+> See IMDb ratings without leaving your streaming site.
 >
-> Works on eight major streaming services and on Letterboxd.
+> Works with Netflix, Prime Video, Hulu and 5 additional streaming sites. Also shows IMDb ratings on Letterboxd titles.
 >
 > As you browse, IMDb ratings appear on movie and show cards. Choose whether badges are always visible, appear only on hover, or stay hidden. Three badge sizes are available.
 >
@@ -104,7 +104,9 @@ services".
 2026-11-12: Chrome flagged it (Keyword Spam, Yellow Argon) on the first
 submission after the name (1.3.8) and summary (1.3.8.1) took the service
 names: the eight were then on the page three times over. The description
-now names no streaming service; the name and summary carry all eight.
+now names three (Netflix, Prime Video, Hulu) and counts the other five,
+with Letterboxd in a sentence of its own (Larry's wording); the name and
+summary carry all eight.
 
 1.0.0 was rejected the same way (2026-10-25) for the summary naming all
 eight services ("Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+,
