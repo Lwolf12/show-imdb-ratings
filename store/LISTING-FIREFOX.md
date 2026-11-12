@@ -34,8 +34,12 @@ Add-on > Edit) is changed by hand to the same text.
 **Summary** (250 characters max):
 
 > Free and open source. Shows the IMDb rating on title cards while you
-> browse Netflix, Prime Video, Hulu, HBO Max and more. Ratings are looked up
-> on your own device from IMDb's public data, with no tracking.
+> browse Disney+, HBO Max, Apple TV, Paramount+ and more. Ratings are looked
+> up on your own device from IMDb's public data, with no tracking.
+
+Since 1.3.9 (edited in the dashboard, no package needed): the Firefox name
+carries Netflix, Prime and Hulu, so the summary names four others, HBO Max
+among them since the Firefox name leaves it out.
 
 **Description:**
 

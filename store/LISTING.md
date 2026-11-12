@@ -14,9 +14,13 @@ policy). Store search weighs the name most, and the old one had none of
 the services people search for. Four names, the most that has passed
 review in any field; 56 of 75 characters.
 
-**Summary** (132 characters max):
+**Summary** (132 characters max, from the manifest's description):
 
-> Shows the IMDb rating on title cards while you browse Netflix, Prime Video, Hulu, HBO Max and more. Free and open source.
+> Shows the IMDb rating on title cards while you browse Disney+, Apple TV, Paramount+, Tubi and more. Free and open source.
+
+Since 1.3.9: the name already carries Netflix, Prime, Hulu and HBO Max, so
+the summary names the other four and the two lines together show all
+eight. 121 characters.
 
 **Category:** Entertainment · **Language:** English
 

@@ -25,6 +25,11 @@ test('the Firefox name fits addons.mozilla.org and names at most four services',
   assert.ok(named(firefox.name) <= 4);
 });
 
+test('the Chrome summary fits and names at most four services', () => {
+  assert.ok(chrome.description.length <= 132, chrome.description.length + ' characters');
+  assert.ok(named(chrome.description) <= 4);
+});
+
 test('both names lead with IMDb Ratings on Netflix, for store search', () => {
   assert.match(chrome.name, /^IMDb Ratings on Netflix\b/);
   assert.match(firefox.name, /^IMDb Ratings on Netflix\b/);

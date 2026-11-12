@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "IMDb Ratings on Netflix, Prime, Hulu, HBO Max and others",
-  "version": "1.3.8",
-  "description": "Shows the IMDb rating on title cards while you browse Netflix, Prime Video, Hulu, HBO Max and more. Free and open source.",
+  "version": "1.3.9",
+  "description": "Shows the IMDb rating on title cards while you browse Disney+, Apple TV, Paramount+, Tubi and more. Free and open source.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
