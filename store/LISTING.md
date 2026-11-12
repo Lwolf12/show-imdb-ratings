@@ -101,6 +101,11 @@ five names spread over two sentences. Submitted as a listing-only change
 to test it; if Chrome flags it, go back to "four more major streaming
 services".
 
+2026-11-12: Chrome flagged it (Keyword Spam, Yellow Argon) on the first
+submission after the name (1.3.8) and summary (1.3.8.1) took the service
+names: the eight were then on the page three times over. The description
+now names no streaming service; the name and summary carry all eight.
+
 1.0.0 was rejected the same way (2026-10-25) for the summary naming all
 eight services ("Netflix, Prime Video, Hulu, HBO Max, Apple TV, Disney+,
 Paramount+ and Tubi"); the description had the same list. Four names
