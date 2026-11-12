@@ -21,10 +21,11 @@ The Chrome listing is in `LISTING.md`.
 
 ## Listing
 
-**Name:** IMDb Ratings on Netflix, Prime, Hulu and others
+**Name:** IMDb Ratings on Netflix, Prime, Hulu & others
 
-Since 1.3.8, from the package (store/firefox-manifest.mjs sets it): 47 of
-AMO's 50 characters, so Chrome's HBO Max is left out. Check that Edit
+Since 1.3.8, from the package (store/firefox-manifest.mjs sets it): 45
+characters, the most AMO's package check accepts (its listing page says
+50; the upload refused 47), so Chrome's HBO Max is left out. Check that Edit
 Product Page shows it after the upload.
 
 **Add-on URL:** `imdb-ratings-on-streaming` (`show-imdb-ratings` was already taken; the limit is 30 characters)
