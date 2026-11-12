@@ -18,7 +18,7 @@ review in any field; 56 of 75 characters.
 
 > Shows the IMDb rating on title cards while you browse Disney+, Apple TV, Paramount+, Tubi and more. Free and open source.
 
-Since 1.3.9: the name already carries Netflix, Prime, Hulu and HBO Max, so
+Since 1.3.8.1: the name already carries Netflix, Prime, Hulu and HBO Max, so
 the summary names the other four and the two lines together show all
 eight. 121 characters.
 
