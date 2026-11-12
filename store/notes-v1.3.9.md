@@ -1,4 +1,4 @@
-**What's new in 1.3.8.1**
+**What's new in 1.3.9**
 
 - The extension's store summary now names Disney+, Apple TV, Paramount+ and Tubi. Nothing else changed; ratings, settings and sites work as in 1.3.8.
 

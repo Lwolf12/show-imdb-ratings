@@ -18,7 +18,7 @@ review in any field; 56 of 75 characters.
 
 > Shows the IMDb rating on title cards while you browse Disney+, Apple TV, Paramount+, Tubi and more. Free and open source.
 
-Since 1.3.8.1: the name already carries Netflix, Prime, Hulu and HBO Max, so
+Since 1.3.9: the name already carries Netflix, Prime, Hulu and HBO Max, so
 the summary names the other four and the two lines together show all
 eight. 121 characters.
 
@@ -102,7 +102,7 @@ to test it; if Chrome flags it, go back to "four more major streaming
 services".
 
 2026-11-12: Chrome flagged it (Keyword Spam, Yellow Argon) on the first
-submission after the name (1.3.8) and summary (1.3.8.1) took the service
+submission after the name (1.3.8) and summary (1.3.9) took the service
 names: the eight were then on the page three times over. The description
 now names three (Netflix, Prime Video, Hulu) and counts the other five,
 with Letterboxd in a sentence of its own (Larry's wording); the name and
