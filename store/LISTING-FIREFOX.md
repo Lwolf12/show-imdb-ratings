@@ -25,8 +25,9 @@ The Chrome listing is in `LISTING.md`.
 
 Since 1.3.8, from the package (store/firefox-manifest.mjs sets it): 45
 characters, the most AMO's package check accepts (its listing page says
-50; the upload refused 47), so Chrome's HBO Max is left out. Check that Edit
-Product Page shows it after the upload.
+50; the upload refused 47), so Chrome's HBO Max is left out. AMO does not copy a new package name
+to the listing: the listing's Name field (Edit Product Page > Describe
+Add-on > Edit) is changed by hand to the same text.
 
 **Add-on URL:** `imdb-ratings-on-streaming` (`show-imdb-ratings` was already taken; the limit is 30 characters)
 
