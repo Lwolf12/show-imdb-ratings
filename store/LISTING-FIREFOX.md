@@ -43,7 +43,7 @@ among them since the Firefox name leaves it out.
 
 **Description:**
 
-> See IMDb ratings without leaving your streaming site. Free, open source, and no account required.
+> See IMDb ratings without leaving your streaming site. No account required.
 >
 > Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
 >

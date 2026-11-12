@@ -26,9 +26,9 @@ eight. 121 characters.
 
 **Description:**
 
-> See IMDb ratings without leaving your streaming site. Free, open source, and no account required.
+> See IMDb ratings without leaving your streaming site. No account required.
 >
-> Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
+> Works on eight major streaming services and on Letterboxd.
 >
 > As you browse, IMDb ratings appear on movie and show cards. Choose whether badges are always visible, appear only on hover, or stay hidden. Three badge sizes are available.
 >
