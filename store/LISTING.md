@@ -52,7 +52,7 @@ eight. 121 characters.
 >
 > If you use OMDb alone, there's no database to download or maintain. Ratings are retrieved as you browse, and results are cached for 30 days to minimize requests and stay within the daily lookup limit.
 >
-> The main disadvantage of using OMDb alone is that titles in other languages aren't matched, and  lookups are limited to 1000 a day.
+> The main disadvantage of using OMDb alone is that titles in other languages aren't matched, and lookups are limited to 1,000 a day.
 >
 > With the local database alone (Use OMDb unchecked), title lookups remain on your device. Rotten Tomatoes scores, Metacritic scores and awards won't appear because those come from OMDb.
 >
