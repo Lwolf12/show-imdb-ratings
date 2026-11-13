@@ -21,31 +21,33 @@ The Chrome listing is in `LISTING.md`.
 
 ## Listing
 
-**Name:** IMDb Ratings on Netflix, Prime, Hulu & others
+**Name:** IMDb Ratings: Netflix, Prime, Hulu, HBO Max & more
 
-Since 1.3.8, from the package (store/firefox-manifest.mjs sets it): 45
-characters, the most AMO's package check accepts (its listing page says
-50; the upload refused 47), so Chrome's HBO Max is left out. AMO does not copy a new package name
-to the listing: the listing's Name field (Edit Product Page > Describe
-Add-on > Edit) is changed by hand to the same text.
+Two names, two limits. The listing's Name field (Edit Product Page >
+Describe Add-on > Edit) takes 50 characters and is what AMO search reads;
+since 2026-11-12 it holds the line above (exactly 50; the colon instead of
+"on" makes room for HBO Max). AMO never copies a package name to it, so it
+is changed by hand. The package name (store/firefox-manifest.mjs, shown in
+Firefox's own add-ons list) is limited to 45 by AMO's upload check (47 was
+refused) and stays "IMDb Ratings on Netflix, Prime, Hulu & others".
 
 **Add-on URL:** `imdb-ratings-on-streaming` (`show-imdb-ratings` was already taken; the limit is 30 characters)
 
 **Summary** (250 characters max):
 
 > Free and open source. Shows the IMDb rating on title cards while you
-> browse Disney+, HBO Max, Apple TV, Paramount+ and more. Ratings are looked
-> up on your own device from IMDb's public data, with no tracking.
+> browse Netflix, Prime Video, Hulu, HBO Max, Disney+, Apple TV, Paramount+
+> and Tubi. Also shows IMDb ratings on Letterboxd titles. Looked up on your
+> own device, with no tracking.
 
-Since 1.3.9 (edited in the dashboard, no package needed): the Firefox name
-carries Netflix, Prime and Hulu, so the summary names four others, HBO Max
-among them since the Firefox name leaves it out.
+Since 2026-11-12 (edited in the dashboard, no package needed): all eight
+services, Letterboxd in a sentence of its own. 246 characters.
 
 **Description:**
 
-> See IMDb ratings without leaving your streaming site. No account required.
+> See IMDb ratings without leaving your streaming site.
 >
-> Works on Netflix, Prime Video, Disney+ and HBO Max. Hulu, Apple TV, Paramount+ and Tubi are covered too, and so is Letterboxd.
+> Works on Netflix, Prime Video, Hulu, HBO Max, Disney+, Apple TV, Paramount+ and Tubi. Also shows IMDb ratings on Letterboxd titles.
 >
 > As you browse, IMDb ratings appear on movie and show cards. Choose whether badges are always visible, appear only on hover, or stay hidden. Three badge sizes are available.
 >
@@ -106,11 +108,13 @@ among them since the Firefox name leaves it out.
 >
 > Independent project, not affiliated with or endorsed by IMDb, OMDb, or any streaming service.
 
-The same keyword rule as the Chrome listing applies (see LISTING.md): no
-lists of brand names beyond four.
+Chrome's keyword rule (see LISTING.md: no list of more than four brand
+names) is Chrome's alone. AMO has taken all eight in one list since
+2026-11-12 (Larry's choice: its search reads the summary and description),
+after approving the two-sentence version in three releases.
 
-**Categories:** Photos, Music & Videos (and, if a second is allowed,
-Other).
+**Categories:** Photos, Music & Videos; Games & Entertainment (added
+2026-11-12; up to three allowed).
 
 **Tags:** fixed list on AMO; only `streaming` fits
 
