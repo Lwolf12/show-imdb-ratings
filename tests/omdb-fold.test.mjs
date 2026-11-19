@@ -34,7 +34,23 @@ test('a key in use opens the fold', async () => {
 test('OMDb only opens the fold, key or not', async () => {
   const page = await open({ sync: { ratingsSource: 'omdb' } });
   assert.strictEqual(page.$('omdbFold').open, true);
-  assert.strictEqual(page.$('sourceOmdb').checked, true);
+  assert.strictEqual(page.$('omdbOnly').checked, true);
+});
+
+test('the OMDb only tick stores the source, and unticking puts the local database back', async () => {
+  const page = await open({ sync: { omdbKey: 'k1234567', omdbFallback: true }, meta: builtMeta() });
+  assert.ok(!page.$('omdbOnly').checked);
+  page.$('omdbOnly').checked = true;
+  await page.$('omdbOnly').dispatch('change');
+  await settle(100);
+  assert.strictEqual((await page.ctx.chrome.storage.sync.get('ratingsSource')).ratingsSource, 'omdb');
+  assert.strictEqual(page.$('useOmdb').checked, true);
+  assert.strictEqual(page.$('useOmdb').disabled, true);
+  page.$('omdbOnly').checked = false;
+  await page.$('omdbOnly').dispatch('change');
+  await settle(100);
+  assert.strictEqual((await page.ctx.chrome.storage.sync.get('ratingsSource')).ratingsSource, 'local');
+  assert.strictEqual(page.$('useOmdb').disabled, false);
 });
 
 test('a stored key with Use OMDb off leaves the fold closed', async () => {

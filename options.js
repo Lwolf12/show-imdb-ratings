@@ -103,12 +103,11 @@ async function refreshStats() {
   omdbOnlyMode = !!u.omdbOnly;
   dbPresent = !!l.present;
   ratingsPassOk = !omdbOnlyMode && !!(l.present && !l.outdated && l.episodes);
-  // The source choice: both are always offered. OMDb only before the key
-  // works gives no ratings, which the status line says (in red), pointing
-  // at the key field below.
+  // OMDb only can be ticked before the key works; it then gives no
+  // ratings, which the status line says (in red), pointing at the key
+  // field.
   omdbConnected = keyed;
-  $('sourceLocal').checked = !omdbOnlyMode;
-  $('sourceOmdb').checked = omdbOnlyMode;
+  $('omdbOnly').checked = omdbOnlyMode;
   $('useOmdbText').textContent = omdbOnlyMode ? '(every rating comes from here)' : '(titles the database lacks, and the scores below)';
   // The status line: a build that runs, failed or was just cancelled
   // (buildLine) comes first. No database yet: with OMDb lookups on and a
@@ -121,7 +120,7 @@ async function refreshStats() {
   $('localStatus').textContent = line ? line
     : omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : noDb ? (keyed
-      ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or choose OMDb only below.'
+      ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or tick OMDb only below.'
       : 'No ratings yet: click Update now to build the database (a few minutes).')
     : localStatus(l, building, !!(u.schedule && u.schedule.manual), await diskUsage());
   $('localStatus').classList.toggle('bad', !line && (omdbOnlyMode || noDb) && !keyed);
@@ -155,7 +154,7 @@ async function refreshStats() {
   // The Use OMDb box, the switch for all OMDb traffic. Under OMDb only it
   // is on and stays on: that mode has no other source (the source handler
   // stores it so, loadOmdb catches an older choice, and omdb.js
-  // omdbSettings counts it on regardless). Under Local database it is greyed
+  // omdbSettings counts it on regardless). Otherwise it is greyed
   // without a saved key, or while one is being typed (keyDirty), as are
   // the extras below, whatever a build or a lookup changed meanwhile.
   const box = $('useOmdb');
@@ -163,7 +162,7 @@ async function refreshStats() {
     box.checked = true;
     box.disabled = true;
     box.parentElement.classList.remove('off');
-    box.parentElement.title = 'OMDb only needs it; choose Local database to switch OMDb off';
+    box.parentElement.title = 'OMDb only needs it; untick OMDb only to switch OMDb off';
   } else {
     const armed = !!savedKey && !keyDirty();
     box.disabled = !armed;
@@ -800,38 +799,36 @@ $('deleteDb').addEventListener('click', async () => {
   refreshStats();
 });
 
-// Where ratings come from (sync ratingsSource, refresh.js omdbOnly).
-// OMDb only switches OMDb on (the Use OMDb box, which stays on under it:
-// refreshStats), after Firefox's consent prompt; a refusal leaves Local
-// database chosen. It can be chosen before there is a working key: the
-// cursor then goes to the key field, and the status line says nothing
-// shows until Test passes. A database that exists is kept, unused, so
-// switching back costs no download; Delete database under Advanced frees
-// its space. Without one, switching back shows Update now, and nothing
-// downloads until it is clicked.
-for (const box of [$('sourceLocal'), $('sourceOmdb')]) {
-  box.addEventListener('change', async () => {
-    if (!box.checked) return;
-    if (box.value === 'omdb') {
-      if (!(await askOmdbConsent())) {
-        $('sourceLocal').checked = true;
-        say(NO_CONSENT, 'bad');
-        return;
-      }
-      await chrome.storage.sync.set({ ratingsSource: 'omdb', omdbFallback: true });
-      if (omdbConnected && !keyDirty()) say('OMDb only; reload open streaming tabs.');
-      else {
-        say('OMDb only: enter a key below and click Test.', 'bad');
-        $('key').focus();
-        $('key').select();
-      }
-    } else {
-      await chrome.storage.sync.set({ ratingsSource: 'local' });
-      say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (reads about 280 MB from IMDb).');
+// Where ratings come from (sync ratingsSource, refresh.js omdbOnly): the
+// local database, or with the OMDb only box ticked, OMDb alone. Ticking
+// it switches OMDb on (the Use OMDb box, which stays on under it:
+// refreshStats), after Firefox's consent prompt; a refusal leaves it
+// unticked. It can be ticked before there is a working key: the cursor
+// then goes to the key field, and the status line says nothing shows
+// until Test passes. A database that exists is kept, unused, so
+// unticking costs no download; Delete database under Advanced frees its
+// space. Without one, unticking shows Update now, and nothing downloads
+// until it is clicked.
+$('omdbOnly').addEventListener('change', async () => {
+  if ($('omdbOnly').checked) {
+    if (!(await askOmdbConsent())) {
+      $('omdbOnly').checked = false;
+      say(NO_CONSENT, 'bad');
+      return;
     }
-    refreshStats();
-  });
-}
+    await chrome.storage.sync.set({ ratingsSource: 'omdb', omdbFallback: true });
+    if (omdbConnected && !keyDirty()) say('OMDb only; reload open streaming tabs.');
+    else {
+      say('OMDb only: enter a key and click Test.', 'bad');
+      $('key').focus();
+      $('key').select();
+    }
+  } else {
+    await chrome.storage.sync.set({ ratingsSource: 'local' });
+    say(dbPresent ? 'Local database in use; reload open streaming tabs.' : 'Click Update now to build the local database (reads about 280 MB from IMDb).');
+  }
+  refreshStats();
+});
 
 // Every setting back to its default: the required sites on and the
 // optional ones off, no added addresses, badges always with the star

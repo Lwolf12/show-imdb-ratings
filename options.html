@@ -26,7 +26,7 @@
        in the same column instead of reflowing the whole page. The columns
        stay equal in a narrower window (minmax(0, …)): with plain 1fr the
        right column keeps its content's width and the left one takes the
-       whole loss, which wraps the Ratings from row. */
+       whole loss, which wraps its rows. */
     @media (min-width: 760px) {
       body { max-width: 920px; }   /* 422 px a column: Also show's three scores fit one row */
       .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 36px; align-items: start; }
@@ -213,11 +213,9 @@
             <p class="muted">Free key: <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener">omdbapi.com</a>
                · Requests today: <span id="today">…</span> / 1,000 <span id="limit"></span></p>
           </div>
-          <div class="row">Ratings from:
-            <label class="check nowrap"><input id="sourceLocal" type="radio" name="source" value="local"> Local database</label>
-            <label class="check nowrap"><input id="sourceOmdb" type="radio" name="source" value="omdb"> OMDb only</label>
-            <span class="tip" tabindex="0" data-tip="Local database: built from IMDb's data; lookups happen on your computer with no limit. With a key set, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID). OMDb only: no database; every title is looked up at OMDb, which needs a working key (above) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time."
-                  aria-label="Local database: built from IMDb's data; lookups happen on your computer with no limit. With a key set, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID). OMDb only: no database; every title is looked up at OMDb, which needs a working key (above) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time.">i</span></div>
+          <div class="row"><label class="check"><input id="omdbOnly" type="checkbox"> OMDb only <span class="muted">(the database is not used)</span></label>
+            <span class="tip up" tabindex="0" data-tip="Ticked: the database is not used; every title is looked up at OMDb, which needs a working key (above) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time. A database already built is kept, unused. Unticked: ratings come from the local database, on your computer with no limit; with Use OMDb on, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID)."
+                  aria-label="Ticked: the database is not used; every title is looked up at OMDb, which needs a working key (above) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time. A database already built is kept, unused. Unticked: ratings come from the local database, on your computer with no limit; with Use OMDb on, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID).">i</span></div>
         </details>
       </section>
 

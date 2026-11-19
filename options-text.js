@@ -133,7 +133,7 @@ function localStatus(l, building, manual, disk) {
 function omdbOnlyStatus(l, keyed) {
   const titles = l.present ? l.titles.toLocaleString() + ' titles' : '';
   if (!keyed) {
-    return 'No ratings yet: enter an OMDb key below and click Test, or choose Local database' +
+    return 'No ratings yet: enter an OMDb key below and click Test, or untick OMDb only' +
       (l.present ? ' (' + titles + ' kept).' : ' and click Update now.');
   }
   return 'Not used: ratings come from OMDb' +

@@ -162,14 +162,14 @@ build (offline, say) is retried a day later, and so is one that was cancelled. A
 (`FORMAT` in `db.js`) also rebuilds it once, whatever its age; with the
 automatic refresh off, the panel asks for Update now instead.
 
-**OMDb only.** With an OMDb key the database can be skipped: choose OMDb
-only under "Ratings from" in the OMDb fold of the settings panel.
+**OMDb only.** With an OMDb key the database can be skipped: tick **OMDb
+only** in the OMDb fold of the settings panel.
 Every lookup then goes to OMDb (1,000 a day, each answer remembered for 30
-days), and no database is built, refreshed or consulted. Chosen before a
+days), and no database is built, refreshed or consulted. Ticked before a
 key has passed Test, the cursor lands in the key field and the status line
 says no ratings show until one does. One that exists is kept, unused, so
-switching back costs no download (Delete database under Advanced frees
-its space); without one, choosing Local database again brings Update now
+unticking it costs no download (Delete database under Advanced frees
+its space); without one, unticking it brings Update now
 back, and nothing downloads until it is clicked.
 
 No ratings data ships with the extension and none is in this repository: the
