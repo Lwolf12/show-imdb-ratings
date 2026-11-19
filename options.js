@@ -121,8 +121,8 @@ async function refreshStats() {
   $('localStatus').textContent = line ? line
     : omdbOnlyMode ? omdbOnlyStatus(l, keyed)
     : noDb ? (keyed
-      ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or choose OMDb only above.'
-      : 'No ratings yet: click Update now to build the database (a few minutes), or enter an OMDb key below and choose OMDb only.')
+      ? 'Not built yet; ratings come from OMDb meanwhile. Click Update now to build it (a few minutes), or choose OMDb only below.'
+      : 'No ratings yet: click Update now to build the database (a few minutes).')
     : localStatus(l, building, !!(u.schedule && u.schedule.manual), await diskUsage());
   $('localStatus').classList.toggle('bad', !line && (omdbOnlyMode || noDb) && !keyed);
   // A failed build is reported where its retry lives, in red: the full
@@ -625,6 +625,9 @@ async function loadOmdb() {
   $('key').value = omdbKey;
   const on = !!omdbKey && useOmdb && (await omdbConsent());
   $('useOmdb').checked = on;
+  // The OMDb fold opens by itself for anyone using OMDb, so nothing they
+  // use is hidden; it never closes by itself.
+  if (on || ratingsSource === 'omdb') $('omdbFold').open = true;
   $('useOmdb').disabled = !omdbKey;
   $('useOmdb').parentElement.classList.toggle('off', !omdbKey);
   $('useOmdb').parentElement.title = omdbKey ? '' : 'Enter a key below and click Test first';
@@ -864,6 +867,7 @@ $('resetSettings').addEventListener('click', async () => {
 // first time the page opens, for versions with something the user may have
 // wondered about; shown once, then forgotten.
 const UPDATE_NOTES = {
+  '1.4.0': 'Updated to 1.4.0. The OMDb settings are now in the OMDb fold, under Ratings database.',
   '1.3.0': 'Updated to 1.3.0. New under Sites: Letterboxd (tick it to allow it) and a row to add an address of your own.', // two lines at most, in Firefox’s wider font too
   '1.2.0': FIREFOX
     ? 'Updated to 1.2.0. HBO Max moved to www.hbomax.com; if HBO Max is unticked under Sites, tick it to allow the new address.'

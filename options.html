@@ -132,6 +132,7 @@
     .bad { color: #c33; }
     details summary { cursor: pointer; color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; }
     details .row { margin: 6px 0; }
+    .sumhint { text-transform: none; letter-spacing: 0; color: #888; margin-left: 6px; }   /* what the fold holds, in plain case beside its name */
     /* The four Advanced buttons sit two by two, each with its note under it,
        so the open section takes half the height of a row per button. */
     .adv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 8px 0 2px; }
@@ -168,11 +169,6 @@
         <h2>Ratings database
           <span class="tip" tabindex="0" data-tip="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt monthly, or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient. The MB figures on this panel are what is read from IMDb over the network, not space on your disk; the status line says what the database takes on disk."
                 aria-label="Built in your browser from IMDb's public data; the first build takes a few minutes, and ratings start showing before the episode list has finished. Lookups then happen on your computer, with no requests to anyone. Once a week only the small ratings file is re-read; the full title list is rebuilt monthly, or sooner once many newly rated titles are waiting. The intervals can be changed under Advanced. On a metered connection, untick the automatic refresh and use Update now when convenient. The MB figures on this panel are what is read from IMDb over the network, not space on your disk; the status line says what the database takes on disk.">i</span></h2>
-        <div class="row">Ratings from:
-          <label class="check nowrap"><input id="sourceLocal" type="radio" name="source" value="local"> Local database</label>
-          <label class="check nowrap"><input id="sourceOmdb" type="radio" name="source" value="omdb"> OMDb only</label>
-          <span class="tip" tabindex="0" data-tip="Local database: built from IMDb's data; lookups happen on your computer with no limit. With a key set, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID). OMDb only: no database; every title is looked up at OMDb, which needs a working key (below) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time."
-                aria-label="Local database: built from IMDb's data; lookups happen on your computer with no limit. With a key set, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID). OMDb only: no database; every title is looked up at OMDb, which needs a working key (below) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time.">i</span></div>
         <p id="localStatus">…</p>
         <div id="buildRow" class="row"><button id="build" type="button">Update now</button><span id="buildNote" class="note" hidden></span>
           <span id="buildBarRow" hidden><progress id="buildBar" max="1" value="0"></progress><button id="cancelBuild" type="button">Cancel</button></span>
@@ -190,30 +186,39 @@
         </div>
       </section>
 
+      <!-- Everything OMDb, folded away: a new install needs only Update now.
+           The fold opens by itself when OMDb is in use (options.js loadOmdb). -->
       <section>
-        <h2>OMDb lookups
-          <span class="tip" tabindex="0" data-tip="OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. With a valid OMDb key, options to also include Rotten Tomatoes and Metacritic scores, and awards, next to the IMDb tag can be selected/deselected."
-                aria-label="OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. With a valid OMDb key, options to also include Rotten Tomatoes and Metacritic scores, and awards, next to the IMDb tag can be selected/deselected.">i</span></h2>
-        <label class="check"><input id="useOmdb" type="checkbox"> Use OMDb <span id="useOmdbText" class="muted">(titles the database lacks, and the scores below)</span></label>
-        <div id="omdbBox">
-          <div class="row"><input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="OMDb API key, then click Test">
-            <button id="test" type="button">Test</button></div>
-          <div id="testResult"></div>
-          <div id="extras" class="row extras">Also show:
-            <label class="check"><input id="xRt" class="extra" data-extra="rt" type="checkbox"> Rotten Tomatoes</label>
-            <label class="check"><input id="xMc" class="extra" data-extra="mc" type="checkbox"> Metacritic</label>
-            <label class="check"><input id="xAw" class="extra" data-extra="awards" type="checkbox"> Awards</label>
-            <span class="brk"></span>
-            <label class="check"><input id="xImdb" class="extra" data-extra="imdb" type="checkbox"> IMDb rating per OMDb <span class="muted">(when it differs)</span></label>
-            <span class="brk"></span>
-            <label class="check"><input id="xCards" class="extra" data-extra="cards" type="checkbox"> On cards too <span id="cardsCost" class="muted">(more lookups)</span></label>
-            <span id="extrasNote" class="muted">(no working key)</span>
-            <span class="tip up" tabindex="0" data-tip="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (not the awards line). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. IMDb rating per OMDb adds OMDb's own copy of the IMDb rating when it isn't the number on the badge: the database and OMDb each refresh their copy on their own day, so the two can differ by a tenth. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic."
-                  aria-label="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (not the awards line). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. IMDb rating per OMDb adds OMDb's own copy of the IMDb rating when it isn't the number on the badge: the database and OMDb each refresh their copy on their own day, so the two can differ by a tenth. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic.">i</span>
+        <details id="omdbFold">
+          <summary>OMDb <span class="sumhint">Rotten Tomatoes, Metacritic and awards; needs a free key</span></summary>
+          <div class="row"><label class="check"><input id="useOmdb" type="checkbox"> Use OMDb <span id="useOmdbText" class="muted">(titles the database lacks, and the scores below)</span></label>
+            <span class="tip" tabindex="0" data-tip="OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. With a valid OMDb key, options to also include Rotten Tomatoes and Metacritic scores, and awards, next to the IMDb tag can be selected/deselected."
+                  aria-label="OMDb is a separate service that mirrors IMDb's ratings (IMDb itself doesn't issue keys). A free key allows 1,000 lookups a day: sign up, click the activation link in their email, paste the key here and click Test, which saves and checks it. With a valid OMDb key, options to also include Rotten Tomatoes and Metacritic scores, and awards, next to the IMDb tag can be selected/deselected.">i</span></div>
+          <div id="omdbBox">
+            <div class="row"><input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="OMDb API key, then click Test">
+              <button id="test" type="button">Test</button></div>
+            <div id="testResult"></div>
+            <div id="extras" class="row extras">Also show:
+              <label class="check"><input id="xRt" class="extra" data-extra="rt" type="checkbox"> Rotten Tomatoes</label>
+              <label class="check"><input id="xMc" class="extra" data-extra="mc" type="checkbox"> Metacritic</label>
+              <label class="check"><input id="xAw" class="extra" data-extra="awards" type="checkbox"> Awards</label>
+              <span class="brk"></span>
+              <label class="check"><input id="xImdb" class="extra" data-extra="imdb" type="checkbox"> IMDb rating per OMDb <span class="muted">(when it differs)</span></label>
+              <span class="brk"></span>
+              <label class="check"><input id="xCards" class="extra" data-extra="cards" type="checkbox"> On cards too <span id="cardsCost" class="muted">(more lookups)</span></label>
+              <span id="extrasNote" class="muted">(no working key)</span>
+              <span class="tip up" tabindex="0" data-tip="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (not the awards line). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. IMDb rating per OMDb adds OMDb's own copy of the IMDb rating when it isn't the number on the badge: the database and OMDb each refresh their copy on their own day, so the two can differ by a tenth. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic."
+                    aria-label="Shown next to the IMDb rating in hover previews, banners and title pages, and with On cards too also on title cards (not the awards line). One OMDb request per title, remembered for 30 days; on cards that means one for each new card you scroll past, so a heavy day of browsing can use a few hundred of a free key's 1,000. Mostly films: OMDb rarely has these scores for series. IMDb rating per OMDb adds OMDb's own copy of the IMDb rating when it isn't the number on the badge: the database and OMDb each refresh their copy on their own day, so the two can differ by a tenth. Scores come from OMDb; this extension isn't affiliated with Rotten Tomatoes or Metacritic.">i</span>
+            </div>
+            <p class="muted">Free key: <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener">omdbapi.com</a>
+               · Requests today: <span id="today">…</span> / 1,000 <span id="limit"></span></p>
           </div>
-          <p class="muted">Free key: <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener">omdbapi.com</a>
-             · Requests today: <span id="today">…</span> / 1,000 <span id="limit"></span></p>
-        </div>
+          <div class="row">Ratings from:
+            <label class="check nowrap"><input id="sourceLocal" type="radio" name="source" value="local"> Local database</label>
+            <label class="check nowrap"><input id="sourceOmdb" type="radio" name="source" value="omdb"> OMDb only</label>
+            <span class="tip" tabindex="0" data-tip="Local database: built from IMDb's data; lookups happen on your computer with no limit. With a key set, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID). OMDb only: no database; every title is looked up at OMDb, which needs a working key (above) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time."
+                  aria-label="Local database: built from IMDb's data; lookups happen on your computer with no limit. With a key set, titles the database lacks are looked up at OMDb, and with any Also show box ticked, so is each title whose scores are shown (by its IMDb ID). OMDb only: no database; every title is looked up at OMDb, which needs a working key (above) and allows 1,000 lookups a day. Title names are sent to OMDb for each lookup. Answers are remembered for up to 30 days, so the same title is not looked up again within that time.">i</span></div>
+        </details>
       </section>
 
       <!-- Last in its column, so opening it pushes only the footer. -->

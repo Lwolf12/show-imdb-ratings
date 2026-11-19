@@ -44,7 +44,7 @@ is a small adapter file, so more services can be added.
    have, such as brand-new releases. Get one at
    <https://www.omdbapi.com/apikey.aspx> (1,000 lookups a day), activate it
    from the email they send, paste it into the settings panel (click the
-   extension's toolbar icon) and click **Test**, which saves the key and
+   extension's toolbar icon and open **OMDb**) and click **Test**, which saves the key and
    checks it; nothing below the field applies until it passes. The key comes
    from OMDb, not IMDb: IMDb itself doesn't issue keys, and OMDb is a
    separate service that mirrors IMDb's ratings. Once the key works, the
@@ -163,7 +163,7 @@ build (offline, say) is retried a day later, and so is one that was cancelled. A
 automatic refresh off, the panel asks for Update now instead.
 
 **OMDb only.** With an OMDb key the database can be skipped: choose OMDb
-only under "Ratings from" at the top of the Ratings database section.
+only under "Ratings from" in the OMDb fold of the settings panel.
 Every lookup then goes to OMDb (1,000 a day, each answer remembered for 30
 days), and no database is built, refreshed or consulted. Chosen before a
 key has passed Test, the cursor lands in the key field and the status line
